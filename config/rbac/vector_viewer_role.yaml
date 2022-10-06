@@ -1,0 +1,20 @@
+# permissions for end users to view vectors.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vector-viewer-role
+rules:
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectors
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectors/status
+  verbs:
+  - get

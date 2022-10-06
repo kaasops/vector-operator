@@ -1,0 +1,24 @@
+# permissions for end users to edit vectors.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vector-editor-role
+rules:
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectors/status
+  verbs:
+  - get

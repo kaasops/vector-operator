@@ -25,17 +25,21 @@ import (
 
 // VectorSpec defines the desired state of Vector
 type VectorSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Vector. Edit vector_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// DisableAggregation
+	DisableAggregation bool `json:"disableAggregation,omitempty"`
+	// Vector Agent
+	Agent *VectorAgent `json:"agent,omitempty"`
 }
 
 // VectorStatus defines the observed state of Vector
 type VectorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+}
+
+// VectorAgent is the Schema for the Vector Agent
+type VectorAgent struct {
+	Service bool `json:"service,omitempty"`
 }
 
 //+kubebuilder:object:root=true

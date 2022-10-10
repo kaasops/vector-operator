@@ -25,6 +25,10 @@ func (r *VectorReconciler) CreateOrUpdateDaemonSet(daemonSet *appsv1.DaemonSet) 
 	return r.reconcileDaemonSet(daemonSet)
 }
 
+func (r *VectorReconciler) CreateOrUpdateStatefulSet(statefulSet *appsv1.StatefulSet) (*reconcile.Result, error) {
+	return r.reconcileStatefulSet(statefulSet)
+}
+
 func (r *VectorReconciler) CreateOrUpdateServiceAccount(secret *corev1.ServiceAccount) (*reconcile.Result, error) {
 	return r.reconcileServiceAccount(secret)
 }
@@ -91,6 +95,31 @@ func (r *VectorReconciler) reconcileDaemonSet(obj runtime.Object) (*reconcile.Re
 
 	existing := &appsv1.DaemonSet{}
 	desired := obj.(*appsv1.DaemonSet)
+
+	err := r.Create(context.TODO(), desired)
+	if err != nil && errors.IsAlreadyExists(err) {
+		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return nil, err
+		}
+		if !equality.Semantic.DeepEqual(existing, desired) {
+			existing.Spec = desired.Spec
+			existing.Labels = desired.Labels
+			err := r.Update(context.TODO(), existing)
+			return nil, err
+		}
+	}
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (r *VectorReconciler) reconcileStatefulSet(obj runtime.Object) (*reconcile.Result, error) {
+
+	existing := &appsv1.StatefulSet{}
+	desired := obj.(*appsv1.StatefulSet)
 
 	err := r.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {

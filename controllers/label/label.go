@@ -14,7 +14,8 @@ const (
 	// It's set by helm when installing a release
 	InstanceLabelKey string = "app.kubernetes.io/instance"
 	// VersionLabelKey is Kubernetes recommended label key, it represents the version of the app
-	VersionLabelKey string = "app.kubernetes.io/version"
+	VersionLabelKey    string = "app.kubernetes.io/version"
+	VectorExcludeLabel string = "vector.dev/exclude"
 
 	// PodName is to select pod by name
 	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-selector

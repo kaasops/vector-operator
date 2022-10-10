@@ -140,10 +140,11 @@ func (r *VectorReconciler) ensureVectorAgentDaemonSet(vectorCR *vectorv1alpha1.V
 
 func labelsForVectorAgent(name string) map[string]string {
 	return map[string]string{
-		label.ManagedByLabelKey: "vector-operator",
-		label.NameLabelKey:      "vector",
-		label.ComponentLabelKey: "Agent",
-		label.InstanceLabelKey:  name,
+		label.ManagedByLabelKey:  "vector-operator",
+		label.NameLabelKey:       "vector",
+		label.ComponentLabelKey:  "Agent",
+		label.InstanceLabelKey:   name,
+		label.VectorExcludeLabel: "true",
 	}
 }
 

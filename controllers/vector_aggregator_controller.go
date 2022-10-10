@@ -110,10 +110,11 @@ func (r *VectorReconciler) ensureVectorAggregatorStatefulSet(vectorCR *vectorv1a
 
 func labelsForVectorAggregator(name string) map[string]string {
 	return map[string]string{
-		label.ManagedByLabelKey: "vector-operator",
-		label.NameLabelKey:      "vector",
-		label.ComponentLabelKey: "Aggregator",
-		label.InstanceLabelKey:  name,
+		label.ManagedByLabelKey:  "vector-operator",
+		label.NameLabelKey:       "vector",
+		label.ComponentLabelKey:  "Aggregator",
+		label.InstanceLabelKey:   name,
+		label.VectorExcludeLabel: "true",
 	}
 }
 

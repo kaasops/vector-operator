@@ -26,7 +26,6 @@ func (r *VectorReconciler) createVectorAggregatorStatefulSet(v *vectorv1alpha1.V
 							Name:  getNameVectorAggregator(v),
 							Image: v.Spec.Aggregator.Image,
 							Args:  []string{"--config-dir", "/etc/vector/"},
-							Env:   generateVectorAggregatorEnvs(v),
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "vector",
@@ -59,9 +58,7 @@ func generateVectorAggregatorVolume(v *vectorv1alpha1.Vector) []corev1.Volume {
 		{
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/vector",
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -82,38 +79,4 @@ func generateVectorAggregatorVolumeMounts(spec *vectorv1alpha1.Vector) []corev1.
 	}
 
 	return volumeMount
-}
-
-func generateVectorAggregatorEnvs(spec *vectorv1alpha1.Vector) []corev1.EnvVar {
-	envs := []corev1.EnvVar{
-		{
-			Name: "VECTOR_SELF_NODE_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					APIVersion: "v1",
-					FieldPath:  "spec.nodeName",
-				},
-			},
-		},
-		{
-			Name: "VECTOR_SELF_POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					APIVersion: "v1",
-					FieldPath:  "metadata.name",
-				},
-			},
-		},
-		{
-			Name: "VECTOR_SELF_POD_NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					APIVersion: "v1",
-					FieldPath:  "metadata.namespace",
-				},
-			},
-		},
-	}
-
-	return envs
 }

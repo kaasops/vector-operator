@@ -8,8 +8,6 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-var vectorImage = "timberio/vector:0.24.0-distroless-libc"
-
 func (r *VectorReconciler) createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
 	labels := labelsForVectorAgent(v.Name)
 
@@ -26,7 +24,7 @@ func (r *VectorReconciler) createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) 
 					Containers: []corev1.Container{
 						{
 							Name:  getNameVectorAgent(v),
-							Image: vectorImage,
+							Image: v.Spec.Agent.Image,
 							Args:  []string{"--config-dir", "/etc/vector/"},
 							Env:   generateVectorAgentEnvs(v),
 							Ports: []corev1.ContainerPort{

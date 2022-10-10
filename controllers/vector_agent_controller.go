@@ -17,7 +17,7 @@ func (r *VectorReconciler) ensureVectorAgent(vectorCR *vectorv1alpha1.Vector) (d
 
 	log.Info("start Reconcile Vector Agent")
 
-	if done, result, err = r.ensureVectorRBAC(vectorCR); done {
+	if done, result, err = r.ensureVectorAgentRBAC(vectorCR); done {
 		return
 	}
 
@@ -38,7 +38,7 @@ func (r *VectorReconciler) ensureVectorAgent(vectorCR *vectorv1alpha1.Vector) (d
 	return
 }
 
-func (r *VectorReconciler) ensureVectorRBAC(vectorCR *vectorv1alpha1.Vector) (bool, ctrl.Result, error) {
+func (r *VectorReconciler) ensureVectorAgentRBAC(vectorCR *vectorv1alpha1.Vector) (bool, ctrl.Result, error) {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", vectorCR.Name)
 

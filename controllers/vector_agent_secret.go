@@ -15,27 +15,16 @@ api:
 sources:
   kubernetes_logs:
     type: kubernetes_logs
-  host_metrics:
-    filesystem:
-      devices:
-        excludes: [binfmt_misc]
-      filesystems:
-        excludes: [binfmt_misc]
-      mountPoints:
-        excludes: ["*/proc/sys/fs/binfmt_misc"]
-    type: host_metrics
-  internal_metrics:
-    type: internal_metrics
 sinks:
-  prom_exporter:
-    type: prometheus_exporter
-    inputs: [host_metrics, internal_metrics]
-    address: 0.0.0.0:9090
   stdout:
     type: console
     inputs: [kubernetes_logs]
     encoding:
       codec: json
+  vector:
+    type: vector
+    inputs: [kubernetes_logs]
+    address: vector-sample-aggregator:6000
 `
 
 func (r *VectorReconciler) createVectorAgentSecret(v *vectorv1alpha1.Vector) *corev1.Secret {

@@ -38,8 +38,20 @@ spec:
               agent:
                 description: Vector Agent
                 properties:
+                  image:
+                    default: timberio/vector:0.24.0-distroless-libc
+                    type: string
                   service:
                     type: boolean
+                type: object
+              aggregator:
+                description: Vector Aggregator
+                properties:
+                  image:
+                    default: timberio/vector:0.24.0-distroless-libc
+                    type: string
+                  replicas:
+                    type: integer
                 type: object
               disableAggregation:
                 description: DisableAggregation

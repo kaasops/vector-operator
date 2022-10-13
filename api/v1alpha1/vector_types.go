@@ -48,6 +48,7 @@ type VectorAgent struct {
 
 // VectorAggregator is the Schema for the Vector Aggregator
 type VectorAggregator struct {
+	Enable bool `json:"enable,omitempty"`
 	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
 	Image    string `json:"image,omitempty"`
 	Replicas int    `json:"replicas,omitempty"`

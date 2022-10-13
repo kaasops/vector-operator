@@ -47,6 +47,8 @@ spec:
               aggregator:
                 description: Vector Aggregator
                 properties:
+                  enable:
+                    type: boolean
                   image:
                     default: timberio/vector:0.24.0-distroless-libc
                     type: string

@@ -64,8 +64,10 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return result, err
 	}
 
-	if done, result, err = r.ensureVectorAggregator(vectorCR); done {
-		return result, err
+	if vectorCR.Spec.Aggregator.Enable {
+		if done, result, err = r.ensureVectorAggregator(vectorCR); done {
+			return result, err
+		}
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil

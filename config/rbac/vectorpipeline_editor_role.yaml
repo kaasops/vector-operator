@@ -1,0 +1,24 @@
+# permissions for end users to edit vectorpipelines.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vectorpipeline-editor-role
+rules:
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectorpipelines
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectorpipelines/status
+  verbs:
+  - get

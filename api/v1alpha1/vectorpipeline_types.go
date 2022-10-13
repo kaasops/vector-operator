@@ -25,11 +25,17 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Source SourceSpec `json:"source,omitempty"`
+	Sinks  SinkSpec   `json:"sinks,omitempty"`
+}
 
-	// Foo is an example field of VectorPipeline. Edit vectorpipeline_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+type SourceSpec struct {
+	LabelSelector map[string]string `json:"labelSelector,omitempty"`
+}
+
+type SinkSpec struct {
+	Type    string `json:"type,omitempty"`
+	Address string `json:"address,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline

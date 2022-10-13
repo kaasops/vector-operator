@@ -18,13 +18,17 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 // VectorPipelineReconciler reconciles a VectorPipeline object
@@ -48,15 +52,45 @@ type VectorPipelineReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
 
-	// TODO(user): your logic here
+	log.Info("start Reconcile Vector")
 
-	return ctrl.Result{}, nil
+	pipelineCR, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
+	if done {
+		return result, err
+	}
+
+	config := r.NewVectorConfig(pipelineCR)
+	yamlconf, err := r.VectorConfigToYaml(&config)
+	if err != nil {
+		return result, err
+	}
+	fmt.Println(string(yamlconf))
+
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&observabilityv1alpha1.VectorPipeline{}).
+		For(&vectorv1alpha1.VectorPipeline{}).
 		Complete(r)
+}
+
+func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, bool, ctrl.Result, error) {
+	// fetch the master instance
+	pipelineCR := &vectorv1alpha1.VectorPipeline{}
+	err := r.Get(ctx, req.NamespacedName, pipelineCR)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Vector Pipeline CR not found. Ignoring since object must be deleted")
+			return nil, true, ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get PipelineCR")
+		return nil, true, ctrl.Result{}, err
+	}
+	log.Info("Get Vector Pipeline " + pipelineCR.Name)
+	return pipelineCR, false, ctrl.Result{}, nil
 }

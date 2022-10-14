@@ -28,6 +28,6 @@ type VectorSink struct {
 }
 
 type VectorPipelineReconcileStatus struct {
-	Start  bool
-	Finish bool
+	Lock bool
+	Init bool
 }

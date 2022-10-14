@@ -54,30 +54,33 @@ type VectorPipelineReconciler struct {
 func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
+	r.Status.Init = true
+	r.Status.Lock = true
+	c := NewVectorConfig()
+	r.Config = c
 
 	log.Info("start Reconcile VectorPipeline")
-	if !r.Status.Finish {
-		objlist := vectorv1alpha1.VectorPipelineList{}
-		err := r.Client.List(ctx, &objlist)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		for _, pipeline := range objlist.Items {
-			AppendToMainConfig(r.Config, &pipeline)
-		}
-		yamlconf, err := r.VectorConfigToYaml(r.Config)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		fmt.Println(string(yamlconf))
+	objlist := vectorv1alpha1.VectorPipelineList{}
+	err := r.Client.List(ctx, &objlist)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if len(objlist.Items) == 0 {
+		r.Status.Init = false
+		log.Info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no resources found")
+		return ctrl.Result{}, nil
+	}
+	for _, pipeline := range objlist.Items {
+		AppendToMainConfig(r.Config, &pipeline)
+	}
+	yamlconf, err := r.VectorConfigToYaml(r.Config)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	_, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
-	if done {
-		return result, err
-	}
+	fmt.Println(string(yamlconf))
 
-	r.Status.Finish = true
+	r.Status.Lock = false
 
 	return ctrl.Result{}, nil
 }

@@ -25,7 +25,7 @@ func (r *VectorReconciler) createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) 
 						{
 							Name:  getNameVectorAgent(v),
 							Image: v.Spec.Agent.Image,
-							Args:  []string{"--config-dir", "/etc/vector/"},
+							Args:  []string{"--config-dir", "/etc/vector/", "--watch-config"},
 							Env:   generateVectorAgentEnvs(v),
 							Ports: []corev1.ContainerPort{
 								{

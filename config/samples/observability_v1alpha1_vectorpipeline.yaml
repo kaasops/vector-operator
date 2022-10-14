@@ -8,3 +8,27 @@ spec:
       app: "testdeployment"
   sinks:
     type: "console"
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vectorpipeline-sample1
+  namespace: kube-system
+spec:
+  source:
+    labelSelector:
+      app: "testdeployment1"
+  sinks:
+    type: "console"
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vectorpipeline-sample2
+  namespace: default
+spec:
+  source:
+    labelSelector:
+      app: "testdeployment2"
+  sinks:
+    type: "console"

@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +34,7 @@ import (
 type VectorPipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Config *VectorConfig
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -61,14 +61,15 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	config := r.NewVectorConfig(pipelineCR)
-	yamlconf, err := r.VectorConfigToYaml(&config)
+	AppendToMainConfig(r.Config, pipelineCR)
+
+	yamlconf, err := r.VectorConfigToYaml(r.Config)
 	if err != nil {
 		return result, err
 	}
 	fmt.Println(string(yamlconf))
 
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

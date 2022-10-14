@@ -89,9 +89,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	config := controllers.NewVectorConfig()
+
 	if err = (&controllers.VectorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Config: config,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
@@ -99,6 +102,7 @@ func main() {
 	if err = (&controllers.VectorPipelineReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Config: config,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)

@@ -8,19 +8,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func (r *VectorPipelineReconciler) NewVectorConfig(pipelineCR *vectorv1alpha1.VectorPipeline) VectorConfig {
-	sources := make(map[string]VectorSource)
-	sources[pipelineCR.Name] = VectorSource{
+func NewVectorConfigFromCR(pipelineCR *vectorv1alpha1.VectorPipeline) *VectorConfig {
+	name := generateName(pipelineCR)
+
+	config := NewVectorConfig()
+
+	config.Sources[name] = VectorSource{
 		Type:          "kubernetes_logs",
 		LabelSelector: createKeyValuePairs(pipelineCR.Spec.Source.LabelSelector),
 	}
-	sinks := make(map[string]VectorSink)
-	var inputs []string
-	sinks[pipelineCR.Name] = VectorSink{
+
+	config.Sinks[name] = VectorSink{
 		Type:   pipelineCR.Spec.Sinks.Type,
-		Inputs: append(inputs, pipelineCR.Name),
+		Inputs: []string{name},
 	}
-	vectorConf := VectorConfig{
+
+	return config
+}
+
+func NewVectorConfig() *VectorConfig {
+	sources := make(map[string]VectorSource)
+	sinks := make(map[string]VectorSink)
+
+	return &VectorConfig{
 		DataDir: "/vector-data-dir",
 		Api: VectorApiSpec{
 			Enabled: false,
@@ -28,7 +38,6 @@ func (r *VectorPipelineReconciler) NewVectorConfig(pipelineCR *vectorv1alpha1.Ve
 		Sources: sources,
 		Sinks:   sinks,
 	}
-	return vectorConf
 }
 
 func (r *VectorPipelineReconciler) VectorConfigToYaml(conf *VectorConfig) ([]byte, error) {
@@ -45,4 +54,19 @@ func createKeyValuePairs(m map[string]string) string {
 		fmt.Fprintf(b, "%s=\"%s\",", key, value)
 	}
 	return b.String()
+}
+
+func generateName(pipelineCR *vectorv1alpha1.VectorPipeline) string {
+	return pipelineCR.Name + "-" + pipelineCR.Namespace
+}
+
+func AppendToMainConfig(main *VectorConfig, pipelineCR *vectorv1alpha1.VectorPipeline) *VectorConfig {
+	configToAdd := NewVectorConfigFromCR(pipelineCR)
+	for k, v := range configToAdd.Sources {
+		main.Sources[k] = v
+	}
+	for i, j := range configToAdd.Sinks {
+		main.Sinks[i] = j
+	}
+	return main
 }

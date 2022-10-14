@@ -34,6 +34,7 @@ import (
 type VectorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Config *VectorConfig
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete

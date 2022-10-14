@@ -90,11 +90,13 @@ func main() {
 	}
 
 	config := controllers.NewVectorConfig()
+	status := &controllers.VectorPipelineReconcileStatus{}
 
 	if err = (&controllers.VectorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Config: config,
+		Status: status,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
@@ -103,6 +105,7 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Config: config,
+		Status: status,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)

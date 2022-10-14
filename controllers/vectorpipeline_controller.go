@@ -35,6 +35,7 @@ type VectorPipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Config *VectorConfig
+	Status *VectorPipelineReconcileStatus
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -54,7 +55,14 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
 
-	log.Info("start Reconcile Vector")
+	log.Info("start Reconcile VectorPipeline")
+	if !r.Status.Finish {
+		objlist := vectorv1alpha1.VectorPipelineList{}
+		err := r.Client.List(ctx, &objlist)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	pipelineCR, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
 	if done {

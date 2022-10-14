@@ -26,3 +26,8 @@ type VectorSink struct {
 	Type   string   `yaml:"type,omitempty"`
 	Inputs []string `yaml:"inputs,omitempty"`
 }
+
+type VectorPipelineReconcileStatus struct {
+	Start  bool
+	Finish bool
+}

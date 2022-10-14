@@ -62,20 +62,22 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		for _, pipeline := range objlist.Items {
+			AppendToMainConfig(r.Config, &pipeline)
+		}
+		yamlconf, err := r.VectorConfigToYaml(r.Config)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		fmt.Println(string(yamlconf))
 	}
 
-	pipelineCR, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
+	_, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
 	if done {
 		return result, err
 	}
 
-	AppendToMainConfig(r.Config, pipelineCR)
-
-	yamlconf, err := r.VectorConfigToYaml(r.Config)
-	if err != nil {
-		return result, err
-	}
-	fmt.Println(string(yamlconf))
+	r.Status.Finish = true
 
 	return ctrl.Result{}, nil
 }

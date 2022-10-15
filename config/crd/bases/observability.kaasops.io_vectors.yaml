@@ -36,28 +36,19 @@ spec:
             description: VectorSpec defines the desired state of Vector
             properties:
               agent:
-                description: Vector Agent
+                description: DisableAggregation DisableAggregation bool `json:"disableAggregation,omitempty"`
+                  Vector Agent
                 properties:
+                  ApiEnabled:
+                    type: boolean
+                  dataDir:
+                    type: string
                   image:
                     default: timberio/vector:0.24.0-distroless-libc
                     type: string
                   service:
                     type: boolean
                 type: object
-              aggregator:
-                description: Vector Aggregator
-                properties:
-                  enable:
-                    type: boolean
-                  image:
-                    default: timberio/vector:0.24.0-distroless-libc
-                    type: string
-                  replicas:
-                    type: integer
-                type: object
-              disableAggregation:
-                description: DisableAggregation
-                type: boolean
             type: object
           status:
             description: VectorStatus defines the observed state of Vector

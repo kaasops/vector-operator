@@ -4,10 +4,16 @@ metadata:
   name: vectorpipeline-sample
 spec:
   source:
-    labelSelector:
-      app: "testdeployment"
+    test1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment"
   sinks:
-    type: "console"
+    test2:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - test1
 ---
 apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorPipeline
@@ -16,19 +22,37 @@ metadata:
   namespace: kube-system
 spec:
   source:
-    labelSelector:
-      app: "testdeployment1"
+    test1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment2"
   sinks:
-    type: "console"
----
-apiVersion: observability.kaasops.io/v1alpha1
-kind: VectorPipeline
-metadata:
-  name: vectorpipeline-sample2
-  namespace: default
-spec:
-  source:
-    labelSelector:
-      app: "testdeployment2"
-  sinks:
-    type: "console"
+    test2:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - test1
+# ---
+# apiVersion: observability.kaasops.io/v1alpha1
+# kind: VectorPipeline
+# metadata:
+#   name: vectorpipeline-sample2
+#   namespace: default
+# spec:
+#   source:
+#     labelSelector:
+#       app: "testdeployment2"
+#   sinks:
+#     type: "console"
+# ---
+# apiVersion: observability.kaasops.io/v1alpha1
+# kind: VectorPipeline
+# metadata:
+#   name: vectorpipeline-sample3
+#   namespace: default
+# spec:
+#   source:
+#     labelSelector:
+#       app: "testdeployment2"
+#   sinks:
+#     type: "console"

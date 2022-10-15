@@ -1,4 +1,4 @@
-package controllers
+package vectoragent
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -7,18 +7,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (r *VectorReconciler) createVectorAggregatorService(v *vectorv1alpha1.Vector) *corev1.Service {
-	labels := labelsForVectorAggregator(v.Name)
+func createVectorAgentService(v *vectorv1alpha1.Vector) *corev1.Service {
+	labels := labelsForVectorAgent(v.Name)
 
 	service := &corev1.Service{
-		ObjectMeta: objectMetaVectorAggregator(v, labels),
+		ObjectMeta: objectMetaVectorAgent(v, labels),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "vector",
+					Name:       "prom-exporter",
 					Protocol:   corev1.Protocol("TCP"),
-					Port:       6000,
-					TargetPort: intstr.FromInt(6000),
+					Port:       9090,
+					TargetPort: intstr.FromInt(9090),
 				},
 			},
 			Selector: labels,

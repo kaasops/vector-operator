@@ -36,18 +36,39 @@ spec:
             description: VectorPipelineSpec defines the desired state of VectorPipeline
             properties:
               sinks:
-                properties:
-                  address:
-                    type: string
-                  type:
-                    type: string
+                additionalProperties:
+                  properties:
+                    address:
+                      type: string
+                    encoding:
+                      properties:
+                        codec:
+                          type: string
+                      type: object
+                    inputs:
+                      items:
+                        type: string
+                      type: array
+                    print_interval_secs:
+                      format: int32
+                      type: integer
+                    rate:
+                      format: int32
+                      type: integer
+                    type:
+                      type: string
+                  type: object
                 type: object
               source:
-                properties:
-                  labelSelector:
-                    additionalProperties:
+                additionalProperties:
+                  properties:
+                    extra_field_selector:
                       type: string
-                    type: object
+                    extra_label_selector:
+                      type: string
+                    type:
+                      type: string
+                  type: object
                 type: object
             type: object
           status:

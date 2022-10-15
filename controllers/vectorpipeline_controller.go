@@ -18,15 +18,12 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/go-logr/logr"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
@@ -34,8 +31,6 @@ import (
 type VectorPipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Config *VectorConfig
-	Status *VectorPipelineReconcileStatus
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -53,34 +48,29 @@ type VectorPipelineReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
-	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	r.Status.Init = true
-	r.Status.Lock = true
-	c := NewVectorConfig()
-	r.Config = c
+	log := log.FromContext(ctx).WithValues("VectorPipeline", req.NamespacedName)
 
 	log.Info("start Reconcile VectorPipeline")
-	objlist := vectorv1alpha1.VectorPipelineList{}
-	err := r.Client.List(ctx, &objlist)
+
+	vectorInstances := &vectorv1alpha1.VectorList{}
+	err := r.List(ctx, vectorInstances)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if len(objlist.Items) == 0 {
-		r.Status.Init = false
-		log.Info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no resources found")
+
+	if len(vectorInstances.Items) == 0 {
+		log.Info("Vertors not found")
 		return ctrl.Result{}, nil
 	}
-	for _, pipeline := range objlist.Items {
-		AppendToMainConfig(r.Config, &pipeline)
-	}
-	yamlconf, err := r.VectorConfigToYaml(r.Config)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
 
-	fmt.Println(string(yamlconf))
+	for _, vector := range vectorInstances.Items {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
+		currentVector := &vector
+		CreateOrUpdateVector(ctx, currentVector, r.Client)
 
-	r.Status.Lock = false
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -90,21 +80,4 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.VectorPipeline{}).
 		Complete(r)
-}
-
-func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, bool, ctrl.Result, error) {
-	// fetch the master instance
-	pipelineCR := &vectorv1alpha1.VectorPipeline{}
-	err := r.Get(ctx, req.NamespacedName, pipelineCR)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Vector Pipeline CR not found. Ignoring since object must be deleted")
-			return nil, true, ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get PipelineCR")
-		return nil, true, ctrl.Result{}, err
-	}
-	log.Info("Get Vector Pipeline " + pipelineCR.Name)
-	return pipelineCR, false, ctrl.Result{}, nil
 }

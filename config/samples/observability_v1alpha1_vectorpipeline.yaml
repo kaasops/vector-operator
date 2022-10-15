@@ -7,6 +7,14 @@ spec:
     test1:
       type: "kubernetes_logs"
       extra_label_selector: "app!=testdeployment"
+  transforms:
+    test:
+      type: "filter"
+      inputs:
+        - test1
+      condition:
+        type: "vrl"
+        source: ".status != 200"
   sinks:
     test2:
       type: "console"

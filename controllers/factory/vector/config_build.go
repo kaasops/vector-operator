@@ -25,7 +25,7 @@ func GenerateConfig(
 	vp map[string]*v1alpha1.VectorPipeline,
 ) ([]byte, error) {
 	cfg := NewVectorConfig(cr.Spec.Agent.DataDir, cr.Spec.Agent.ApiEnabled)
-	sources, sinks := getComponents(vp)
+	sources, transforms, sinks := getComponents(vp)
 	if len(sources) == 0 {
 		sources = map[string]*v1alpha1.SourceSpec{
 			"defaultSource": &sourceDefault,
@@ -39,6 +39,7 @@ func GenerateConfig(
 
 	cfg.Sinks = sinks
 	cfg.Sources = sources
+	cfg.Transforms = transforms
 
 	return vectorConfigToJson(cfg)
 }
@@ -57,8 +58,9 @@ func NewVectorConfig(dataDir string, apiEnabled bool) *VectorConfig {
 	}
 }
 
-func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha1.SourceSpec, map[string]*v1alpha1.SinkSpec) {
+func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha1.SourceSpec, map[string]*v1alpha1.TransformSpec, map[string]*v1alpha1.SinkSpec) {
 	sources := make(map[string]*v1alpha1.SourceSpec)
+	transforms := make(map[string]*v1alpha1.TransformSpec)
 	sinks := make(map[string]*v1alpha1.SinkSpec)
 
 	for name, vp := range vps {
@@ -76,8 +78,20 @@ func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha
 			sink.Inputs = inputs
 			sinks[name+"-"+sinkName+"-source"] = &sink
 		}
+
+		for transformName, transform := range vp.Spec.Transforms {
+			inputs := make([]string, 0)
+			for _, i := range transform.Inputs {
+				newInput := name + "-" + i + "-source"
+				inputs = append(inputs, newInput)
+			}
+
+			transform.Inputs = inputs
+			transforms[name+"-"+transformName+"-transform"] = &transform
+
+		}
 	}
-	return sources, sinks
+	return sources, transforms, sinks
 }
 
 // func createKeyValuePairs(m map[string]string) string {

@@ -65,30 +65,28 @@ func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha
 
 	for name, vp := range vps {
 		for sourceName, source := range vp.Spec.Source {
-			sources[name+"-"+sourceName+"-source"] = &source
+			sources[name+"-"+sourceName] = &source
 		}
-
-		for sinkName, sink := range vp.Spec.Sink {
-			inputs := make([]string, 0)
-			for _, i := range sink.Inputs {
-				newInput := name + "-" + i + "-source"
-				inputs = append(inputs, newInput)
-			}
-
-			sink.Inputs = inputs
-			sinks[name+"-"+sinkName+"-source"] = &sink
-		}
-
 		for transformName, transform := range vp.Spec.Transforms {
 			inputs := make([]string, 0)
 			for _, i := range transform.Inputs {
-				newInput := name + "-" + i + "-source"
+				newInput := name + "-" + i
 				inputs = append(inputs, newInput)
 			}
 
 			transform.Inputs = inputs
-			transforms[name+"-"+transformName+"-transform"] = &transform
+			transforms[name+"-"+transformName] = &transform
 
+		}
+		for sinkName, sink := range vp.Spec.Sink {
+			inputs := make([]string, 0)
+			for _, i := range sink.Inputs {
+				newInput := name + "-" + i
+				inputs = append(inputs, newInput)
+			}
+
+			sink.Inputs = inputs
+			sinks[name+"-"+sinkName] = &sink
 		}
 	}
 	return sources, transforms, sinks

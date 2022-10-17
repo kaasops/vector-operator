@@ -2,7 +2,7 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: vector-sample
-  namespace: vector-operator-system
+  namespace: vector
 spec:
   agent:
     service: true

@@ -1,4 +1,4 @@
-package controllers
+package vectoragent
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -7,7 +7,7 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-func (r *VectorReconciler) createVectorAgentServiceAccount(v *vectorv1alpha1.Vector) *corev1.ServiceAccount {
+func createVectorAgentServiceAccount(v *vectorv1alpha1.Vector) *corev1.ServiceAccount {
 	labels := labelsForVectorAgent(v.Name)
 
 	serviceAccount := &corev1.ServiceAccount{
@@ -17,7 +17,7 @@ func (r *VectorReconciler) createVectorAgentServiceAccount(v *vectorv1alpha1.Vec
 	return serviceAccount
 }
 
-func (r *VectorReconciler) createVectorAgentClusterRole(v *vectorv1alpha1.Vector) *rbacv1.ClusterRole {
+func createVectorAgentClusterRole(v *vectorv1alpha1.Vector) *rbacv1.ClusterRole {
 	labels := labelsForVectorAgent(v.Name)
 
 	clusterRole := &rbacv1.ClusterRole{
@@ -34,7 +34,7 @@ func (r *VectorReconciler) createVectorAgentClusterRole(v *vectorv1alpha1.Vector
 	return clusterRole
 }
 
-func (r *VectorReconciler) createVectorAgentClusterRoleBinding(v *vectorv1alpha1.Vector) *rbacv1.ClusterRoleBinding {
+func createVectorAgentClusterRoleBinding(v *vectorv1alpha1.Vector) *rbacv1.ClusterRoleBinding {
 	labels := labelsForVectorAgent(v.Name)
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{

@@ -1,4 +1,4 @@
-package controllers
+package k8sutils
 
 import (
 	"context"
@@ -13,49 +13,49 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (r *VectorReconciler) CreateOrUpdateService(svc *corev1.Service) (*reconcile.Result, error) {
-	return r.reconcileService(svc)
+func CreateOrUpdateService(svc *corev1.Service, c client.Client) (*reconcile.Result, error) {
+	return reconcileService(svc, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateSecret(secret *corev1.Secret) (*reconcile.Result, error) {
-	return r.reconcileSecret(secret)
+func CreateOrUpdateSecret(secret *corev1.Secret, c client.Client) (*reconcile.Result, error) {
+	return reconcileSecret(secret, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateDaemonSet(daemonSet *appsv1.DaemonSet) (*reconcile.Result, error) {
-	return r.reconcileDaemonSet(daemonSet)
+func CreateOrUpdateDaemonSet(daemonSet *appsv1.DaemonSet, c client.Client) (*reconcile.Result, error) {
+	return reconcileDaemonSet(daemonSet, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateStatefulSet(statefulSet *appsv1.StatefulSet) (*reconcile.Result, error) {
-	return r.reconcileStatefulSet(statefulSet)
+func CreateOrUpdateStatefulSet(statefulSet *appsv1.StatefulSet, c client.Client) (*reconcile.Result, error) {
+	return reconcileStatefulSet(statefulSet, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateServiceAccount(secret *corev1.ServiceAccount) (*reconcile.Result, error) {
-	return r.reconcileServiceAccount(secret)
+func CreateOrUpdateServiceAccount(secret *corev1.ServiceAccount, c client.Client) (*reconcile.Result, error) {
+	return reconcileServiceAccount(secret, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateClusterRole(secret *rbacv1.ClusterRole) (*reconcile.Result, error) {
-	return r.reconcileClusterRole(secret)
+func CreateOrUpdateClusterRole(secret *rbacv1.ClusterRole, c client.Client) (*reconcile.Result, error) {
+	return reconcileClusterRole(secret, c)
 }
 
-func (r *VectorReconciler) CreateOrUpdateClusterRoleBinding(secret *rbacv1.ClusterRoleBinding) (*reconcile.Result, error) {
-	return r.reconcileClusterRoleBinding(secret)
+func CreateOrUpdateClusterRoleBinding(secret *rbacv1.ClusterRoleBinding, c client.Client) (*reconcile.Result, error) {
+	return reconcileClusterRoleBinding(secret, c)
 }
 
-func (r *VectorReconciler) reconcileService(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileService(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &corev1.Service{}
 	desired := obj.(*corev1.Service)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}
@@ -66,21 +66,21 @@ func (r *VectorReconciler) reconcileService(obj runtime.Object) (*reconcile.Resu
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileSecret(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileSecret(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &corev1.Secret{}
 	desired := obj.(*corev1.Secret)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Data = desired.Data
 			existing.Labels = desired.Labels
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}
@@ -91,21 +91,21 @@ func (r *VectorReconciler) reconcileSecret(obj runtime.Object) (*reconcile.Resul
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileDaemonSet(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileDaemonSet(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &appsv1.DaemonSet{}
 	desired := obj.(*appsv1.DaemonSet)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}
@@ -116,21 +116,21 @@ func (r *VectorReconciler) reconcileDaemonSet(obj runtime.Object) (*reconcile.Re
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileStatefulSet(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileStatefulSet(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &appsv1.StatefulSet{}
 	desired := obj.(*appsv1.StatefulSet)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}
@@ -141,14 +141,14 @@ func (r *VectorReconciler) reconcileStatefulSet(obj runtime.Object) (*reconcile.
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileServiceAccount(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileServiceAccount(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &corev1.ServiceAccount{}
 	desired := obj.(*corev1.ServiceAccount)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
@@ -160,20 +160,20 @@ func (r *VectorReconciler) reconcileServiceAccount(obj runtime.Object) (*reconci
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileClusterRole(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileClusterRole(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &rbacv1.ClusterRole{}
 	desired := obj.(*rbacv1.ClusterRole)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Rules = desired.Rules
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}
@@ -184,21 +184,21 @@ func (r *VectorReconciler) reconcileClusterRole(obj runtime.Object) (*reconcile.
 	return nil, nil
 }
 
-func (r *VectorReconciler) reconcileClusterRoleBinding(obj runtime.Object) (*reconcile.Result, error) {
+func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &rbacv1.ClusterRoleBinding{}
 	desired := obj.(*rbacv1.ClusterRoleBinding)
 
-	err := r.Create(context.TODO(), desired)
+	err := c.Create(context.TODO(), desired)
 	if err != nil && errors.IsAlreadyExists(err) {
-		err := r.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return nil, err
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
-			err := r.Update(context.TODO(), existing)
+			err := c.Update(context.TODO(), existing)
 			return nil, err
 		}
 	}

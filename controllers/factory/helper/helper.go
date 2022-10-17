@@ -1,4 +1,4 @@
-package controllers
+package helper
 
 import ctrl "sigs.k8s.io/controller-runtime"
 

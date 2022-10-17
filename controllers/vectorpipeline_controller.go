@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 // VectorPipelineReconciler reconciles a VectorPipeline object
@@ -48,8 +48,29 @@ type VectorPipelineReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("VectorPipeline", req.NamespacedName)
 
-	// TODO(user): your logic here
+	log.Info("start Reconcile VectorPipeline")
+
+	vectorInstances := &vectorv1alpha1.VectorList{}
+	err := r.List(ctx, vectorInstances)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if len(vectorInstances.Items) == 0 {
+		log.Info("Vertors not found")
+		return ctrl.Result{}, nil
+	}
+
+	for _, vector := range vectorInstances.Items {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
+		currentVector := &vector
+		CreateOrUpdateVector(ctx, currentVector, r.Client)
+
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -57,6 +78,6 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // SetupWithManager sets up the controller with the Manager.
 func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&observabilityv1alpha1.VectorPipeline{}).
+		For(&vectorv1alpha1.VectorPipeline{}).
 		Complete(r)
 }

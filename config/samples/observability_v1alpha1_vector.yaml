@@ -2,12 +2,9 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: vector-sample
-  namespace: vector
+  namespace: vector-operator-system
 spec:
-  disableAggregation: true
   agent:
     service: true
     image: "timberio/vector:0.24.0-distroless-libc"
-  aggregator:
-    image: "timberio/vector:0.24.0-distroless-libc"
-    replicas: 1
+

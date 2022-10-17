@@ -25,11 +25,39 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Source     map[string]SourceSpec    `json:"source,omitempty"`
+	Transforms map[string]TransformSpec `json:"transforms,omitempty"`
+	Sink       map[string]SinkSpec      `json:"sinks,omitempty"`
+}
 
-	// Foo is an example field of VectorPipeline. Edit vectorpipeline_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+type TransformSpec struct {
+	Type      string     `json:"type,omitempty"`
+	Inputs    []string   `json:"inputs,omitempty"`
+	Condition *Condition `json:"condition,omitempty"`
+}
+
+type Condition struct {
+	Type   string `json:"type,omitempty"`
+	Source string `json:"source,omitempty"`
+}
+
+type SourceSpec struct {
+	Type               string `json:"type,omitempty"`
+	ExtraLabelSelector string `json:"extra_label_selector,omitempty"`
+	ExtraFieldSelector string `json:"extra_field_selector,omitempty"`
+}
+
+type SinkSpec struct {
+	Type              string    `json:"type,omitempty"`
+	Address           string    `json:"address,omitempty"`
+	Inputs            []string  `json:"inputs,omitempty"`
+	Encoding          *Encoding `json:"encoding,omitempty"`
+	Rate              *int32    `json:"rate,omitempty"`
+	PrintIntervalSecs int32     `json:"print_interval_secs,omitempty"`
+}
+
+type Encoding struct {
+	Codec string `json:"codec,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline

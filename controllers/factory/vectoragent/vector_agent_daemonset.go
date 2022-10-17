@@ -1,4 +1,4 @@
-package controllers
+package vectoragent
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
@@ -8,7 +8,7 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-func (r *VectorReconciler) createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
+func createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
 	labels := labelsForVectorAgent(v.Name)
 
 	daemonset := &appsv1.DaemonSet{
@@ -25,7 +25,7 @@ func (r *VectorReconciler) createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) 
 						{
 							Name:  getNameVectorAgent(v),
 							Image: v.Spec.Agent.Image,
-							Args:  []string{"--config-dir", "/etc/vector/"},
+							Args:  []string{"--config-dir", "/etc/vector/", "--watch-config"},
 							Env:   generateVectorAgentEnvs(v),
 							Ports: []corev1.ContainerPort{
 								{

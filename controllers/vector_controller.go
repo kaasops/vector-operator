@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/kaasops/vector-operator/controllers/factory/vectoragent"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,6 +35,8 @@ import (
 type VectorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// Config *VectorConfig
+	// Status *VectorPipelineReconcileStatus
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -60,17 +63,11 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return result, err
 	}
 
-	if done, result, err = r.ensureVectorAgent(vectorCR); done {
-		return result, err
+	if vectorCR.Spec.Agent.DataDir == "" {
+		vectorCR.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	if vectorCR.Spec.Aggregator.Enable {
-		if done, result, err = r.ensureVectorAggregator(vectorCR); done {
-			return result, err
-		}
-	}
-
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	return CreateOrUpdateVector(ctx, vectorCR, r.Client)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
@@ -98,4 +95,12 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.Vector{}).
 		Complete(r)
+}
+
+func CreateOrUpdateVector(ctx context.Context, vector *vectorv1alpha1.Vector, rclient client.Client) (ctrl.Result, error) {
+	if done, result, err := vectoragent.EnsureVectorAgent(vector, rclient); done {
+		return result, err
+	}
+
+	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }

@@ -26,11 +26,11 @@ import (
 // VectorSpec defines the desired state of Vector
 type VectorSpec struct {
 	// DisableAggregation
-	DisableAggregation bool `json:"disableAggregation,omitempty"`
+	// DisableAggregation bool `json:"disableAggregation,omitempty"`
 	// Vector Agent
 	Agent *VectorAgent `json:"agent,omitempty"`
 	// Vector Aggregator
-	Aggregator *VectorAggregator `json:"aggregator,omitempty"`
+	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`
 }
 
 // VectorStatus defines the observed state of Vector
@@ -42,8 +42,10 @@ type VectorStatus struct {
 // VectorAgent is the Schema for the Vector Agent
 type VectorAgent struct {
 	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
-	Image   string `json:"image,omitempty"`
-	Service bool   `json:"service,omitempty"`
+	Image      string `json:"image,omitempty"`
+	DataDir    string `json:"dataDir,omitempty"`
+	ApiEnabled bool   `json:"ApiEnabled,omitempty"`
+	Service    bool   `json:"service,omitempty"`
 }
 
 // VectorAggregator is the Schema for the Vector Aggregator

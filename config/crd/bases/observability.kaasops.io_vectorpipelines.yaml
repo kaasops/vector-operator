@@ -71,23 +71,8 @@ spec:
                   type: object
                 type: object
               transforms:
-                additionalProperties:
-                  properties:
-                    condition:
-                      properties:
-                        source:
-                          type: string
-                        type:
-                          type: string
-                      type: object
-                    inputs:
-                      items:
-                        type: string
-                      type: array
-                    type:
-                      type: string
-                  type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
             type: object
           status:
             description: VectorPipelineStatus defines the observed state of VectorPipeline

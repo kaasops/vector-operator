@@ -2,6 +2,7 @@ package vector
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
@@ -25,7 +26,10 @@ func GenerateConfig(
 	vp map[string]*v1alpha1.VectorPipeline,
 ) ([]byte, error) {
 	cfg := NewVectorConfig(cr.Spec.Agent.DataDir, cr.Spec.Agent.ApiEnabled)
-	sources, transforms, sinks := getComponents(vp)
+	sources, transforms, sinks, err := getComponents(vp)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if len(sources) == 0 {
 		sources = map[string]*v1alpha1.SourceSpec{
 			"defaultSource": &sourceDefault,
@@ -58,25 +62,24 @@ func NewVectorConfig(dataDir string, apiEnabled bool) *VectorConfig {
 	}
 }
 
-func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha1.SourceSpec, map[string]*v1alpha1.TransformSpec, map[string]*v1alpha1.SinkSpec) {
+func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha1.SourceSpec, map[string]interface{}, map[string]*v1alpha1.SinkSpec, error) {
 	sources := make(map[string]*v1alpha1.SourceSpec)
-	transforms := make(map[string]*v1alpha1.TransformSpec)
+	transforms := make(map[string]interface{})
 	sinks := make(map[string]*v1alpha1.SinkSpec)
 
 	for name, vp := range vps {
 		for sourceName, source := range vp.Spec.Source {
 			sources[name+"-"+sourceName] = &source
 		}
-		for transformName, transform := range vp.Spec.Transforms {
-			inputs := make([]string, 0)
-			for _, i := range transform.Inputs {
-				newInput := name + "-" + i
-				inputs = append(inputs, newInput)
+		if vp.Spec.Transforms != nil {
+			transform := make(map[string]interface{})
+			err := json.Unmarshal(vp.Spec.Transforms.Raw, &transform)
+			if err != nil {
+				return nil, nil, nil, err
 			}
-
-			transform.Inputs = inputs
-			transforms[name+"-"+transformName] = &transform
-
+			for transformName, transformspec := range transform {
+				transforms[name+"-"+transformName] = transformspec
+			}
 		}
 		for sinkName, sink := range vp.Spec.Sink {
 			inputs := make([]string, 0)
@@ -89,7 +92,7 @@ func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha
 			sinks[name+"-"+sinkName] = &sink
 		}
 	}
-	return sources, transforms, sinks
+	return sources, transforms, sinks, nil
 }
 
 // func createKeyValuePairs(m map[string]string) string {

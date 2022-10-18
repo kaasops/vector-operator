@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -25,20 +26,10 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
-	Source     map[string]SourceSpec    `json:"source,omitempty"`
-	Transforms map[string]TransformSpec `json:"transforms,omitempty"`
-	Sink       map[string]SinkSpec      `json:"sinks,omitempty"`
-}
-
-type TransformSpec struct {
-	Type      string     `json:"type,omitempty"`
-	Inputs    []string   `json:"inputs,omitempty"`
-	Condition *Condition `json:"condition,omitempty"`
-}
-
-type Condition struct {
-	Type   string `json:"type,omitempty"`
-	Source string `json:"source,omitempty"`
+	Source map[string]SourceSpec `json:"source,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Transforms *runtime.RawExtension `json:"transforms,omitempty"`
+	Sink       map[string]SinkSpec   `json:"sinks,omitempty"`
 }
 
 type SourceSpec struct {

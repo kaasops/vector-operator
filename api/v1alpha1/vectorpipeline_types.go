@@ -29,26 +29,14 @@ type VectorPipelineSpec struct {
 	Source map[string]SourceSpec `json:"source,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Transforms *runtime.RawExtension `json:"transforms,omitempty"`
-	Sink       map[string]SinkSpec   `json:"sinks,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Sinks *runtime.RawExtension `json:"sinks,omitempty"`
 }
 
 type SourceSpec struct {
 	Type               string `json:"type,omitempty"`
 	ExtraLabelSelector string `json:"extra_label_selector,omitempty"`
 	ExtraFieldSelector string `json:"extra_field_selector,omitempty"`
-}
-
-type SinkSpec struct {
-	Type              string    `json:"type,omitempty"`
-	Address           string    `json:"address,omitempty"`
-	Inputs            []string  `json:"inputs,omitempty"`
-	Encoding          *Encoding `json:"encoding,omitempty"`
-	Rate              *int32    `json:"rate,omitempty"`
-	PrintIntervalSecs int32     `json:"print_interval_secs,omitempty"`
-}
-
-type Encoding struct {
-	Codec string `json:"codec,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline

@@ -7,11 +7,22 @@ spec:
     test1:
       type: "kubernetes_logs"
       extra_label_selector: "app!=testdeployment"
+    test2:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment1"
   transforms:
     test:
       type: "filter"
       inputs:
         - test1
+        - test2
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+    test3:
+      type: "filter"
+      inputs:
+        - test
       condition:
         type: "vrl"
         source: ".status != 200"
@@ -21,7 +32,7 @@ spec:
       encoding:
         codec: "json"
       inputs:
-        - test1
+        - test
 ---
 apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorPipeline

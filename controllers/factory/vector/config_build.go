@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	sourceDefault = v1alpha1.SourceSpec{
-		Type: "kubernetes_logs",
+	sourceDefault = map[string]interface{}{
+		"type": "kubernetes_logs",
 	}
 
 	rate        int32 = 100
@@ -32,9 +32,7 @@ func GenerateConfig(
 		log.Fatal(err)
 	}
 	if len(sources) == 0 {
-		sources = map[string]*v1alpha1.SourceSpec{
-			"defaultSource": &sourceDefault,
-		}
+		sources = sourceDefault
 	}
 	if len(sinks) == 0 {
 		sinks = sinkDefault
@@ -48,7 +46,7 @@ func GenerateConfig(
 }
 
 func NewVectorConfig(dataDir string, apiEnabled bool) *VectorConfig {
-	sources := make(map[string]*v1alpha1.SourceSpec)
+	sources := make(map[string]interface{})
 	sinks := make(map[string]interface{})
 
 	return &VectorConfig{
@@ -61,14 +59,21 @@ func NewVectorConfig(dataDir string, apiEnabled bool) *VectorConfig {
 	}
 }
 
-func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]*v1alpha1.SourceSpec, map[string]interface{}, map[string]interface{}, error) {
-	sources := make(map[string]*v1alpha1.SourceSpec)
+func getComponents(vps map[string]*v1alpha1.VectorPipeline) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
+	sources := make(map[string]interface{})
 	transforms := make(map[string]interface{})
 	sinks := make(map[string]interface{})
 
 	for name, vp := range vps {
-		for sourceName, source := range vp.Spec.Source {
-			sources[addPrefix(name, sourceName)] = &source
+		if vp.Spec.Sources != nil {
+			data, err := decode(vp.Spec.Sources)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			vp_sources := uniqWithPrefix(data, name)
+			for source_k, source_v := range vp_sources {
+				sources[source_k] = source_v
+			}
 		}
 		if vp.Spec.Transforms != nil {
 			data, err := decode(vp.Spec.Transforms)

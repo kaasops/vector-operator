@@ -26,17 +26,12 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
-	Source map[string]SourceSpec `json:"source,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Sources *runtime.RawExtension `json:"sources,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Transforms *runtime.RawExtension `json:"transforms,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Sinks *runtime.RawExtension `json:"sinks,omitempty"`
-}
-
-type SourceSpec struct {
-	Type               string `json:"type,omitempty"`
-	ExtraLabelSelector string `json:"extra_label_selector,omitempty"`
-	ExtraFieldSelector string `json:"extra_field_selector,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline

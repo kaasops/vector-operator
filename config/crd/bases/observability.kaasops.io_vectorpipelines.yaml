@@ -38,17 +38,9 @@ spec:
               sinks:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
-              source:
-                additionalProperties:
-                  properties:
-                    extra_field_selector:
-                      type: string
-                    extra_label_selector:
-                      type: string
-                    type:
-                      type: string
-                  type: object
+              sources:
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               transforms:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true

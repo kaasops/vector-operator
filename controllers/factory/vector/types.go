@@ -1,13 +1,11 @@
 package vector
 
-import "github.com/kaasops/vector-operator/api/v1alpha1"
-
 type VectorConfig struct {
-	DataDir    string                             `json:"data_dir,omitempty"`
-	Api        *ApiSpec                           `json:"api,omitempty"`
-	Sources    map[string]*v1alpha1.SourceSpec    `json:"sources,omitempty"`
-	Transforms map[string]*v1alpha1.TransformSpec `json:"transforms,omitempty"`
-	Sinks      map[string]*v1alpha1.SinkSpec      `json:"sinks,omitempty"`
+	DataDir    string                 `json:"data_dir,omitempty"`
+	Api        *ApiSpec               `json:"api,omitempty"`
+	Sources    map[string]interface{} `json:"sources,omitempty"`
+	Transforms map[string]interface{} `json:"transforms,omitempty"`
+	Sinks      map[string]interface{} `json:"sinks,omitempty"`
 }
 
 type ApiSpec struct {

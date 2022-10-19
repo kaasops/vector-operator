@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -25,39 +26,12 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
-	Source     map[string]SourceSpec    `json:"source,omitempty"`
-	Transforms map[string]TransformSpec `json:"transforms,omitempty"`
-	Sink       map[string]SinkSpec      `json:"sinks,omitempty"`
-}
-
-type TransformSpec struct {
-	Type      string     `json:"type,omitempty"`
-	Inputs    []string   `json:"inputs,omitempty"`
-	Condition *Condition `json:"condition,omitempty"`
-}
-
-type Condition struct {
-	Type   string `json:"type,omitempty"`
-	Source string `json:"source,omitempty"`
-}
-
-type SourceSpec struct {
-	Type               string `json:"type,omitempty"`
-	ExtraLabelSelector string `json:"extra_label_selector,omitempty"`
-	ExtraFieldSelector string `json:"extra_field_selector,omitempty"`
-}
-
-type SinkSpec struct {
-	Type              string    `json:"type,omitempty"`
-	Address           string    `json:"address,omitempty"`
-	Inputs            []string  `json:"inputs,omitempty"`
-	Encoding          *Encoding `json:"encoding,omitempty"`
-	Rate              *int32    `json:"rate,omitempty"`
-	PrintIntervalSecs int32     `json:"print_interval_secs,omitempty"`
-}
-
-type Encoding struct {
-	Codec string `json:"codec,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Sources *runtime.RawExtension `json:"sources,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Transforms *runtime.RawExtension `json:"transforms,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Sinks *runtime.RawExtension `json:"sinks,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline

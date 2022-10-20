@@ -21,6 +21,7 @@ func createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
 					ServiceAccountName: getNameVectorAgent(v),
 					Volumes:            generateVectorAgentVolume(v),
 					SecurityContext:    &corev1.PodSecurityContext{},
+					Tolerations:        v.Spec.Agent.Tolerations,
 					Containers: []corev1.Container{
 						{
 							Name:  getNameVectorAgent(v),

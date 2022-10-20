@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,10 +43,11 @@ type VectorStatus struct {
 // VectorAgent is the Schema for the Vector Agent
 type VectorAgent struct {
 	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
-	Image      string `json:"image,omitempty"`
-	DataDir    string `json:"dataDir,omitempty"`
-	ApiEnabled bool   `json:"ApiEnabled,omitempty"`
-	Service    bool   `json:"service,omitempty"`
+	Image       string          `json:"image,omitempty"`
+	DataDir     string          `json:"dataDir,omitempty"`
+	ApiEnabled  bool            `json:"ApiEnabled,omitempty"`
+	Service     bool            `json:"service,omitempty"`
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 }
 
 // VectorAggregator is the Schema for the Vector Aggregator

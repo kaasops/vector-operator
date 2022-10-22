@@ -36,8 +36,7 @@ type VectorSpec struct {
 
 // VectorStatus defines the observed state of Vector
 type VectorStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	ConfigCheckResult *bool `json:"configCheckResult,omitempty"`
 }
 
 // VectorAgent is the Schema for the Vector Agent

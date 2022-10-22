@@ -4,10 +4,11 @@ import (
 	"context"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Select(ctx context.Context, rclient client.Client) (map[string]*vectorv1alpha1.VectorPipeline, error) {
+func SelectSucceesed(ctx context.Context, rclient client.Client) (map[string]*vectorv1alpha1.VectorPipeline, error) {
 
 	res := make(map[string]*vectorv1alpha1.VectorPipeline)
 
@@ -23,7 +24,12 @@ func Select(ctx context.Context, rclient client.Client) (map[string]*vectorv1alp
 		if !item.DeletionTimestamp.IsZero() {
 			continue
 		}
-		vectorPipelinesCombined = append(vectorPipelinesCombined, item)
+		if item.Status.ConfigCheckResult != nil {
+			if *item.Status.ConfigCheckResult {
+				vectorPipelinesCombined = append(vectorPipelinesCombined, item)
+			}
+		}
+
 	}
 
 	for _, vectorPipeline := range vectorPipelinesCombined {
@@ -33,6 +39,18 @@ func Select(ctx context.Context, rclient client.Client) (map[string]*vectorv1alp
 	return res, nil
 }
 
-func generateName(pipelineCR *vectorv1alpha1.VectorPipeline) string {
-	return pipelineCR.Namespace + "-" + pipelineCR.Name
+func generateName(vp *vectorv1alpha1.VectorPipeline) string {
+	return vp.Namespace + "-" + vp.Name
+}
+
+func SetSucceesStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) {
+	var status = true
+	vp.Status.ConfigCheckResult = &status
+	k8sutils.UpdateStatus(ctx, vp, c)
+}
+
+func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) {
+	var status = false
+	vp.Status.ConfigCheckResult = &status
+	k8sutils.UpdateStatus(ctx, vp, c)
 }

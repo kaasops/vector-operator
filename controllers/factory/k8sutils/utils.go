@@ -41,6 +41,27 @@ func CreateOrUpdateClusterRoleBinding(secret *rbacv1.ClusterRoleBinding, c clien
 	return reconcileClusterRoleBinding(secret, c)
 }
 
+func CreatePod(pod *corev1.Pod, c client.Client) error {
+	err := c.Create(context.TODO(), pod)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetPod(pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
+	result := &corev1.Pod{}
+	err := c.Get(context.TODO(), client.ObjectKeyFromObject(pod), result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error {
+	return c.Status().Update(ctx, obj)
+}
+
 func reconcileService(obj runtime.Object, c client.Client) (*reconcile.Result, error) {
 
 	existing := &corev1.Service{}

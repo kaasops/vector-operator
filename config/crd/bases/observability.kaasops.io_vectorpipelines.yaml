@@ -47,6 +47,9 @@ spec:
             type: object
           status:
             description: VectorPipelineStatus defines the observed state of VectorPipeline
+            properties:
+              configCheckResult:
+                type: boolean
             type: object
         type: object
     served: true

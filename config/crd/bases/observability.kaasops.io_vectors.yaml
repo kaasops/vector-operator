@@ -92,6 +92,9 @@ spec:
             type: object
           status:
             description: VectorStatus defines the observed state of Vector
+            properties:
+              configCheckResult:
+                type: boolean
             type: object
         type: object
     served: true

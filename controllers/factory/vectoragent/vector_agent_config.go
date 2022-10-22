@@ -7,15 +7,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/vector"
-	"github.com/kaasops/vector-operator/controllers/factory/vectorpipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 )
 
 func createVectorAgentConfig(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) (*corev1.Secret, error) {
-	cfg, err := getConfig(ctx, v, c)
+	cfg, err := config.Get(ctx, v, c)
 	if err != nil {
 		return nil, err
 	}
+
+	err = configcheck.Run(cfg, c, v.Name, v.Namespace, v.Spec.Agent.Image)
+	if err == configcheck.ErrConfigCheck {
+		setFailedStatus(ctx, v, c)
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	setSucceesStatus(ctx, v, c)
 
 	labels := labelsForVectorAgent(v.Name)
 	config := map[string][]byte{
@@ -28,17 +39,4 @@ func createVectorAgentConfig(ctx context.Context, v *vectorv1alpha1.Vector, c cl
 	}
 
 	return secret, nil
-}
-
-func getConfig(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) ([]byte, error) {
-	vps, err := vectorpipeline.Select(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	cfg, err := vector.GenerateConfig(v, vps)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }

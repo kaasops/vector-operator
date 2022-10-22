@@ -58,22 +58,22 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	log.Info("start Reconcile Vector")
 
-	vectorCR, done, result, err := r.findVectorCustomResourceInstance(ctx, log, req)
+	v, done, result, err := r.findVectorCustomResourceInstance(ctx, log, req)
 	if done {
 		return result, err
 	}
 
-	if vectorCR.Spec.Agent.DataDir == "" {
-		vectorCR.Spec.Agent.DataDir = "/vector-data-dir"
+	if v.Spec.Agent.DataDir == "" {
+		v.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	return CreateOrUpdateVector(ctx, vectorCR, r.Client)
+	return CreateOrUpdateVector(ctx, v, r.Client)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
 	// fetch the master instance
-	vectorCR := &vectorv1alpha1.Vector{}
-	err := r.Get(ctx, req.NamespacedName, vectorCR)
+	v := &vectorv1alpha1.Vector{}
+	err := r.Get(ctx, req.NamespacedName, v)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -83,11 +83,11 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 			return nil, true, ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get VectorCR")
+		log.Error(err, "Failed to get Vector")
 		return nil, true, ctrl.Result{}, err
 	}
-	log.Info("Get Vector " + vectorCR.Name)
-	return vectorCR, false, ctrl.Result{}, nil
+
+	return v, false, ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -97,10 +97,10 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func CreateOrUpdateVector(ctx context.Context, vector *vectorv1alpha1.Vector, rclient client.Client) (ctrl.Result, error) {
-	if done, result, err := vectoragent.EnsureVectorAgent(vector, rclient); done {
+func CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector, rclient client.Client) (ctrl.Result, error) {
+	if done, result, err := vectoragent.EnsureVectorAgent(v, rclient); done {
 		return result, err
 	}
 
-	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 }

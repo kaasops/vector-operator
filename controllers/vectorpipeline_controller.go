@@ -19,12 +19,17 @@ package controllers
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/go-logr/logr"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
+	"github.com/kaasops/vector-operator/controllers/factory/vectorpipeline"
 )
 
 // VectorPipelineReconciler reconciles a VectorPipeline object
@@ -52,8 +57,13 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	log.Info("start Reconcile VectorPipeline")
 
+	vp, done, result, err := r.findVectorCustomResourceInstance(ctx, log, req)
+	if done {
+		return result, err
+	}
+
 	vectorInstances := &vectorv1alpha1.VectorList{}
-	err := r.List(ctx, vectorInstances)
+	err = r.List(ctx, vectorInstances)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -63,16 +73,40 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	for _, vector := range vectorInstances.Items {
-		if vector.DeletionTimestamp != nil {
+	for _, v := range vectorInstances.Items {
+		if v.DeletionTimestamp != nil {
 			continue
 		}
-		currentVector := &vector
-		CreateOrUpdateVector(ctx, currentVector, r.Client)
+
+		err = checkConfig(ctx, &v, vp, r.Client)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 
 	}
 
+	log.Info("finish Reconcile VectorPipeline")
 	return ctrl.Result{}, nil
+}
+
+func (r *VectorPipelineReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, bool, ctrl.Result, error) {
+	// fetch the master instance
+	vp := &vectorv1alpha1.VectorPipeline{}
+	err := r.Get(ctx, req.NamespacedName, vp)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			log.Info("VectorPipeline CR not found. Ignoring since object must be deleted")
+			return nil, true, ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get Vector")
+		return nil, true, ctrl.Result{}, err
+	}
+	log.Info("Get Vector Pipeline" + vp.Name)
+	return vp, false, ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -80,4 +114,32 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.VectorPipeline{}).
 		Complete(r)
+}
+
+func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
+	log := log.FromContext(context.TODO()).WithValues("Vector Pipeline", "ConfigCheck")
+
+	vpName := vp.Namespace + "-" + vp.Name
+	vps := map[string]*vectorv1alpha1.VectorPipeline{
+		vpName: vp,
+	}
+
+	cfg, err := config.GenerateConfig(v, vps)
+	if err != nil {
+		return err
+	}
+
+	err = configcheck.Run(cfg, c, vp.Name, vp.Namespace, v.Spec.Agent.Image)
+	if err == configcheck.ErrConfigCheck {
+		vectorpipeline.SetFailedStatus(ctx, vp, c)
+		log.Error(err, "Vector Config has error")
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	vectorpipeline.SetSucceesStatus(ctx, vp, c)
+
+	return nil
 }

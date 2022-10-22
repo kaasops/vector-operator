@@ -14,96 +14,96 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func EnsureVectorAgent(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (done bool, result ctrl.Result, err error) {
+func EnsureVectorAgent(v *vectorv1alpha1.Vector, rclient client.Client) (done bool, result ctrl.Result, err error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent", vectorCR.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent", v.Name)
 
 	log.Info("start Reconcile Vector Agent")
 
-	if done, result, err = ensureVectorAgentRBAC(vectorCR, rclient); done {
+	if done, result, err = ensureVectorAgentRBAC(v, rclient); done {
 		return
 	}
 
-	if vectorCR.Spec.Agent.Service {
-		if done, result, err = ensureVectorAgentService(vectorCR, rclient); done {
+	if v.Spec.Agent.Service {
+		if done, result, err = ensureVectorAgentService(v, rclient); done {
 			return
 		}
 	}
 
-	if done, result, err = ensureVectorAgentConfig(vectorCR, rclient); done {
+	if done, result, err = ensureVectorAgentConfig(v, rclient); done {
 		return
 	}
 
-	if done, result, err = ensureVectorAgentDaemonSet(vectorCR, rclient); done {
+	if done, result, err = ensureVectorAgentDaemonSet(v, rclient); done {
 		return
 	}
 
 	return
 }
 
-func ensureVectorAgentRBAC(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func ensureVectorAgentRBAC(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-rbac", vectorCR.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-rbac", v.Name)
 
 	log.Info("start Reconcile Vector Agent RBAC")
 
-	if done, _, err := ensureVectorAgentServiceAccount(vectorCR, rclient); done {
+	if done, _, err := ensureVectorAgentServiceAccount(v, rclient); done {
 		return helper.ReconcileResult(err)
 	}
-	if done, _, err := ensureVectorAgentClusterRole(vectorCR, rclient); done {
+	if done, _, err := ensureVectorAgentClusterRole(v, rclient); done {
 		return helper.ReconcileResult(err)
 	}
-	if done, _, err := ensureVectorAgentClusterRoleBinding(vectorCR, rclient); done {
+	if done, _, err := ensureVectorAgentClusterRoleBinding(v, rclient); done {
 		return helper.ReconcileResult(err)
 	}
 
 	return helper.ReconcileResult(nil)
 }
 
-func ensureVectorAgentServiceAccount(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentServiceAccount := createVectorAgentServiceAccount(vectorCR)
+func ensureVectorAgentServiceAccount(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+	vectorAgentServiceAccount := createVectorAgentServiceAccount(v)
 
 	_, err := k8sutils.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, rclient)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentClusterRole(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentClusterRole := createVectorAgentClusterRole(vectorCR)
+func ensureVectorAgentClusterRole(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+	vectorAgentClusterRole := createVectorAgentClusterRole(v)
 
 	_, err := k8sutils.CreateOrUpdateClusterRole(vectorAgentClusterRole, rclient)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentClusterRoleBinding(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentClusterRoleBinding := createVectorAgentClusterRoleBinding(vectorCR)
+func ensureVectorAgentClusterRoleBinding(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+	vectorAgentClusterRoleBinding := createVectorAgentClusterRoleBinding(v)
 
 	_, err := k8sutils.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, rclient)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentService(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func ensureVectorAgentService(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-service", vectorCR.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-service", v.Name)
 
 	log.Info("start Reconcile Vector Agent Service")
 
-	vectorAgentService := createVectorAgentService(vectorCR)
+	vectorAgentService := createVectorAgentService(v)
 
 	_, err := k8sutils.CreateOrUpdateService(vectorAgentService, rclient)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentConfig(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func ensureVectorAgentConfig(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-secret", vectorCR.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-secret", v.Name)
 
 	log.Info("start Reconcile Vector Agent Secret")
 
-	vectorAgentSecret, err := createVectorAgentConfig(ctx, vectorCR, rclient)
+	vectorAgentSecret, err := createVectorAgentConfig(ctx, v, rclient)
 	if err != nil {
 		return helper.ReconcileResult(err)
 	}
@@ -113,13 +113,13 @@ func ensureVectorAgentConfig(vectorCR *vectorv1alpha1.Vector, rclient client.Cli
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentDaemonSet(vectorCR *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func ensureVectorAgentDaemonSet(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", vectorCR.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", v.Name)
 
 	log.Info("start Reconcile Vector Agent DaemonSet")
 
-	vectorAgentDaemonSet := createVectorAgentDaemonSet(vectorCR)
+	vectorAgentDaemonSet := createVectorAgentDaemonSet(v)
 
 	_, err := k8sutils.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, rclient)
 
@@ -161,4 +161,16 @@ func getControllerReference(owner *vectorv1alpha1.Vector) []metav1.OwnerReferenc
 			Controller:         pointer.BoolPtr(true),
 		},
 	}
+}
+
+func setSucceesStatus(ctx context.Context, vp *vectorv1alpha1.Vector, c client.Client) {
+	var status = true
+	vp.Status.ConfigCheckResult = &status
+	k8sutils.UpdateStatus(ctx, vp, c)
+}
+
+func setFailedStatus(ctx context.Context, vp *vectorv1alpha1.Vector, c client.Client) {
+	var status = false
+	vp.Status.ConfigCheckResult = &status
+	k8sutils.UpdateStatus(ctx, vp, c)
 }

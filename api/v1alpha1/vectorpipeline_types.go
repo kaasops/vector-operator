@@ -36,8 +36,7 @@ type VectorPipelineSpec struct {
 
 // VectorPipelineStatus defines the observed state of VectorPipeline
 type VectorPipelineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	ConfigCheckResult *bool `json:"configCheckResult,omitempty"`
 }
 
 //+kubebuilder:object:root=true

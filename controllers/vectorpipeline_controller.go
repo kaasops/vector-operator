@@ -143,7 +143,9 @@ func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alph
 		return err
 	}
 
-	vectorpipeline.SetSucceesStatus(ctx, vp, c)
+	if err := vectorpipeline.SetSucceesStatus(ctx, vp, c); err != nil {
+		return err
+	}
 
 	return nil
 }

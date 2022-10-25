@@ -52,6 +52,9 @@ spec:
                 type: boolean
               reason:
                 type: string
+              lastAppliedConfigHash:
+                format: int32
+                type: integer
             type: object
         type: object
     served: true

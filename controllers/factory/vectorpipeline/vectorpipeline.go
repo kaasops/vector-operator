@@ -53,6 +53,18 @@ func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c c
 	return k8sutils.UpdateStatus(ctx, vp, c)
 }
 
+func SetLastAppliedConfigStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
+	hash, err := GetVpSpecHash(vp)
+	if err != nil {
+		return err
+	}
+	vp.Status.LastAppliedConfigHash = hash
+	if err := k8sutils.UpdateStatus(ctx, vp, c); err != nil {
+		return err
+	}
+	return nil
+}
+
 func GetSources(vp *vectorv1alpha1.VectorPipeline, filter []string) ([]vector.Source, error) {
 	var sources []vector.Source
 	sourcesMap, err := decodeRaw(vp.Spec.Sources.Raw)

@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -36,6 +37,9 @@ import (
 type VectorPipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
+	Clientset *kubernetes.Clientset
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -78,7 +82,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 
-		err = checkConfig(ctx, &v, vp, r.Client)
+		err = checkConfig(ctx, &v, vp, r.Client, r.Clientset)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -116,7 +120,7 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
+func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alpha1.VectorPipeline, c client.Client, cs *kubernetes.Clientset) error {
 	log := log.FromContext(context.TODO()).WithValues("Vector Pipeline", "ConfigCheck")
 
 	var vps []*vectorv1alpha1.VectorPipeline
@@ -127,9 +131,11 @@ func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alph
 		return err
 	}
 
-	err = configcheck.Run(cfg, c, vp.Name, vp.Namespace, v.Spec.Agent.Image)
-	if err == configcheck.ErrConfigCheck {
-		vectorpipeline.SetFailedStatus(ctx, vp, c)
+	err = configcheck.Run(cfg, c, cs, vp.Name, vp.Namespace, v.Spec.Agent.Image)
+	if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+		if err := vectorpipeline.SetFailedStatus(ctx, vp, c, err); err != nil {
+			return err
+		}
 		log.Error(err, "Vector Config has error")
 		return nil
 	}

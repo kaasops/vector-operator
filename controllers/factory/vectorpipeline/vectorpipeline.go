@@ -41,10 +41,13 @@ func SetSucceesStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c 
 	k8sutils.UpdateStatus(ctx, vp, c)
 }
 
-func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) {
+func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client, err error) error {
 	var status = false
+	var reason = err.Error()
 	vp.Status.ConfigCheckResult = &status
-	k8sutils.UpdateStatus(ctx, vp, c)
+	vp.Status.Reason = &reason
+
+	return k8sutils.UpdateStatus(ctx, vp, c)
 }
 
 func GetSources(vp *vectorv1alpha1.VectorPipeline, filter []string) ([]vector.Source, error) {

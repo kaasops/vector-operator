@@ -95,6 +95,8 @@ spec:
             properties:
               configCheckResult:
                 type: boolean
+              reason:
+                type: string
             type: object
         type: object
     served: true

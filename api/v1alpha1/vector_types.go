@@ -36,7 +36,8 @@ type VectorSpec struct {
 
 // VectorStatus defines the observed state of Vector
 type VectorStatus struct {
-	ConfigCheckResult *bool `json:"configCheckResult,omitempty"`
+	ConfigCheckResult *bool   `json:"configCheckResult,omitempty"`
+	Reason            *string `json:"reason,omitempty"`
 }
 
 // VectorAgent is the Schema for the Vector Agent

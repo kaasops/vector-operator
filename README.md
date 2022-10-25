@@ -1,4 +1,4 @@
-# vector-operator
+# Vector Operator
 Operator for Kubernetes to deploy and manage [Vector](https://vector.dev/).
 
 ## Description

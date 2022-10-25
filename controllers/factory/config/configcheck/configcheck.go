@@ -2,7 +2,6 @@ package configcheck
 
 import (
 	"context"
-	"errors"
 	"math/rand"
 	"time"
 
@@ -10,18 +9,16 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
 	"github.com/kaasops/vector-operator/controllers/factory/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	ErrConfigCheck = errors.New("Config Check finish with errors")
-)
-
 func Run(
 	cfg []byte,
 	c client.Client,
+	cs *kubernetes.Clientset,
 	name,
 	namespace,
 	image string,
@@ -42,7 +39,7 @@ func Run(
 		return err
 	}
 
-	err = ensureVectorConfigCheckPod(c, name, namespace, image, hash)
+	err = checkVectorConfigCheckPod(c, cs, name, namespace, image, hash)
 	if err != nil {
 		return err
 	}
@@ -86,12 +83,7 @@ func ensureVectorConfigCheckConfig(c client.Client, cfg []byte, name, ns, hash s
 	return err
 }
 
-func ensureVectorConfigCheckPod(c client.Client, name, ns, image, hash string) error {
-	// ctx := context.Background()
-	// log := log.FromContext(ctx).WithValues("vector-config-check-pod", "ConfigCheck")
-
-	// log.Info("start Vector Config Check Pod")
-
+func checkVectorConfigCheckPod(c client.Client, cs *kubernetes.Clientset, name, ns, image, hash string) error {
 	vectorConfigCheckPod := createVectorConfigCheckPod(name, ns, image, hash)
 
 	err := k8sutils.CreatePod(vectorConfigCheckPod, c)
@@ -99,7 +91,7 @@ func ensureVectorConfigCheckPod(c client.Client, name, ns, image, hash string) e
 		return err
 	}
 
-	err = getCheckResult(vectorConfigCheckPod, c)
+	err = getCheckResult(vectorConfigCheckPod, c, cs)
 	if err != nil {
 		return err
 	}
@@ -131,7 +123,7 @@ func randStringRunes() string {
 	return string(b)
 }
 
-func getCheckResult(pod *corev1.Pod, c client.Client) error {
+func getCheckResult(pod *corev1.Pod, c client.Client, cs *kubernetes.Clientset) error {
 	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", pod.Name)
 
 	for {
@@ -145,7 +137,13 @@ func getCheckResult(pod *corev1.Pod, c client.Client) error {
 			log.Info("wait Validate Vector Config Result")
 			time.Sleep(5 * time.Second)
 		case "Failed":
-			return ErrConfigCheck
+			reason, err := k8sutils.GetPodLogs(pod, cs)
+			if err != nil {
+				return err
+			}
+			return &ErrConfigCheck{
+				Reason: reason,
+			}
 		case "Succeeded":
 			log.Info("Config Check completed successfully")
 			return nil

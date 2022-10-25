@@ -36,7 +36,8 @@ type VectorPipelineSpec struct {
 
 // VectorPipelineStatus defines the observed state of VectorPipeline
 type VectorPipelineStatus struct {
-	ConfigCheckResult *bool `json:"configCheckResult,omitempty"`
+	ConfigCheckResult *bool   `json:"configCheckResult,omitempty"`
+	Reason            *string `json:"reason,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -23,6 +23,7 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/vectoragent"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -35,8 +36,9 @@ import (
 type VectorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	// Config *VectorConfig
-	// Status *VectorPipelineReconcileStatus
+
+	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
+	Clientset *kubernetes.Clientset
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -67,7 +69,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		v.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	return CreateOrUpdateVector(ctx, v, r.Client)
+	return CreateOrUpdateVector(ctx, v, r.Client, r.Clientset)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
@@ -97,8 +99,8 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector, rclient client.Client) (ctrl.Result, error) {
-	if done, result, err := vectoragent.EnsureVectorAgent(v, rclient); done {
+func CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (ctrl.Result, error) {
+	if done, result, err := vectoragent.EnsureVectorAgent(v, rclient, cs); done {
 		return result, err
 	}
 

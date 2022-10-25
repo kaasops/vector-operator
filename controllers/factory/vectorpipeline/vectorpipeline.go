@@ -35,10 +35,13 @@ func SelectSucceesed(ctx context.Context, rclient client.Client) ([]*vectorv1alp
 	return vectorPipelinesCombined, nil
 }
 
-func SetSucceesStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) {
+func SetSucceesStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
 	var status = true
 	vp.Status.ConfigCheckResult = &status
-	k8sutils.UpdateStatus(ctx, vp, c)
+	if err := k8sutils.UpdateStatus(ctx, vp, c); err != nil {
+		return err
+	}
+	return nil
 }
 
 func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client, err error) error {
@@ -48,6 +51,18 @@ func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c c
 	vp.Status.Reason = &reason
 
 	return k8sutils.UpdateStatus(ctx, vp, c)
+}
+
+func SetLastAppliedConfigStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
+	hash, err := GetVpSpecHash(vp)
+	if err != nil {
+		return err
+	}
+	vp.Status.LastAppliedConfigHash = hash
+	if err := k8sutils.UpdateStatus(ctx, vp, c); err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetSources(vp *vectorv1alpha1.VectorPipeline, filter []string) ([]vector.Source, error) {

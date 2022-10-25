@@ -1,7 +1,9 @@
 package k8sutils
 
 import (
+	"bytes"
 	"context"
+	"io"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -9,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -56,6 +59,29 @@ func GetPod(pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func GetPodLogs(pod *corev1.Pod, cs *kubernetes.Clientset) (string, error) {
+	count := int64(100)
+	podLogOptions := corev1.PodLogOptions{
+		TailLines: &count,
+	}
+
+	req := cs.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
+	podLogs, err := req.Stream(context.TODO())
+	if err != nil {
+		return "", err
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return "", err
+	}
+	str := buf.String()
+
+	return str, nil
 }
 
 func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error {

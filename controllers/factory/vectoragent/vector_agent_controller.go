@@ -8,13 +8,14 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
 	"github.com/kaasops/vector-operator/controllers/factory/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func EnsureVectorAgent(v *vectorv1alpha1.Vector, rclient client.Client) (done bool, result ctrl.Result, err error) {
+func EnsureVectorAgent(v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (done bool, result ctrl.Result, err error) {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent", v.Name)
 
@@ -30,7 +31,7 @@ func EnsureVectorAgent(v *vectorv1alpha1.Vector, rclient client.Client) (done bo
 		}
 	}
 
-	if done, result, err = ensureVectorAgentConfig(v, rclient); done {
+	if done, result, err = ensureVectorAgentConfig(v, rclient, cs); done {
 		return
 	}
 
@@ -97,13 +98,13 @@ func ensureVectorAgentService(v *vectorv1alpha1.Vector, rclient client.Client) (
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentConfig(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func ensureVectorAgentConfig(v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (bool, ctrl.Result, error) {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-secret", v.Name)
 
 	log.Info("start Reconcile Vector Agent Secret")
 
-	vectorAgentSecret, err := createVectorAgentConfig(ctx, v, rclient)
+	vectorAgentSecret, err := createVectorAgentConfig(ctx, v, rclient, cs)
 	if err != nil {
 		return helper.ReconcileResult(err)
 	}
@@ -163,14 +164,16 @@ func getControllerReference(owner *vectorv1alpha1.Vector) []metav1.OwnerReferenc
 	}
 }
 
-func setSucceesStatus(ctx context.Context, vp *vectorv1alpha1.Vector, c client.Client) {
+func setSucceesStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) {
 	var status = true
-	vp.Status.ConfigCheckResult = &status
-	k8sutils.UpdateStatus(ctx, vp, c)
+	v.Status.ConfigCheckResult = &status
+	k8sutils.UpdateStatus(ctx, v, c)
 }
 
-func setFailedStatus(ctx context.Context, vp *vectorv1alpha1.Vector, c client.Client) {
+func setFailedStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, err error) error {
 	var status = false
-	vp.Status.ConfigCheckResult = &status
-	k8sutils.UpdateStatus(ctx, vp, c)
+	var reason = err.Error()
+	v.Status.ConfigCheckResult = &status
+	v.Status.Reason = &reason
+	return k8sutils.UpdateStatus(ctx, v, c)
 }

@@ -18,7 +18,7 @@ func New(dataDir string, apiEnabled bool) *VectorConfig {
 	}
 }
 
-func Decoder(c ConfigComponent) (map[string]interface{}, error) {
+func Mapper(c ConfigComponent) (map[string]interface{}, error) {
 	spec := make(map[string]interface{})
 	spec = c.GetOptions()
 	config := &mapstructure.DecoderConfig{

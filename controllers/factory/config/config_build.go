@@ -77,7 +77,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 			return nil, nil, nil, err
 		}
 		for _, source := range sources {
-			spec, err := vector.Decoder(source)
+			spec, err := vector.Mapper(source)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -88,7 +88,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 			return nil, nil, nil, err
 		}
 		for _, transform := range transforms {
-			spec, err := vector.Decoder(transform)
+			spec, err := vector.Mapper(transform)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -99,7 +99,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 			return nil, nil, nil, err
 		}
 		for _, sink := range sinks {
-			spec, err := vector.Decoder(sink)
+			spec, err := vector.Mapper(sink)
 			if err != nil {
 				return nil, nil, nil, err
 			}

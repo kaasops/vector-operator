@@ -77,14 +77,22 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
+	hash, err := vectorpipeline.GetVpSpecHash(vp)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	for _, v := range vectorInstances.Items {
 		if v.DeletionTimestamp != nil {
 			continue
 		}
-
-		err = checkConfig(ctx, &v, vp, r.Client, r.Clientset)
-		if err != nil {
-			return ctrl.Result{}, err
+		if vp.Status.LastAppliedConfigHash == nil || *hash != *vp.Status.LastAppliedConfigHash {
+			if err = checkConfig(ctx, &v, vp, r.Client, r.Clientset); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err = vectorpipeline.SetLastAppliedConfigStatus(ctx, vp, r.Client); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 	}

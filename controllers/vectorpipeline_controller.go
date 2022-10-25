@@ -57,7 +57,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	log.Info("start Reconcile VectorPipeline")
 
-	vp, done, result, err := r.findVectorCustomResourceInstance(ctx, log, req)
+	vp, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
 	if done {
 		return result, err
 	}
@@ -89,7 +89,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorPipelineReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, bool, ctrl.Result, error) {
+func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, bool, ctrl.Result, error) {
 	// fetch the master instance
 	vp := &vectorv1alpha1.VectorPipeline{}
 	err := r.Get(ctx, req.NamespacedName, vp)
@@ -119,10 +119,8 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
 	log := log.FromContext(context.TODO()).WithValues("Vector Pipeline", "ConfigCheck")
 
-	vpName := vp.Namespace + "-" + vp.Name
-	vps := map[string]*vectorv1alpha1.VectorPipeline{
-		vpName: vp,
-	}
+	var vps []*vectorv1alpha1.VectorPipeline
+	vps = append(vps, vp)
 
 	cfg, err := config.GenerateConfig(v, vps)
 	if err != nil {

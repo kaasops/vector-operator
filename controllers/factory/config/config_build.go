@@ -8,7 +8,6 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
 	"github.com/kaasops/vector-operator/controllers/factory/vectorpipeline"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,7 +45,7 @@ func Get(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) ([]byte
 
 func GenerateConfig(
 	v *vectorv1alpha1.Vector,
-	vps map[string]*vectorv1alpha1.VectorPipeline,
+	vps []*vectorv1alpha1.VectorPipeline,
 ) ([]byte, error) {
 	cfg := vector.New(v.Spec.Agent.DataDir, v.Spec.Agent.ApiEnabled)
 	sources, transforms, sinks, err := getComponents(vps)
@@ -67,44 +66,47 @@ func GenerateConfig(
 	return vectorConfigToJson(cfg)
 }
 
-func getComponents(vps map[string]*vectorv1alpha1.VectorPipeline) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
-	sources := make(map[string]interface{})
-	transforms := make(map[string]interface{})
-	sinks := make(map[string]interface{})
+func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
+	sourcesMap := make(map[string]interface{})
+	transformsMap := make(map[string]interface{})
+	sinksMap := make(map[string]interface{})
 
-	for name, vp := range vps {
-		if vp.Spec.Sources != nil {
-			data, err := decode(vp.Spec.Sources)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			vp_sources := uniqWithPrefix(data, name)
-			for source_k, source_v := range vp_sources {
-				sources[source_k] = source_v
-			}
+	for _, vp := range vps {
+		sources, err := vectorpipeline.GetSources(vp, nil)
+		if err != nil {
+			return nil, nil, nil, err
 		}
-		if vp.Spec.Transforms != nil {
-			data, err := decode(vp.Spec.Transforms)
+		for _, source := range sources {
+			spec, err := vector.Decoder(source)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			vp_transforms := uniqWithPrefix(data, name)
-			for transform_k, transform_v := range vp_transforms {
-				transforms[transform_k] = transform_v
-			}
+			sourcesMap[source.Name] = spec
 		}
-		if vp.Spec.Sinks != nil {
-			data, err := decode(vp.Spec.Sinks)
+		transforms, err := vectorpipeline.GetTransforms(vp)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		for _, transform := range transforms {
+			spec, err := vector.Decoder(transform)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			vp_sinks := uniqWithPrefix(data, name)
-			for sink_k, sink_v := range vp_sinks {
-				sinks[sink_k] = sink_v
+			transformsMap[transform.Name] = spec
+		}
+		sinks, err := vectorpipeline.GetSinks(vp)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		for _, sink := range sinks {
+			spec, err := vector.Decoder(sink)
+			if err != nil {
+				return nil, nil, nil, err
 			}
+			sinksMap[sink.Name] = spec
 		}
 	}
-	return sources, transforms, sinks, nil
+	return sourcesMap, transformsMap, sinksMap, nil
 }
 
 func vectorConfigToJson(conf *vector.VectorConfig) ([]byte, error) {
@@ -114,37 +116,4 @@ func vectorConfigToJson(conf *vector.VectorConfig) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-func uniqWithPrefix(in map[string]interface{}, prefix string) map[string]interface{} {
-	out := make(map[string]interface{})
-	for k_in, v_in := range in {
-		spec := v_in.(map[string]interface{})
-		out[addPrefix(prefix, k_in)] = spec
-		for k_spec, v_spec := range spec {
-			if k_spec == "inputs" {
-				inputs := make([]string, 0)
-				for _, i := range v_spec.([]interface{}) {
-					newInput := addPrefix(prefix, i.(string))
-					inputs = append(inputs, newInput)
-				}
-				spec[k_spec] = inputs
-				continue
-			}
-		}
-	}
-	return out
-}
-
-func addPrefix(prefix string, name string) string {
-	return prefix + "-" + name
-}
-
-func decode(data *runtime.RawExtension) (map[string]interface{}, error) {
-	out := make(map[string]interface{})
-	err := json.Unmarshal(data.Raw, &out)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }

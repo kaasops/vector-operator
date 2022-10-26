@@ -20,7 +20,7 @@ jobs:
 
       - name: Get tag
         id: tag
-        run: echo  "TAG=$(git describe --tags HEAD)" >> $GITHUB_OUTPUT
+        run: echo  "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1

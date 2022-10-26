@@ -61,6 +61,8 @@ type VectorAggregator struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+//+kubebuilder:printcolumn:name="Status",type="boolean",JSONPath=".status.configCheckResult"
 
 // Vector is the Schema for the vectors API
 type Vector struct {

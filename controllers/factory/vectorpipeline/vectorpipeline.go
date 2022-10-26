@@ -38,10 +38,9 @@ func SelectSucceesed(ctx context.Context, rclient client.Client) ([]*vectorv1alp
 func SetSucceesStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
 	var status = true
 	vp.Status.ConfigCheckResult = &status
-	if err := k8sutils.UpdateStatus(ctx, vp, c); err != nil {
-		return err
-	}
-	return nil
+	vp.Status.Reason = nil
+
+	return k8sutils.UpdateStatus(ctx, vp, c)
 }
 
 func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client, err error) error {

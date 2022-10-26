@@ -167,6 +167,8 @@ func getControllerReference(owner *vectorv1alpha1.Vector) []metav1.OwnerReferenc
 func setSucceesStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) error {
 	var status = true
 	v.Status.ConfigCheckResult = &status
+	v.Status.Reason = nil
+
 	return k8sutils.UpdateStatus(ctx, v, c)
 }
 
@@ -175,6 +177,7 @@ func setFailedStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Cli
 	var reason = err.Error()
 	v.Status.ConfigCheckResult = &status
 	v.Status.Reason = &reason
+
 	return k8sutils.UpdateStatus(ctx, v, c)
 }
 

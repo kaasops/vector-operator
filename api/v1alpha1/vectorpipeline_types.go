@@ -38,7 +38,7 @@ type VectorPipelineSpec struct {
 type VectorPipelineStatus struct {
 	ConfigCheckResult       *bool   `json:"configCheckResult,omitempty"`
 	Reason                  *string `json:"reason,omitempty"`
-	LastAppliedPipelineHash *uint32 `json:"lastAppliedConfigHash,omitempty"`
+	LastAppliedPipelineHash *uint32 `json:"LastAppliedPipelineHash,omitempty"`
 }
 
 //+kubebuilder:object:root=true

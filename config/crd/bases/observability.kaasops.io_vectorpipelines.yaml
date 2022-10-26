@@ -48,11 +48,11 @@ spec:
           status:
             description: VectorPipelineStatus defines the observed state of VectorPipeline
             properties:
-              configCheckResult:
-                type: boolean
-              lastAppliedConfigHash:
+              LastAppliedPipelineHash:
                 format: int32
                 type: integer
+              configCheckResult:
+                type: boolean
               reason:
                 type: string
             type: object

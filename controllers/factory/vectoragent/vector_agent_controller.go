@@ -164,10 +164,10 @@ func getControllerReference(owner *vectorv1alpha1.Vector) []metav1.OwnerReferenc
 	}
 }
 
-func setSucceesStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) {
+func setSucceesStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) error {
 	var status = true
 	v.Status.ConfigCheckResult = &status
-	k8sutils.UpdateStatus(ctx, v, c)
+	return k8sutils.UpdateStatus(ctx, v, c)
 }
 
 func setFailedStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, err error) error {
@@ -176,4 +176,13 @@ func setFailedStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Cli
 	v.Status.ConfigCheckResult = &status
 	v.Status.Reason = &reason
 	return k8sutils.UpdateStatus(ctx, v, c)
+}
+
+func SetLastAppliedPipelineStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, hash *uint32) error {
+
+	v.Status.LastAppliedConfigHash = hash
+	if err := k8sutils.UpdateStatus(ctx, v, c); err != nil {
+		return err
+	}
+	return nil
 }

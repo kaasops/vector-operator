@@ -10,6 +10,7 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/config"
 	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
+	"github.com/kaasops/vector-operator/controllers/factory/utils"
 )
 
 func createVectorAgentConfig(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) (*corev1.Secret, error) {
@@ -18,16 +19,29 @@ func createVectorAgentConfig(ctx context.Context, v *vectorv1alpha1.Vector, c cl
 		return nil, err
 	}
 
-	err = configcheck.Run(cfg, c, cs, v.Name, v.Namespace, v.Spec.Agent.Image)
-	if _, ok := err.(*configcheck.ErrConfigCheck); ok {
-		setFailedStatus(ctx, v, c, err)
-		return nil, err
-	}
-	if err != nil {
-		return nil, err
-	}
+	cfgHash := utils.GetHash(cfg)
 
-	setSucceesStatus(ctx, v, c)
+	if v.Status.LastAppliedConfigHash == nil || *v.Status.LastAppliedConfigHash != cfgHash {
+		err = configcheck.Run(cfg, c, cs, v.Name, v.Namespace, v.Spec.Agent.Image)
+		if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+			if err := setFailedStatus(ctx, v, c, err); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if err := SetLastAppliedPipelineStatus(ctx, v, c, &cfgHash); err != nil {
+			return nil, err
+		}
+
+		if err := setSucceesStatus(ctx, v, c); err != nil {
+			return nil, err
+		}
+
+	}
 
 	labels := labelsForVectorAgent(v.Name)
 	config := map[string][]byte{

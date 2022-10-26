@@ -53,7 +53,7 @@ func SetFailedStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c c
 	return k8sutils.UpdateStatus(ctx, vp, c)
 }
 
-func SetLastAppliedConfigStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
+func SetLastAppliedPipelineStatus(ctx context.Context, vp *vectorv1alpha1.VectorPipeline, c client.Client) error {
 	hash, err := GetVpSpecHash(vp)
 	if err != nil {
 		return err

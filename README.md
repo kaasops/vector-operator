@@ -1,5 +1,9 @@
-# Vector Operator
-Operator for Kubernetes to deploy and manage [Vector](https://vector.dev/).
+<p align="center">
+  <a href="https://goreportcard.com/report/github.com/kaasops/vector-operator">
+    <img src="https://goreportcard.com/badge/github.com/kaasops/vector-operator" alt="Go Report Card">
+  </a>
+</p>
+
 
 ## Description
 The operator deploys and configures a vector agent daemonset on every node to collect container and application logs from the node file system.
@@ -13,6 +17,7 @@ The operator deploys and configures a vector agent daemonset on every node to co
 - [ ] Garbage collection
 - [ ] Vector config optimization
 - [ ] Vector aggregator support
+
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
@@ -51,6 +56,63 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
+## Configuration Examples 
+Configuration for CR Vector:
+```yaml
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: vector-sample
+  namespace: vector
+spec:
+  agent:
+    service: true
+    image: "timberio/vector:0.24.0-distroless-libc"
+```
+
+Configuration for CR VectorPipeline:
+```yaml
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vectorpipeline-sample
+spec:
+  sources:
+    source1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment"
+    source2:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment1"
+  transforms:
+    remap:
+      type: "remap"
+      inputs:
+        - source1
+      source: |
+        .@timestamp = del(.timestamp)
+
+        .testField = "testValuevalue"
+    filter:
+      type: "filter"
+      inputs:
+        - source2
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+  sinks:
+    test222:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - filter
+        - remap
+```
+
+
+
+
 ## Contributing
 
 ### How it works
@@ -84,20 +146,4 @@ make manifests
 **NOTE:** Run `make --help` for more information on all potential `make` targets
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 

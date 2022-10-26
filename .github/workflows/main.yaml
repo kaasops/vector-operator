@@ -20,7 +20,7 @@ jobs:
 
       - name: Get tag
         id: repository
-        run: echo  "::set-output name=tag::$(git describe --tags HEAD)"
+        run: echo  "tag=$(git describe --tags HEAD)" >> $TAG
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -40,4 +40,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ github.repository }}:${{ steps.repository.outputs.tag }}
+          tags: ${{ github.repository }}:${{ TAG }}

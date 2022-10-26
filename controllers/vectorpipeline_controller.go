@@ -90,7 +90,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			if err = checkConfig(ctx, &v, vp, r.Client, r.Clientset); err != nil {
 				return ctrl.Result{}, err
 			}
-			if err = vectorpipeline.SetLastAppliedConfigStatus(ctx, vp, r.Client); err != nil {
+			if err = vectorpipeline.SetLastAppliedPipelineStatus(ctx, vp, r.Client); err != nil {
 				return ctrl.Result{}, err
 			}
 		}

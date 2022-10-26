@@ -58,7 +58,7 @@ func SetLastAppliedConfigStatus(ctx context.Context, vp *vectorv1alpha1.VectorPi
 	if err != nil {
 		return err
 	}
-	vp.Status.LastAppliedConfigHash = hash
+	vp.Status.LastAppliedPipelineHash = hash
 	if err := k8sutils.UpdateStatus(ctx, vp, c); err != nil {
 		return err
 	}

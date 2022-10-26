@@ -12,6 +12,8 @@ spec:
     kind: VectorPipeline
     listKind: VectorPipelineList
     plural: vectorpipelines
+    shortNames:
+    - vp
     singular: vectorpipeline
   scope: Namespaced
   versions:

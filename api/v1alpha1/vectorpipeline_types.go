@@ -43,6 +43,7 @@ type VectorPipelineStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:shortName=vp
 
 // VectorPipeline is the Schema for the vectorpipelines API
 type VectorPipeline struct {

@@ -44,6 +44,8 @@ type VectorPipelineStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:shortName=vp
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+//+kubebuilder:printcolumn:name="Status",type="boolean",JSONPath=".status.configCheckResult"
 
 // VectorPipeline is the Schema for the vectorpipelines API
 type VectorPipeline struct {

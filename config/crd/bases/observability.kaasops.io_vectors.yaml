@@ -15,7 +15,14 @@ spec:
     singular: vector
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.configCheckResult
+      name: Status
+      type: boolean
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Vector is the Schema for the vectors API

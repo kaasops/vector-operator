@@ -224,8 +224,8 @@ func (in *VectorPipelineStatus) DeepCopyInto(out *VectorPipelineStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.LastAppliedConfigHash != nil {
-		in, out := &in.LastAppliedConfigHash, &out.LastAppliedConfigHash
+	if in.LastAppliedPipelineHash != nil {
+		in, out := &in.LastAppliedPipelineHash, &out.LastAppliedPipelineHash
 		*out = new(uint32)
 		**out = **in
 	}
@@ -272,6 +272,11 @@ func (in *VectorStatus) DeepCopyInto(out *VectorStatus) {
 	if in.Reason != nil {
 		in, out := &in.Reason, &out.Reason
 		*out = new(string)
+		**out = **in
+	}
+	if in.LastAppliedConfigHash != nil {
+		in, out := &in.LastAppliedConfigHash, &out.LastAppliedConfigHash
+		*out = new(uint32)
 		**out = **in
 	}
 }

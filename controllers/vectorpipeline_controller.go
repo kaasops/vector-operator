@@ -86,11 +86,11 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if v.DeletionTimestamp != nil {
 			continue
 		}
-		if vp.Status.LastAppliedConfigHash == nil || *hash != *vp.Status.LastAppliedConfigHash {
+		if vp.Status.LastAppliedPipelineHash == nil || *hash != *vp.Status.LastAppliedPipelineHash {
 			if err = checkConfig(ctx, &v, vp, r.Client, r.Clientset); err != nil {
 				return ctrl.Result{}, err
 			}
-			if err = vectorpipeline.SetLastAppliedConfigStatus(ctx, vp, r.Client); err != nil {
+			if err = vectorpipeline.SetLastAppliedPipelineStatus(ctx, vp, r.Client); err != nil {
 				return ctrl.Result{}, err
 			}
 		}

@@ -69,7 +69,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		v.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	return CreateOrUpdateVector(ctx, v, r.Client, r.Clientset)
+	return r.CreateOrUpdateVector(v)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
@@ -99,8 +99,10 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (ctrl.Result, error) {
-	if done, result, err := vectoragent.EnsureVectorAgent(v, rclient, cs); done {
+func (r *VectorReconciler) CreateOrUpdateVector(v *vectorv1alpha1.Vector) (ctrl.Result, error) {
+	vectorAgentReconciler := vectoragent.NewReconciler(v, r.Client, r.Clientset)
+
+	if done, result, err := vectorAgentReconciler.EnsureVectorAgent(); done {
 		return result, err
 	}
 

@@ -100,7 +100,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *VectorReconciler) CreateOrUpdateVector(v *vectorv1alpha1.Vector) (ctrl.Result, error) {
-	vectorAgentReconciler := vectoragent.NewReconciler(v, r.Client, r.Clientset)
+	vectorAgentReconciler := vectoragent.NewController(v, r.Client, r.Clientset)
 
 	if done, result, err := vectorAgentReconciler.EnsureVectorAgent(); done {
 		return result, err

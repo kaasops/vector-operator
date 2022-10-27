@@ -29,8 +29,8 @@ import (
 	"github.com/go-logr/logr"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
-	"github.com/kaasops/vector-operator/controllers/factory/vectorpipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline/vectorpipeline"
 )
 
 // VectorPipelineReconciler reconciles a VectorPipeline object
@@ -56,14 +56,28 @@ type VectorPipelineReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-	log := log.FromContext(ctx).WithValues("VectorPipeline", req.NamespacedName)
+	log := log.FromContext(ctx).WithValues("VectorPipeline", req.Name)
 
 	log.Info("start Reconcile VectorPipeline")
 
 	vp, done, result, err := r.findVectorPipelineCustomResourceInstance(ctx, log, req)
 	if done {
 		return result, err
+	}
+
+	// Generate VectorPipeline Controller
+	vpCtrl := vectorpipeline.NewController(vp)
+	// Generate Pipeline Controller
+	vCtrl := pipeline.NewController(ctx, r.Client, vpCtrl)
+
+	// Check Pipeline hash
+	checkResult, err := vCtrl.CheckHash()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if checkResult {
+		log.Info("VectorPipeline has no changes. Finish Reconcile VectorPipeline")
+		return ctrl.Result{}, nil
 	}
 
 	vectorInstances := &vectorv1alpha1.VectorList{}
@@ -77,22 +91,16 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	hash, err := vectorpipeline.GetVpSpecHash(vp)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	for _, v := range vectorInstances.Items {
 		if v.DeletionTimestamp != nil {
 			continue
 		}
-		if vp.Status.LastAppliedPipelineHash == nil || *hash != *vp.Status.LastAppliedPipelineHash {
-			if err = checkConfig(ctx, &v, vp, r.Client, r.Clientset); err != nil {
-				return ctrl.Result{}, err
-			}
-			if err = vectorpipeline.SetLastAppliedPipelineStatus(ctx, vp, r.Client); err != nil {
-				return ctrl.Result{}, err
-			}
+		if err = config.Check(ctx, &v, vCtrl, r.Client, r.Clientset); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err = vCtrl.SetLastAppliedPipelineStatus(); err != nil {
+			return ctrl.Result{}, err
 		}
 
 	}
@@ -126,34 +134,4 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.VectorPipeline{}).
 		Complete(r)
-}
-
-func checkConfig(ctx context.Context, v *vectorv1alpha1.Vector, vp *vectorv1alpha1.VectorPipeline, c client.Client, cs *kubernetes.Clientset) error {
-	log := log.FromContext(context.TODO()).WithValues("Vector Pipeline", "ConfigCheck")
-
-	var vps []*vectorv1alpha1.VectorPipeline
-	vps = append(vps, vp)
-
-	cfg, err := config.GenerateConfig(v, vps)
-	if err != nil {
-		return err
-	}
-
-	err = configcheck.Run(cfg, c, cs, vp.Name, vp.Namespace, v.Spec.Agent.Image)
-	if _, ok := err.(*configcheck.ErrConfigCheck); ok {
-		if err := vectorpipeline.SetFailedStatus(ctx, vp, c, err); err != nil {
-			return err
-		}
-		log.Error(err, "Vector Config has error")
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	if err := vectorpipeline.SetSucceesStatus(ctx, vp, c); err != nil {
-		return err
-	}
-
-	return nil
 }

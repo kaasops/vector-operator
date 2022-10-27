@@ -1,3 +1,19 @@
+/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package vectoragent
 
 import (
@@ -15,149 +31,165 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func EnsureVectorAgent(v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (done bool, result ctrl.Result, err error) {
+type VectorAgentReconciler struct {
+	client.Client
+	Vector *vectorv1alpha1.Vector
+
+	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
+	Clientset *kubernetes.Clientset
+}
+
+func NewReconciler(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) *VectorAgentReconciler {
+	return &VectorAgentReconciler{
+		Client:    c,
+		Vector:    v,
+		Clientset: cs,
+	}
+}
+
+func (vr *VectorAgentReconciler) EnsureVectorAgent() (done bool, result ctrl.Result, err error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent", v.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent", vr.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent")
 
-	if done, result, err = ensureVectorAgentRBAC(v, rclient); done {
+	if done, result, err = vr.ensureVectorAgentRBAC(); done {
 		return
 	}
 
-	if v.Spec.Agent.Service {
-		if done, result, err = ensureVectorAgentService(v, rclient); done {
+	if vr.Vector.Spec.Agent.Service {
+		if done, result, err = vr.ensureVectorAgentService(); done {
 			return
 		}
 	}
 
-	if done, result, err = ensureVectorAgentConfig(v, rclient, cs); done {
+	if done, result, err = vr.ensureVectorAgentConfig(); done {
 		return
 	}
 
-	if done, result, err = ensureVectorAgentDaemonSet(v, rclient); done {
+	if done, result, err = vr.ensureVectorAgentDaemonSet(); done {
 		return
 	}
 
 	return
 }
 
-func ensureVectorAgentRBAC(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func (vr *VectorAgentReconciler) ensureVectorAgentRBAC() (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-rbac", v.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-rbac", vr.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent RBAC")
 
-	if done, _, err := ensureVectorAgentServiceAccount(v, rclient); done {
+	if done, _, err := vr.ensureVectorAgentServiceAccount(); done {
 		return helper.ReconcileResult(err)
 	}
-	if done, _, err := ensureVectorAgentClusterRole(v, rclient); done {
+	if done, _, err := vr.ensureVectorAgentClusterRole(); done {
 		return helper.ReconcileResult(err)
 	}
-	if done, _, err := ensureVectorAgentClusterRoleBinding(v, rclient); done {
+	if done, _, err := vr.ensureVectorAgentClusterRoleBinding(); done {
 		return helper.ReconcileResult(err)
 	}
 
 	return helper.ReconcileResult(nil)
 }
 
-func ensureVectorAgentServiceAccount(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentServiceAccount := createVectorAgentServiceAccount(v)
+func (vr *VectorAgentReconciler) ensureVectorAgentServiceAccount() (bool, ctrl.Result, error) {
+	vectorAgentServiceAccount := vr.createVectorAgentServiceAccount()
 
-	_, err := k8sutils.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, rclient)
-
-	return helper.ReconcileResult(err)
-}
-
-func ensureVectorAgentClusterRole(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentClusterRole := createVectorAgentClusterRole(v)
-
-	_, err := k8sutils.CreateOrUpdateClusterRole(vectorAgentClusterRole, rclient)
+	_, err := k8sutils.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, vr.Client)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentClusterRoleBinding(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
-	vectorAgentClusterRoleBinding := createVectorAgentClusterRoleBinding(v)
+func (vr *VectorAgentReconciler) ensureVectorAgentClusterRole() (bool, ctrl.Result, error) {
+	vectorAgentClusterRole := vr.createVectorAgentClusterRole()
 
-	_, err := k8sutils.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, rclient)
+	_, err := k8sutils.CreateOrUpdateClusterRole(vectorAgentClusterRole, vr.Client)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentService(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func (vr *VectorAgentReconciler) ensureVectorAgentClusterRoleBinding() (bool, ctrl.Result, error) {
+	vectorAgentClusterRoleBinding := vr.createVectorAgentClusterRoleBinding()
+
+	_, err := k8sutils.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, vr.Client)
+
+	return helper.ReconcileResult(err)
+}
+
+func (vr *VectorAgentReconciler) ensureVectorAgentService() (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-service", v.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-service", vr.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent Service")
 
-	vectorAgentService := createVectorAgentService(v)
+	vectorAgentService := vr.createVectorAgentService()
 
-	_, err := k8sutils.CreateOrUpdateService(vectorAgentService, rclient)
+	_, err := k8sutils.CreateOrUpdateService(vectorAgentService, vr.Client)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentConfig(v *vectorv1alpha1.Vector, rclient client.Client, cs *kubernetes.Clientset) (bool, ctrl.Result, error) {
+func (vr *VectorAgentReconciler) ensureVectorAgentConfig() (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-secret", v.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-secret", vr.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent Secret")
 
-	vectorAgentSecret, err := createVectorAgentConfig(ctx, v, rclient, cs)
+	vectorAgentSecret, err := vr.createVectorAgentConfig(ctx)
 	if err != nil {
 		return helper.ReconcileResult(err)
 	}
 
-	_, err = k8sutils.CreateOrUpdateSecret(vectorAgentSecret, rclient)
+	_, err = k8sutils.CreateOrUpdateSecret(vectorAgentSecret, vr.Client)
 
 	return helper.ReconcileResult(err)
 }
 
-func ensureVectorAgentDaemonSet(v *vectorv1alpha1.Vector, rclient client.Client) (bool, ctrl.Result, error) {
+func (vr *VectorAgentReconciler) ensureVectorAgentDaemonSet() (bool, ctrl.Result, error) {
 	ctx := context.Background()
-	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", v.Name)
+	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", vr.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent DaemonSet")
 
-	vectorAgentDaemonSet := createVectorAgentDaemonSet(v)
+	vectorAgentDaemonSet := vr.createVectorAgentDaemonSet()
 
-	_, err := k8sutils.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, rclient)
+	_, err := k8sutils.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, vr.Client)
 
 	return helper.ReconcileResult(err)
 }
 
-func labelsForVectorAgent(name string) map[string]string {
+func (vr *VectorAgentReconciler) labelsForVectorAgent() map[string]string {
 	return map[string]string{
 		label.ManagedByLabelKey:  "vector-operator",
 		label.NameLabelKey:       "vector",
 		label.ComponentLabelKey:  "Agent",
-		label.InstanceLabelKey:   name,
+		label.InstanceLabelKey:   vr.Vector.Name,
 		label.VectorExcludeLabel: "true",
 	}
 }
 
-func objectMetaVectorAgent(v *vectorv1alpha1.Vector, labels map[string]string) metav1.ObjectMeta {
+func (vr *VectorAgentReconciler) objectMetaVectorAgent(labels map[string]string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name:            v.Name + "-agent",
-		Namespace:       v.Namespace,
+		Name:            vr.Vector.Name + "-agent",
+		Namespace:       vr.Vector.Namespace,
 		Labels:          labels,
-		OwnerReferences: getControllerReference(v),
+		OwnerReferences: vr.getControllerReference(),
 	}
 }
 
-func getNameVectorAgent(v *vectorv1alpha1.Vector) string {
-	name := v.Name + "-agent"
+func (vr *VectorAgentReconciler) getNameVectorAgent() string {
+	name := vr.Vector.Name + "-agent"
 	return name
 }
 
-func getControllerReference(owner *vectorv1alpha1.Vector) []metav1.OwnerReference {
+func (vr *VectorAgentReconciler) getControllerReference() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         owner.APIVersion,
-			Kind:               owner.Kind,
-			Name:               owner.GetName(),
-			UID:                owner.GetUID(),
+			APIVersion:         vr.Vector.APIVersion,
+			Kind:               vr.Vector.Kind,
+			Name:               vr.Vector.GetName(),
+			UID:                vr.Vector.GetUID(),
 			BlockOwnerDeletion: pointer.BoolPtr(true),
 			Controller:         pointer.BoolPtr(true),
 		},

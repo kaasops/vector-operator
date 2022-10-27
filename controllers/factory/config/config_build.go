@@ -19,11 +19,10 @@ package config
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
-	"github.com/kaasops/vector-operator/controllers/factory/vectorpipeline"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,27 +45,28 @@ var (
 )
 
 func Get(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) ([]byte, error) {
-	vps, err := vectorpipeline.SelectSucceesed(ctx, c)
+	vCtrl := pipeline.NewController(ctx, c, nil)
+	pipelines, err := vCtrl.SelectSucceesed()
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := GenerateConfig(v, vps)
+	cfg, err := GenerateVectorConfig(v, pipelines)
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return VectorConfigToJson(cfg)
 }
 
-func GenerateConfig(
+func GenerateVectorConfig(
 	v *vectorv1alpha1.Vector,
-	vps []*vectorv1alpha1.VectorPipeline,
-) ([]byte, error) {
+	vCtrls []pipeline.Controller,
+) (*vector.VectorConfig, error) {
 	cfg := vector.New(v.Spec.Agent.DataDir, v.Spec.Agent.ApiEnabled)
-	sources, transforms, sinks, err := getComponents(vps)
+	sources, transforms, sinks, err := getComponents(vCtrls)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	if len(sources) == 0 {
 		sources = sourceDefault
@@ -79,16 +79,16 @@ func GenerateConfig(
 	cfg.Sources = sources
 	cfg.Transforms = transforms
 
-	return vectorConfigToJson(cfg)
+	return cfg, nil
 }
 
-func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
+func getComponents(vCtrls []pipeline.Controller) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
 	sourcesMap := make(map[string]interface{})
 	transformsMap := make(map[string]interface{})
 	sinksMap := make(map[string]interface{})
 
-	for _, vp := range vps {
-		sources, err := vectorpipeline.GetSources(vp, nil)
+	for _, vCtrl := range vCtrls {
+		sources, err := vCtrl.GetSources(nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -99,7 +99,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 			}
 			sourcesMap[source.Name] = spec
 		}
-		transforms, err := vectorpipeline.GetTransforms(vp)
+		transforms, err := vCtrl.GetTransforms()
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -110,7 +110,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 			}
 			transformsMap[transform.Name] = spec
 		}
-		sinks, err := vectorpipeline.GetSinks(vp)
+		sinks, err := vCtrl.GetSinks()
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -125,7 +125,7 @@ func getComponents(vps []*vectorv1alpha1.VectorPipeline) (map[string]interface{}
 	return sourcesMap, transformsMap, sinksMap, nil
 }
 
-func vectorConfigToJson(conf *vector.VectorConfig) ([]byte, error) {
+func VectorConfigToJson(conf *vector.VectorConfig) ([]byte, error) {
 	data, err := json.Marshal(conf)
 	if err != nil {
 		return nil, err

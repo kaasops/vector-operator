@@ -12,10 +12,19 @@ spec:
     kind: ClusterVectorPipeline
     listKind: ClusterVectorPipelineList
     plural: clustervectorpipelines
+    shortNames:
+    - cvp
     singular: clustervectorpipeline
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.configCheckResult
+      name: Status
+      type: boolean
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ClusterVectorPipeline is the Schema for the clustervectorpipelines
@@ -34,16 +43,28 @@ spec:
           metadata:
             type: object
           spec:
-            description: ClusterVectorPipelineSpec defines the desired state of ClusterVectorPipeline
+            description: VectorPipelineSpec defines the desired state of VectorPipeline
             properties:
-              foo:
-                description: Foo is an example field of ClusterVectorPipeline. Edit
-                  clustervectorpipeline_types.go to remove/update
-                type: string
+              sinks:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              sources:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              transforms:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
             type: object
           status:
-            description: ClusterVectorPipelineStatus defines the observed state of
-              ClusterVectorPipeline
+            description: VectorPipelineStatus defines the observed state of VectorPipeline
+            properties:
+              LastAppliedPipelineHash:
+                format: int32
+                type: integer
+              configCheckResult:
+                type: boolean
+              reason:
+                type: string
             type: object
         type: object
     served: true

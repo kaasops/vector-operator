@@ -1,0 +1,20 @@
+# permissions for end users to view clustervectorpipelines.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: clustervectorpipeline-viewer-role
+rules:
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines/status
+  verbs:
+  - get

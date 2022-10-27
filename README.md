@@ -5,6 +5,8 @@
 </p>
 
 
+# Vector Operator
+
 ## Description
 The operator deploys and configures a vector agent daemonset on every node to collect container and application logs from the node file system.
 

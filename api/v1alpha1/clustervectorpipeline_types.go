@@ -23,31 +23,19 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ClusterVectorPipelineSpec defines the desired state of ClusterVectorPipeline
-type ClusterVectorPipelineSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ClusterVectorPipeline. Edit clustervectorpipeline_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
-}
-
-// ClusterVectorPipelineStatus defines the observed state of ClusterVectorPipeline
-type ClusterVectorPipelineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:shortName=cvp
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+//+kubebuilder:printcolumn:name="Status",type="boolean",JSONPath=".status.configCheckResult"
 
 // ClusterVectorPipeline is the Schema for the clustervectorpipelines API
 type ClusterVectorPipeline struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ClusterVectorPipelineSpec   `json:"spec,omitempty"`
-	Status ClusterVectorPipelineStatus `json:"status,omitempty"`
+	Spec   VectorPipelineSpec   `json:"spec,omitempty"`
+	Status VectorPipelineStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

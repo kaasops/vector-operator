@@ -14,20 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package vectorpipeline
+package pipeline
 
 import (
 	"encoding/json"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/utils"
 )
 
-func GetVpSpecHash(vp *vectorv1alpha1.VectorPipeline) (*uint32, error) {
-	a, err := json.Marshal(vp.Spec)
+func (ctrl *Controller) GetSpecHash() (*uint32, error) {
+	a, err := json.Marshal(ctrl.Pipeline.Spec())
 	if err != nil {
 		return nil, err
 	}
 	hash := utils.GetHash(a)
 	return &hash, nil
+}
+
+// CheckHash returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
+func (ctrl *Controller) CheckHash() (bool, error) {
+	hash, err := ctrl.GetSpecHash()
+	if err != nil {
+		return false, err
+	}
+
+	if ctrl.Pipeline.GetLastAppliedPipeline() != nil && *hash == *ctrl.Pipeline.GetLastAppliedPipeline() {
+		return true, nil
+	}
+
+	return false, nil
 }

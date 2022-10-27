@@ -31,9 +31,10 @@ type ApiSpec struct {
 }
 
 type Source struct {
-	Name    string
-	Type    string                 `mapper:"type"`
-	Options map[string]interface{} `mapstructure:",remain"`
+	Name                        string
+	Type                        string                 `mapper:"type"`
+	ExtraNamespaceLabelSelector string                 `mapper:"extra_namespace_label_selector"`
+	Options                     map[string]interface{} `mapstructure:",remain"`
 }
 
 type Transform struct {

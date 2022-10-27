@@ -22,26 +22,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (vr *VectorAgentReconciler) createVectorAgentDaemonSet() *appsv1.DaemonSet {
-	labels := vr.labelsForVectorAgent()
+func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
+	labels := ctrl.labelsForVectorAgent()
 
 	daemonset := &appsv1.DaemonSet{
-		ObjectMeta: vr.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: vr.objectMetaVectorAgent(labels),
+				ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 				Spec: corev1.PodSpec{
-					ServiceAccountName: vr.getNameVectorAgent(),
-					Volumes:            vr.generateVectorAgentVolume(),
+					ServiceAccountName: ctrl.getNameVectorAgent(),
+					Volumes:            ctrl.generateVectorAgentVolume(),
 					SecurityContext:    &corev1.PodSecurityContext{},
-					Tolerations:        vr.Vector.Spec.Agent.Tolerations,
+					Tolerations:        ctrl.Vector.Spec.Agent.Tolerations,
 					Containers: []corev1.Container{
 						{
-							Name:  vr.getNameVectorAgent(),
-							Image: vr.Vector.Spec.Agent.Image,
+							Name:  ctrl.getNameVectorAgent(),
+							Image: ctrl.Vector.Spec.Agent.Image,
 							Args:  []string{"--config-dir", "/etc/vector/", "--watch-config"},
-							Env:   vr.generateVectorAgentEnvs(),
+							Env:   ctrl.generateVectorAgentEnvs(),
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "prom-exporter",
@@ -49,7 +49,7 @@ func (vr *VectorAgentReconciler) createVectorAgentDaemonSet() *appsv1.DaemonSet 
 									Protocol:      "TCP",
 								},
 							},
-							VolumeMounts:    vr.generateVectorAgentVolumeMounts(),
+							VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
 							SecurityContext: &corev1.SecurityContext{},
 						},
 					},
@@ -61,13 +61,13 @@ func (vr *VectorAgentReconciler) createVectorAgentDaemonSet() *appsv1.DaemonSet 
 	return daemonset
 }
 
-func (vr *VectorAgentReconciler) generateVectorAgentVolume() []corev1.Volume {
+func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 	volume := []corev1.Volume{
 		{
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: vr.getNameVectorAgent(),
+					SecretName: ctrl.getNameVectorAgent(),
 				},
 			},
 		},
@@ -116,7 +116,7 @@ func (vr *VectorAgentReconciler) generateVectorAgentVolume() []corev1.Volume {
 	return volume
 }
 
-func (vr *VectorAgentReconciler) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
+func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 	volumeMount := []corev1.VolumeMount{
 		{
 			Name:      "config",
@@ -147,7 +147,7 @@ func (vr *VectorAgentReconciler) generateVectorAgentVolumeMounts() []corev1.Volu
 	return volumeMount
 }
 
-func (vr *VectorAgentReconciler) generateVectorAgentEnvs() []corev1.EnvVar {
+func (ctrl *Controller) generateVectorAgentEnvs() []corev1.EnvVar {
 	envs := []corev1.EnvVar{
 		{
 			Name: "VECTOR_SELF_NODE_NAME",

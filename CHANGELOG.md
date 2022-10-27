@@ -1,4 +1,5 @@
 ### Added
+- Refactor: Refactor Pipeline for add ClusterVectorPipeline and checks
 - Feature: Add field reason to CR Vector and VectorPipeline
 - Feature: Add ConfigCheck for Vector
 - Feature: Add ConfigCheck for VectorPipeline

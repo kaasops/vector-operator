@@ -119,8 +119,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ClusterVectorPipelineReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Clientset: clientset,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterVectorPipeline")
 		os.Exit(1)

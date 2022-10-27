@@ -1,0 +1,73 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: clustervectorpipelines.observability.kaasops.io
+spec:
+  group: observability.kaasops.io
+  names:
+    kind: ClusterVectorPipeline
+    listKind: ClusterVectorPipelineList
+    plural: clustervectorpipelines
+    shortNames:
+    - cvp
+    singular: clustervectorpipeline
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.configCheckResult
+      name: Status
+      type: boolean
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ClusterVectorPipeline is the Schema for the clustervectorpipelines
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VectorPipelineSpec defines the desired state of VectorPipeline
+            properties:
+              sinks:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              sources:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              transforms:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            type: object
+          status:
+            description: VectorPipelineStatus defines the observed state of VectorPipeline
+            properties:
+              LastAppliedPipelineHash:
+                format: int32
+                type: integer
+              configCheckResult:
+                type: boolean
+              reason:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

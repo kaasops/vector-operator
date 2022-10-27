@@ -22,11 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (vr *VectorAgentReconciler) createVectorAgentService() *corev1.Service {
-	labels := vr.labelsForVectorAgent()
+func (ctrl *Controller) createVectorAgentService() *corev1.Service {
+	labels := ctrl.labelsForVectorAgent()
 
 	service := &corev1.Service{
-		ObjectMeta: vr.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{

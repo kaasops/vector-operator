@@ -26,18 +26,18 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/utils"
 )
 
-func (vr *VectorAgentReconciler) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
-	cfg, err := config.Get(ctx, vr.Vector, vr.Client)
+func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
+	cfg, err := config.Get(ctx, ctrl.Vector, ctrl.Client)
 	if err != nil {
 		return nil, err
 	}
 
 	cfgHash := utils.GetHash(cfg)
 
-	if vr.Vector.Status.LastAppliedConfigHash == nil || *vr.Vector.Status.LastAppliedConfigHash != cfgHash {
-		err = configcheck.Run(cfg, vr.Client, vr.Clientset, vr.Vector.Name, vr.Vector.Namespace, vr.Vector.Spec.Agent.Image)
+	if ctrl.Vector.Status.LastAppliedConfigHash == nil || *ctrl.Vector.Status.LastAppliedConfigHash != cfgHash {
+		err = configcheck.Run(cfg, ctrl.Client, ctrl.Clientset, ctrl.Vector.Name, ctrl.Vector.Namespace, ctrl.Vector.Spec.Agent.Image)
 		if _, ok := err.(*configcheck.ErrConfigCheck); ok {
-			if err := setFailedStatus(ctx, vr.Vector, vr.Client, err); err != nil {
+			if err := setFailedStatus(ctx, ctrl.Vector, ctrl.Client, err); err != nil {
 				return nil, err
 			}
 			return nil, err
@@ -46,23 +46,23 @@ func (vr *VectorAgentReconciler) createVectorAgentConfig(ctx context.Context) (*
 			return nil, err
 		}
 
-		if err := SetLastAppliedPipelineStatus(ctx, vr.Vector, vr.Client, &cfgHash); err != nil {
+		if err := SetLastAppliedPipelineStatus(ctx, ctrl.Vector, ctrl.Client, &cfgHash); err != nil {
 			return nil, err
 		}
 
-		if err := setSucceesStatus(ctx, vr.Vector, vr.Client); err != nil {
+		if err := setSucceesStatus(ctx, ctrl.Vector, ctrl.Client); err != nil {
 			return nil, err
 		}
 
 	}
 
-	labels := vr.labelsForVectorAgent()
+	labels := ctrl.labelsForVectorAgent()
 	config := map[string][]byte{
 		"agent.json": cfg,
 	}
 
 	secret := &corev1.Secret{
-		ObjectMeta: vr.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Data:       config,
 	}
 

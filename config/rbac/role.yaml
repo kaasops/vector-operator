@@ -8,6 +8,32 @@ rules:
 - apiGroups:
   - observability.kaasops.io
   resources:
+  - clustervectorpipelines
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - observability.kaasops.io
+  resources:
   - vectorpipelines
   verbs:
   - create

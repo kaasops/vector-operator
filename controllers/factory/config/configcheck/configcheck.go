@@ -84,11 +84,6 @@ func ensureVectorConfigCheckServiceAccount(c client.Client, ns string) (bool, ct
 	return helper.ReconcileResult(err)
 }
 func ensureVectorConfigCheckConfig(c client.Client, cfg []byte, name, ns, hash string) error {
-	// ctx := context.Background()
-	// log := log.FromContext(ctx).WithValues("vector-config-check-secret", "ConfigCheck")
-
-	// log.Info("start Create Config Check Secret")
-
 	vectorConfigCheckSecret, err := createVectorConfigCheckConfig(cfg, name, ns, hash)
 	if err != nil {
 		return err

@@ -1,33 +1,47 @@
+/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package vectoragent
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-func createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
-	labels := labelsForVectorAgent(v.Name)
+func (vr *VectorAgentReconciler) createVectorAgentDaemonSet() *appsv1.DaemonSet {
+	labels := vr.labelsForVectorAgent()
 
 	daemonset := &appsv1.DaemonSet{
-		ObjectMeta: objectMetaVectorAgent(v, labels),
+		ObjectMeta: vr.objectMetaVectorAgent(labels),
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: objectMetaVectorAgent(v, labels),
+				ObjectMeta: vr.objectMetaVectorAgent(labels),
 				Spec: corev1.PodSpec{
-					ServiceAccountName: getNameVectorAgent(v),
-					Volumes:            generateVectorAgentVolume(v),
+					ServiceAccountName: vr.getNameVectorAgent(),
+					Volumes:            vr.generateVectorAgentVolume(),
 					SecurityContext:    &corev1.PodSecurityContext{},
-					Tolerations:        v.Spec.Agent.Tolerations,
+					Tolerations:        vr.Vector.Spec.Agent.Tolerations,
 					Containers: []corev1.Container{
 						{
-							Name:  getNameVectorAgent(v),
-							Image: v.Spec.Agent.Image,
+							Name:  vr.getNameVectorAgent(),
+							Image: vr.Vector.Spec.Agent.Image,
 							Args:  []string{"--config-dir", "/etc/vector/", "--watch-config"},
-							Env:   generateVectorAgentEnvs(v),
+							Env:   vr.generateVectorAgentEnvs(),
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "prom-exporter",
@@ -35,7 +49,7 @@ func createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
 									Protocol:      "TCP",
 								},
 							},
-							VolumeMounts:    generateVectorAgentVolumeMounts(v),
+							VolumeMounts:    vr.generateVectorAgentVolumeMounts(),
 							SecurityContext: &corev1.SecurityContext{},
 						},
 					},
@@ -47,13 +61,13 @@ func createVectorAgentDaemonSet(v *vectorv1alpha1.Vector) *appsv1.DaemonSet {
 	return daemonset
 }
 
-func generateVectorAgentVolume(v *vectorv1alpha1.Vector) []corev1.Volume {
+func (vr *VectorAgentReconciler) generateVectorAgentVolume() []corev1.Volume {
 	volume := []corev1.Volume{
 		{
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: getNameVectorAgent(v),
+					SecretName: vr.getNameVectorAgent(),
 				},
 			},
 		},
@@ -102,7 +116,7 @@ func generateVectorAgentVolume(v *vectorv1alpha1.Vector) []corev1.Volume {
 	return volume
 }
 
-func generateVectorAgentVolumeMounts(spec *vectorv1alpha1.Vector) []corev1.VolumeMount {
+func (vr *VectorAgentReconciler) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 	volumeMount := []corev1.VolumeMount{
 		{
 			Name:      "config",
@@ -133,7 +147,7 @@ func generateVectorAgentVolumeMounts(spec *vectorv1alpha1.Vector) []corev1.Volum
 	return volumeMount
 }
 
-func generateVectorAgentEnvs(spec *vectorv1alpha1.Vector) []corev1.EnvVar {
+func (vr *VectorAgentReconciler) generateVectorAgentEnvs() []corev1.EnvVar {
 	envs := []corev1.EnvVar{
 		{
 			Name: "VECTOR_SELF_NODE_NAME",

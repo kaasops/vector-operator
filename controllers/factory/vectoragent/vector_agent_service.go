@@ -3,15 +3,14 @@ package vectoragent
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func createVectorAgentService(v *vectorv1alpha1.Vector) *corev1.Service {
-	labels := labelsForVectorAgent(v.Name)
+func (vr *VectorAgentReconciler) createVectorAgentService() *corev1.Service {
+	labels := vr.labelsForVectorAgent()
 
 	service := &corev1.Service{
-		ObjectMeta: objectMetaVectorAgent(v, labels),
+		ObjectMeta: vr.objectMetaVectorAgent(labels),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{

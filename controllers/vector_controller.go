@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/go-logr/logr"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
@@ -61,9 +60,14 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	log.Info("start Reconcile Vector")
 
-	v, done, result, err := r.findVectorCustomResourceInstance(ctx, log, req)
-	if done {
-		return result, err
+	v, err := r.findVectorCustomResourceInstance(ctx, req)
+	if err != nil {
+		log.Error(err, "Failed to get Vector")
+		return ctrl.Result{}, err
+	}
+	if v == nil {
+		log.Info("Vector CR not found. Ignoring since object must be deleted")
+		return ctrl.Result{}, nil
 	}
 
 	if v.Spec.Agent.DataDir == "" {
@@ -73,24 +77,18 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return r.CreateOrUpdateVector(ctx, v)
 }
 
-func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
+func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.Vector, error) {
 	// fetch the master instance
 	v := &vectorv1alpha1.Vector{}
 	err := r.Get(ctx, req.NamespacedName, v)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			log.Info("Vector CR not found. Ignoring since object must be deleted")
-			return nil, true, ctrl.Result{}, nil
+			return nil, nil
 		}
-		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get Vector")
-		return nil, true, ctrl.Result{}, err
+		return nil, err
 	}
 
-	return v, false, ctrl.Result{}, nil
+	return v, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -112,11 +110,11 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	config.FillForVectorAgent()
 
 	// Get Config in Json ([]byte)
-	byteCongif, err := config.GetByteConfig()
+	byteConfig, err := config.GetByteConfig()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	vaCtrl.Config = byteCongif
+	vaCtrl.Config = byteConfig
 
 	// Start Reconcile Vector Agent
 	if done, result, err := vaCtrl.EnsureVectorAgent(); done {

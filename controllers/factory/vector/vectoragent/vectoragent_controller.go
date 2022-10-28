@@ -19,33 +19,13 @@ package vectoragent
 import (
 	"context"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/helper"
-	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
-	"github.com/kaasops/vector-operator/controllers/factory/label"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/helper"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-type Controller struct {
-	client.Client
-	Vector *vectorv1alpha1.Vector
-
-	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset *kubernetes.Clientset
-}
-
-func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) *Controller {
-	return &Controller{
-		Client:    c,
-		Vector:    v,
-		Clientset: cs,
-	}
-}
 
 func (ctrl *Controller) EnsureVectorAgent() (done bool, result ctrl.Result, err error) {
 	ctx := context.Background()
@@ -96,7 +76,7 @@ func (ctrl *Controller) ensureVectorAgentRBAC() (bool, ctrl.Result, error) {
 func (ctrl *Controller) ensureVectorAgentServiceAccount() (bool, ctrl.Result, error) {
 	vectorAgentServiceAccount := ctrl.createVectorAgentServiceAccount()
 
-	_, err := k8sutils.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, ctrl.Client)
+	_, err := k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
@@ -104,7 +84,7 @@ func (ctrl *Controller) ensureVectorAgentServiceAccount() (bool, ctrl.Result, er
 func (ctrl *Controller) ensureVectorAgentClusterRole() (bool, ctrl.Result, error) {
 	vectorAgentClusterRole := ctrl.createVectorAgentClusterRole()
 
-	_, err := k8sutils.CreateOrUpdateClusterRole(vectorAgentClusterRole, ctrl.Client)
+	_, err := k8s.CreateOrUpdateClusterRole(vectorAgentClusterRole, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
@@ -112,7 +92,7 @@ func (ctrl *Controller) ensureVectorAgentClusterRole() (bool, ctrl.Result, error
 func (ctrl *Controller) ensureVectorAgentClusterRoleBinding() (bool, ctrl.Result, error) {
 	vectorAgentClusterRoleBinding := ctrl.createVectorAgentClusterRoleBinding()
 
-	_, err := k8sutils.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, ctrl.Client)
+	_, err := k8s.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
@@ -125,7 +105,7 @@ func (ctrl *Controller) ensureVectorAgentService() (bool, ctrl.Result, error) {
 
 	vectorAgentService := ctrl.createVectorAgentService()
 
-	_, err := k8sutils.CreateOrUpdateService(vectorAgentService, ctrl.Client)
+	_, err := k8s.CreateOrUpdateService(vectorAgentService, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
@@ -141,7 +121,7 @@ func (ctrl *Controller) ensureVectorAgentConfig() (bool, ctrl.Result, error) {
 		return helper.ReconcileResult(err)
 	}
 
-	_, err = k8sutils.CreateOrUpdateSecret(vectorAgentSecret, ctrl.Client)
+	_, err = k8s.CreateOrUpdateSecret(vectorAgentSecret, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
@@ -154,18 +134,18 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet() (bool, ctrl.Result, error) 
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
 
-	_, err := k8sutils.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, ctrl.Client)
+	_, err := k8s.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, ctrl.Client)
 
 	return helper.ReconcileResult(err)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 	return map[string]string{
-		label.ManagedByLabelKey:  "vector-operator",
-		label.NameLabelKey:       "vector",
-		label.ComponentLabelKey:  "Agent",
-		label.InstanceLabelKey:   ctrl.Vector.Name,
-		label.VectorExcludeLabel: "true",
+		k8s.ManagedByLabelKey:  "vector-operator",
+		k8s.NameLabelKey:       "vector",
+		k8s.ComponentLabelKey:  "Agent",
+		k8s.InstanceLabelKey:   ctrl.Vector.Name,
+		k8s.VectorExcludeLabel: "true",
 	}
 }
 
@@ -194,30 +174,4 @@ func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 			Controller:         pointer.BoolPtr(true),
 		},
 	}
-}
-
-func setSucceesStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) error {
-	var status = true
-	v.Status.ConfigCheckResult = &status
-	v.Status.Reason = nil
-
-	return k8sutils.UpdateStatus(ctx, v, c)
-}
-
-func setFailedStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, err error) error {
-	var status = false
-	var reason = err.Error()
-	v.Status.ConfigCheckResult = &status
-	v.Status.Reason = &reason
-
-	return k8sutils.UpdateStatus(ctx, v, c)
-}
-
-func SetLastAppliedPipelineStatus(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client, hash *uint32) error {
-
-	v.Status.LastAppliedConfigHash = hash
-	if err := k8sutils.UpdateStatus(ctx, v, c); err != nil {
-		return err
-	}
-	return nil
 }

@@ -20,7 +20,7 @@ import (
 	"context"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,6 +30,7 @@ var (
 
 type Controller struct {
 	ClusterVectorPipeline *vectorv1alpha1.ClusterVectorPipeline
+	Config                []byte
 }
 
 func (ctrl *Controller) Spec() vectorv1alpha1.VectorPipelineSpec {
@@ -65,7 +66,7 @@ func (ctrl *Controller) SetLastAppliedPipeline(hash *uint32) {
 }
 
 func (ctrl *Controller) UpdateStatus(ctx context.Context, c client.Client) error {
-	return k8sutils.UpdateStatus(ctx, ctrl.ClusterVectorPipeline, c)
+	return k8s.UpdateStatus(ctx, ctrl.ClusterVectorPipeline, c)
 }
 
 func NewController(cvp *vectorv1alpha1.ClusterVectorPipeline) *Controller {

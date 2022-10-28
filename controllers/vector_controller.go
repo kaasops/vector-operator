@@ -20,7 +20,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/kaasops/vector-operator/controllers/factory/vectoragent"
+	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -69,7 +70,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		v.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	return r.CreateOrUpdateVector(v)
+	return r.CreateOrUpdateVector(ctx, v)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.Vector, bool, ctrl.Result, error) {
@@ -99,10 +100,26 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *VectorReconciler) CreateOrUpdateVector(v *vectorv1alpha1.Vector) (ctrl.Result, error) {
-	vectorAgentReconciler := vectoragent.NewController(v, r.Client, r.Clientset)
+func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector) (ctrl.Result, error) {
+	// Init Controller for Vector Agent
+	vaCtrl := vectoragent.NewController(v, r.Client, r.Clientset)
 
-	if done, result, err := vectorAgentReconciler.EnsureVectorAgent(); done {
+	// Get Vector Config file
+	config, err := config.New(ctx, vaCtrl)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	config.FillForVectorAgent()
+
+	// Get Config in Json ([]byte)
+	byteCongif, err := config.GetByteConfig()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	vaCtrl.Config = byteCongif
+
+	// Start Reconcile Vector Agent
+	if done, result, err := vaCtrl.EnsureVectorAgent(); done {
 		return result, err
 	}
 

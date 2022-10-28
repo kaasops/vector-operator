@@ -19,85 +19,77 @@ package vectoragent
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/helper"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (ctrl *Controller) EnsureVectorAgent() (done bool, result ctrl.Result, err error) {
+func (ctrl *Controller) EnsureVectorAgent() error {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent")
 
-	if done, result, err = ctrl.ensureVectorAgentRBAC(); done {
-		return
+	if err := ctrl.ensureVectorAgentRBAC(); err != nil {
+		return err
 	}
 
 	if ctrl.Vector.Spec.Agent.Service {
-		if done, result, err = ctrl.ensureVectorAgentService(); done {
-			return
+		if err := ctrl.ensureVectorAgentService(); err != nil {
+			return err
 		}
 	}
 
-	if done, result, err = ctrl.ensureVectorAgentConfig(); done {
-		return
+	if err := ctrl.ensureVectorAgentConfig(); err != nil {
+		return err
 	}
 
-	if done, result, err = ctrl.ensureVectorAgentDaemonSet(); done {
-		return
+	if err := ctrl.ensureVectorAgentDaemonSet(); err != nil {
+		return err
 	}
 
-	return
+	return nil
 }
 
-func (ctrl *Controller) ensureVectorAgentRBAC() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentRBAC() error {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent RBAC")
 
-	if done, _, err := ctrl.ensureVectorAgentServiceAccount(); done {
-		return helper.ReconcileResult(err)
+	if err := ctrl.ensureVectorAgentServiceAccount(); err != nil {
+		return err
 	}
-	if done, _, err := ctrl.ensureVectorAgentClusterRole(); done {
-		return helper.ReconcileResult(err)
+	if err := ctrl.ensureVectorAgentClusterRole(); err != nil {
+		return err
 	}
-	if done, _, err := ctrl.ensureVectorAgentClusterRoleBinding(); done {
-		return helper.ReconcileResult(err)
+	if err := ctrl.ensureVectorAgentClusterRoleBinding(); err != nil {
+		return err
 	}
 
-	return helper.ReconcileResult(nil)
+	return nil
 }
 
-func (ctrl *Controller) ensureVectorAgentServiceAccount() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentServiceAccount() error {
 	vectorAgentServiceAccount := ctrl.createVectorAgentServiceAccount()
 
-	_, err := k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentClusterRole() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentClusterRole() error {
 	vectorAgentClusterRole := ctrl.createVectorAgentClusterRole()
 
-	_, err := k8s.CreateOrUpdateClusterRole(vectorAgentClusterRole, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateClusterRole(vectorAgentClusterRole, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentClusterRoleBinding() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentClusterRoleBinding() error {
 	vectorAgentClusterRoleBinding := ctrl.createVectorAgentClusterRoleBinding()
 
-	_, err := k8s.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentService() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentService() error {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-service", ctrl.Vector.Name)
 
@@ -105,12 +97,10 @@ func (ctrl *Controller) ensureVectorAgentService() (bool, ctrl.Result, error) {
 
 	vectorAgentService := ctrl.createVectorAgentService()
 
-	_, err := k8s.CreateOrUpdateService(vectorAgentService, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateService(vectorAgentService, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentConfig() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentConfig() error {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-secret", ctrl.Vector.Name)
 
@@ -118,15 +108,13 @@ func (ctrl *Controller) ensureVectorAgentConfig() (bool, ctrl.Result, error) {
 
 	vectorAgentSecret, err := ctrl.createVectorAgentConfig(ctx)
 	if err != nil {
-		return helper.ReconcileResult(err)
+		return err
 	}
 
-	_, err = k8s.CreateOrUpdateSecret(vectorAgentSecret, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateSecret(vectorAgentSecret, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentDaemonSet() (bool, ctrl.Result, error) {
+func (ctrl *Controller) ensureVectorAgentDaemonSet() error {
 	ctx := context.Background()
 	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", ctrl.Vector.Name)
 
@@ -134,9 +122,7 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet() (bool, ctrl.Result, error) 
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
 
-	_, err := k8s.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, ctrl.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, ctrl.Client)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {

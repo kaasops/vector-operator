@@ -117,8 +117,8 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	vaCtrl.Config = byteConfig
 
 	// Start Reconcile Vector Agent
-	if done, result, err := vaCtrl.EnsureVectorAgent(); done {
-		return result, err
+	if err := vaCtrl.EnsureVectorAgent(); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{RequeueAfter: 15 * time.Second}, nil

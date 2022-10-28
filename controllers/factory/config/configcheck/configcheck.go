@@ -21,11 +21,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/helper"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -100,19 +98,13 @@ func (cc *ConfigCheck) Run() error {
 }
 
 func (cc *ConfigCheck) ensureVectorConfigCheckRBAC() error {
-	if done, _, err := cc.ensureVectorConfigCheckServiceAccount(); done {
-		return err
-	}
-
-	return nil
+	return cc.ensureVectorConfigCheckServiceAccount()
 }
 
-func (cc *ConfigCheck) ensureVectorConfigCheckServiceAccount() (bool, ctrl.Result, error) {
+func (cc *ConfigCheck) ensureVectorConfigCheckServiceAccount() error {
 	vectorAgentServiceAccount := cc.createVectorConfigCheckServiceAccount()
 
-	_, err := k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, cc.Client)
-
-	return helper.ReconcileResult(err)
+	return k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, cc.Client)
 }
 func (cc *ConfigCheck) ensureVectorConfigCheckConfig() error {
 	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig()
@@ -120,9 +112,7 @@ func (cc *ConfigCheck) ensureVectorConfigCheckConfig() error {
 		return err
 	}
 
-	_, err = k8s.CreateOrUpdateSecret(vectorConfigCheckSecret, cc.Client)
-
-	return err
+	return k8s.CreateOrUpdateSecret(vectorConfigCheckSecret, cc.Client)
 }
 
 func (cc *ConfigCheck) checkVectorConfigCheckPod() error {

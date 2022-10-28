@@ -21,8 +21,8 @@ import (
 )
 
 func New(dataDir string, apiEnabled bool) *VectorConfig {
-	sources := make(map[string]interface{})
-	sinks := make(map[string]interface{})
+	sources := []Source{}
+	sinks := []Sink{}
 
 	return &VectorConfig{
 		DataDir: dataDir,

@@ -175,6 +175,3 @@ func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func checkHash() {
-
-}

@@ -35,8 +35,7 @@ func New(dataDir string, apiEnabled bool) *VectorConfig {
 }
 
 func Mapper(c ConfigComponent) (map[string]interface{}, error) {
-	spec := make(map[string]interface{})
-	spec = c.GetOptions()
+	spec := c.GetOptions()
 	config := &mapstructure.DecoderConfig{
 		Result:               &spec,
 		ZeroFields:           false,

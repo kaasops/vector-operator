@@ -21,9 +21,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/kaasops/vector-operator/controllers/factory/helper"
-	"github.com/kaasops/vector-operator/controllers/factory/k8sutils"
-	"github.com/kaasops/vector-operator/controllers/factory/label"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/helper"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,78 +30,110 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func Run(
-	cfg []byte,
-	c client.Client,
-	cs *kubernetes.Clientset,
-	name,
-	namespace,
-	image string,
-) error {
-	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", name)
+type ConfigCheck struct {
+	Ctx context.Context
 
-	log.Info("start ConfigCheck Vector")
+	Config []byte
 
-	err := ensureVectorConfigCheckRBAC(c, namespace)
-	if err != nil {
+	Client    client.Client
+	ClientSet *kubernetes.Clientset
+
+	Name      string
+	Namespace string
+	Image     string
+	Hash      string
+}
+
+func New(ctx context.Context, config []byte, c client.Client, cs *kubernetes.Clientset, name, namespace, image string) *ConfigCheck {
+	return &ConfigCheck{
+		Ctx:       ctx,
+		Config:    config,
+		Client:    c,
+		ClientSet: cs,
+		Name:      name,
+		Namespace: namespace,
+		Image:     image,
+	}
+}
+
+// func (cfg *Config) StartCheck() error {
+
+// 	log := log.FromContext(context.TODO()).WithValues("ConfigCheck Vector Pipeline", cfg.vaCtrl.Vector.Name)
+
+// 	configCheck := configcheck.New(cfg.Ctx, cfg.ByteConfig, cfg.vaCtrl.Client, cfg.vaCtrl.ClientSet, cfg.Name, cfg.vaCtrl.Vector.Namespace, cfg.vaCtrl.Vector.Spec.Agent.Image)
+
+// 	err := configCheck.Run()
+// 	if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+// 		if err := cfg.vaCtrl.SetFailedStatus(cfg.Ctx, err); err != nil {
+// 			return err
+// 		}
+// 		log.Error(err, "Vector Config has error")
+// 		return nil
+// 	}
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return cfg.vaCtrl.SetSucceesStatus(cfg.Ctx)
+// }
+
+func (cc *ConfigCheck) Run() error {
+	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", cc.Name)
+
+	log.Info("start ConfigCheck")
+
+	if err := cc.ensureVectorConfigCheckRBAC(); err != nil {
 		return err
 	}
 
-	hash := randStringRunes()
+	cc.Hash = randStringRunes()
 
-	err = ensureVectorConfigCheckConfig(c, cfg, name, namespace, hash)
-	if err != nil {
+	if err := cc.ensureVectorConfigCheckConfig(); err != nil {
 		return err
 	}
 
-	err = checkVectorConfigCheckPod(c, cs, name, namespace, image, hash)
-	if err != nil {
+	if err := cc.checkVectorConfigCheckPod(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func ensureVectorConfigCheckRBAC(c client.Client, ns string) error {
-	// ctx := context.Background()
-	// log := log.FromContext(ctx).WithValues("vector-config-check-rbac", "ConfigCheck")
-
-	// log.Info("start Reconcile Vector Config Check RBAC")
-
-	if done, _, err := ensureVectorConfigCheckServiceAccount(c, ns); done {
+func (cc *ConfigCheck) ensureVectorConfigCheckRBAC() error {
+	if done, _, err := cc.ensureVectorConfigCheckServiceAccount(); done {
 		return err
 	}
 
 	return nil
 }
 
-func ensureVectorConfigCheckServiceAccount(c client.Client, ns string) (bool, ctrl.Result, error) {
-	vectorAgentServiceAccount := createVectorConfigCheckServiceAccount(ns)
+func (cc *ConfigCheck) ensureVectorConfigCheckServiceAccount() (bool, ctrl.Result, error) {
+	vectorAgentServiceAccount := cc.createVectorConfigCheckServiceAccount()
 
-	_, err := k8sutils.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, c)
+	_, err := k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, cc.Client)
 
 	return helper.ReconcileResult(err)
 }
-func ensureVectorConfigCheckConfig(c client.Client, cfg []byte, name, ns, hash string) error {
-	vectorConfigCheckSecret, err := createVectorConfigCheckConfig(cfg, name, ns, hash)
+func (cc *ConfigCheck) ensureVectorConfigCheckConfig() error {
+	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig()
 	if err != nil {
 		return err
 	}
 
-	_, err = k8sutils.CreateOrUpdateSecret(vectorConfigCheckSecret, c)
+	_, err = k8s.CreateOrUpdateSecret(vectorConfigCheckSecret, cc.Client)
 
 	return err
 }
 
-func checkVectorConfigCheckPod(c client.Client, cs *kubernetes.Clientset, name, ns, image, hash string) error {
-	vectorConfigCheckPod := createVectorConfigCheckPod(name, ns, image, hash)
+func (cc *ConfigCheck) checkVectorConfigCheckPod() error {
+	vectorConfigCheckPod := cc.createVectorConfigCheckPod()
 
-	err := k8sutils.CreatePod(vectorConfigCheckPod, c)
+	err := k8s.CreatePod(vectorConfigCheckPod, cc.Client)
 	if err != nil {
 		return err
 	}
 
-	err = getCheckResult(vectorConfigCheckPod, c, cs)
+	err = cc.getCheckResult(vectorConfigCheckPod)
 	if err != nil {
 		return err
 	}
@@ -112,15 +143,15 @@ func checkVectorConfigCheckPod(c client.Client, cs *kubernetes.Clientset, name, 
 
 func labelsForVectorConfigCheck() map[string]string {
 	return map[string]string{
-		label.ManagedByLabelKey:  "vector-operator",
-		label.NameLabelKey:       "vector-configcheck",
-		label.ComponentLabelKey:  "ConfigCheck",
-		label.VectorExcludeLabel: "true",
+		k8s.ManagedByLabelKey:  "vector-operator",
+		k8s.NameLabelKey:       "vector-configcheck",
+		k8s.ComponentLabelKey:  "ConfigCheck",
+		k8s.VectorExcludeLabel: "true",
 	}
 }
 
-func getNameVectorConfigCheck(name, hash string) string {
-	n := "configcheck-" + name + "-" + hash
+func (cc *ConfigCheck) getNameVectorConfigCheck() string {
+	n := "configcheck-" + "-" + cc.Name + "-" + cc.Hash
 	return n
 }
 
@@ -134,11 +165,11 @@ func randStringRunes() string {
 	return string(b)
 }
 
-func getCheckResult(pod *corev1.Pod, c client.Client, cs *kubernetes.Clientset) error {
+func (cc *ConfigCheck) getCheckResult(pod *corev1.Pod) error {
 	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", pod.Name)
 
 	for {
-		existing, err := k8sutils.GetPod(pod, c)
+		existing, err := k8s.GetPod(pod, cc.Client)
 		if err != nil {
 			return err
 		}
@@ -148,7 +179,7 @@ func getCheckResult(pod *corev1.Pod, c client.Client, cs *kubernetes.Clientset) 
 			log.Info("wait Validate Vector Config Result")
 			time.Sleep(5 * time.Second)
 		case "Failed":
-			reason, err := k8sutils.GetPodLogs(pod, cs)
+			reason, err := k8s.GetPodLogs(pod, cc.ClientSet)
 			if err != nil {
 				return err
 			}

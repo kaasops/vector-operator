@@ -21,13 +21,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createVectorConfigCheckServiceAccount(ns string) *corev1.ServiceAccount {
+func (cc *ConfigCheck) createVectorConfigCheckServiceAccount() *corev1.ServiceAccount {
 	labels := labelsForVectorConfigCheck()
 
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vector-configcheck",
-			Namespace: ns,
+			Namespace: cc.Namespace,
 			Labels:    labels,
 		},
 	}

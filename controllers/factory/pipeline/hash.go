@@ -19,7 +19,7 @@ package pipeline
 import (
 	"encoding/json"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 )
 
 func (ctrl *Controller) GetSpecHash() (*uint32, error) {
@@ -27,7 +27,7 @@ func (ctrl *Controller) GetSpecHash() (*uint32, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash := utils.GetHash(a)
+	hash := hash.Get(a)
 	return &hash, nil
 }
 

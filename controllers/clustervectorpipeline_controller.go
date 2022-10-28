@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/go-logr/logr"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
@@ -57,9 +56,14 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 
 	log.Info("start Reconcile ClusterVectorPipeline")
 
-	// cvp, done, result, err := r.findClusterVectorPipelineCustomResourceInstance(ctx, log, req)
-	// if done {
-	// 	return result, err
+	// cvp, err := r.findClusterVectorPipelineCustomResourceInstance(ctx, req)
+	// if err != nil {
+	// 	log.Error(err, "Failed to get Cluster Vector Pipeline")
+	// 	return ctrl.Result{}, err
+	// }
+	// if cvp == nil {
+	// 	log.Info("Cluster Vector Pipeline CR not found. Ignoring since object must be deleted")
+	// 	return ctrl.Result{}, nil
 	// }
 	// hash, err := vectorpipeline.GetSpecHash(cvp.Spec)
 	// if err != nil {
@@ -98,24 +102,17 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, log logr.Logger, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, bool, ctrl.Result, error) {
+func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {
 	// fetch the master instance
 	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
 	err := r.Get(ctx, req.NamespacedName, cvp)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			log.Info("ClusterVectorPipeline CR not found. Ignoring since object must be deleted")
-			return nil, true, ctrl.Result{}, nil
+			return nil, nil
 		}
-		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get Vector")
-		return nil, true, ctrl.Result{}, err
+		return nil, err
 	}
-	log.Info("Get Vector Pipeline" + cvp.Name)
-	return cvp, false, ctrl.Result{}, nil
+	return cvp, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

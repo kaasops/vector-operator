@@ -17,13 +17,7 @@ limitations under the License.
 package config
 
 import (
-	"context"
-	"encoding/json"
-
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -44,30 +38,14 @@ var (
 	}
 )
 
-func Get(ctx context.Context, v *vectorv1alpha1.Vector, c client.Client) ([]byte, error) {
-	vCtrl := pipeline.NewController(ctx, c, nil)
-	pipelines, err := vCtrl.SelectSucceesed()
+func (cfg *Config) GenerateVectorConfig() error {
+	vectorConfig := vector.New(cfg.vaCtrl.Vector.Spec.Agent.DataDir, cfg.vaCtrl.Vector.Spec.Agent.ApiEnabled)
+
+	sources, transforms, sinks, err := cfg.getComponents()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	cfg, err := GenerateVectorConfig(v, pipelines)
-	if err != nil {
-		return nil, err
-	}
-
-	return VectorConfigToJson(cfg)
-}
-
-func GenerateVectorConfig(
-	v *vectorv1alpha1.Vector,
-	vCtrls []pipeline.Controller,
-) (*vector.VectorConfig, error) {
-	cfg := vector.New(v.Spec.Agent.DataDir, v.Spec.Agent.ApiEnabled)
-	sources, transforms, sinks, err := getComponents(vCtrls)
-	if err != nil {
-		return nil, err
-	}
 	if len(sources) == 0 {
 		sources = sourceDefault
 	}
@@ -75,19 +53,21 @@ func GenerateVectorConfig(
 		sinks = sinkDefault
 	}
 
-	cfg.Sinks = sinks
-	cfg.Sources = sources
-	cfg.Transforms = transforms
+	vectorConfig.Sinks = sinks
+	vectorConfig.Sources = sources
+	vectorConfig.Transforms = transforms
 
-	return cfg, nil
+	cfg.VectorConfig = vectorConfig
+
+	return nil
 }
 
-func getComponents(vCtrls []pipeline.Controller) (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
+func (cfg *Config) getComponents() (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
 	sourcesMap := make(map[string]interface{})
 	transformsMap := make(map[string]interface{})
 	sinksMap := make(map[string]interface{})
 
-	for _, vCtrl := range vCtrls {
+	for _, vCtrl := range cfg.pCtrls {
 		sources, err := vCtrl.GetSources(nil)
 		if err != nil {
 			return nil, nil, nil, err
@@ -123,13 +103,4 @@ func getComponents(vCtrls []pipeline.Controller) (map[string]interface{}, map[st
 		}
 	}
 	return sourcesMap, transformsMap, sinksMap, nil
-}
-
-func VectorConfigToJson(conf *vector.VectorConfig) ([]byte, error) {
-	data, err := json.Marshal(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
 }

@@ -21,17 +21,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createVectorConfigCheckConfig(cfg []byte, name, ns, hash string) (*corev1.Secret, error) {
+func (cc *ConfigCheck) createVectorConfigCheckConfig() (*corev1.Secret, error) {
 	labels := labelsForVectorConfigCheck()
 
 	config := map[string][]byte{
-		"agent.json": cfg,
+		"agent.json": cc.Config,
 	}
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getNameVectorConfigCheck(name, hash),
-			Namespace: ns,
+			Name:      cc.getNameVectorConfigCheck(),
+			Namespace: cc.Namespace,
 			Labels:    labels,
 		},
 		Data: config,

@@ -21,23 +21,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createVectorConfigCheckPod(name, ns, image, hash string) *corev1.Pod {
+func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 	labels := labelsForVectorConfigCheck()
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getNameVectorConfigCheck(name, hash),
-			Namespace: ns,
+			Name:      cc.getNameVectorConfigCheck(),
+			Namespace: cc.Namespace,
 			Labels:    labels,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: "vector-configcheck",
-			Volumes:            generateVectorConfigCheckVolume(name, hash),
+			Volumes:            cc.generateVectorConfigCheckVolume(),
 			SecurityContext:    &corev1.PodSecurityContext{},
 			Containers: []corev1.Container{
 				{
 					Name:  "config-check",
-					Image: image,
+					Image: cc.Image,
 					Args:  []string{"validate", "/etc/vector/*.json"},
 					Env:   generateVectorConfigCheckEnvs(),
 					Ports: []corev1.ContainerPort{
@@ -47,7 +47,7 @@ func createVectorConfigCheckPod(name, ns, image, hash string) *corev1.Pod {
 							Protocol:      "TCP",
 						},
 					},
-					VolumeMounts: generateVectorConfigCheckVolumeMounts(),
+					VolumeMounts: cc.generateVectorConfigCheckVolumeMounts(),
 				},
 			},
 			RestartPolicy: "Never",
@@ -57,13 +57,13 @@ func createVectorConfigCheckPod(name, ns, image, hash string) *corev1.Pod {
 	return pod
 }
 
-func generateVectorConfigCheckVolume(name, hash string) []corev1.Volume {
+func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 	volume := []corev1.Volume{
 		{
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: getNameVectorConfigCheck(name, hash),
+					SecretName: cc.getNameVectorConfigCheck(),
 				},
 			},
 		},
@@ -112,7 +112,7 @@ func generateVectorConfigCheckVolume(name, hash string) []corev1.Volume {
 	return volume
 }
 
-func generateVectorConfigCheckVolumeMounts() []corev1.VolumeMount {
+func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMount {
 	volumeMount := []corev1.VolumeMount{
 		{
 			Name:      "config",

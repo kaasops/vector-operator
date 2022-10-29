@@ -26,6 +26,7 @@ import (
 func TestGet(t *testing.T) {
 	hashCase := func(bytes []byte, want uint32) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Helper()
 			req := require.New(t)
 
 			result := hash.Get(bytes)

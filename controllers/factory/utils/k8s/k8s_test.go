@@ -361,6 +361,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 func TestCreatePod(t *testing.T) {
 	createPodCase := func(objInit, obj *corev1.Pod, want error) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Helper()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
@@ -410,6 +411,7 @@ func TestCreatePod(t *testing.T) {
 func TestGetPod(t *testing.T) {
 	getPodCase := func(objInit, obj, wantPod *corev1.Pod, want error) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Helper()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
@@ -455,6 +457,7 @@ func TestGetPod(t *testing.T) {
 func TestUpdateStatus(t *testing.T) {
 	updateStatusCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Helper()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()

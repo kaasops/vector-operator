@@ -112,7 +112,9 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		config.FillForVectorPipeline(pCtrl)
+		if err := config.FillForVectorPipeline(pCtrl); err != nil {
+			return ctrl.Result{}, err
+		}
 
 		// Get Config in Json ([]byte)
 		byteConfig, err := config.GetByteConfig()

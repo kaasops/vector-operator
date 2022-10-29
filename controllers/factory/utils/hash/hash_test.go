@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package hash
+package hash_test
 
 import (
 	"testing"
 
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +28,7 @@ func TestGet(t *testing.T) {
 		return func(t *testing.T) {
 			req := require.New(t)
 
-			result := Get(bytes)
+			result := hash.Get(bytes)
 			req.Equal(result, want)
 		}
 	}

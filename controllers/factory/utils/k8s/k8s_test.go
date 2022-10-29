@@ -14,7 +14,7 @@
 // limitations under the License.
 // */
 
-package k8s
+package k8s_test
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	// . "github.com/onsi/ginkgo/v2"
 	// . "github.com/onsi/gomega"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +46,7 @@ func TestCreatePod(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreatePod(obj, cl)
+			err := k8s.CreatePod(obj, cl)
 			req.Equal(err, want)
 		}
 	}
@@ -94,7 +95,7 @@ func TestGetPod(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			result, err := GetPod(obj, cl)
+			result, err := k8s.GetPod(obj, cl)
 			if result != nil {
 				req.Equal(result.ObjectMeta, wantPod.ObjectMeta)
 			}
@@ -139,7 +140,7 @@ func TestUpdateStatus(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := UpdateStatus(context.Background(), obj, cl)
+			err := k8s.UpdateStatus(context.Background(), obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -226,7 +227,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateService(obj, cl)
+			err := k8s.CreateOrUpdateService(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -276,7 +277,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateSecret(obj, cl)
+			err := k8s.CreateOrUpdateSecret(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -325,7 +326,7 @@ func TestCreateOrUpdateDaemonSet(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateDaemonSet(obj, cl)
+			err := k8s.CreateOrUpdateDaemonSet(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -374,7 +375,7 @@ func TestCreateOrUpdateStatefulSet(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateStatefulSet(obj, cl)
+			err := k8s.CreateOrUpdateStatefulSet(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -423,7 +424,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateServiceAccount(obj, cl)
+			err := k8s.CreateOrUpdateServiceAccount(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -472,7 +473,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateClusterRole(obj, cl)
+			err := k8s.CreateOrUpdateClusterRole(obj, cl)
 
 			req.Equal(err, want)
 		}
@@ -521,7 +522,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := CreateOrUpdateClusterRoleBinding(obj, cl)
+			err := k8s.CreateOrUpdateClusterRoleBinding(obj, cl)
 
 			req.Equal(err, want)
 		}

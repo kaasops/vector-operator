@@ -142,8 +142,7 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Data = desired.Data
 			existing.Labels = desired.Labels
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
 	}
 	if err != nil && !errors.IsAlreadyExists(err) {
@@ -167,8 +166,7 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
 	}
 	if err != nil && !errors.IsAlreadyExists(err) {
@@ -192,8 +190,7 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
 	}
 	if err != nil && !errors.IsAlreadyExists(err) {
@@ -235,8 +232,7 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 		}
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Rules = desired.Rules
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
 	}
 	if err != nil && !errors.IsAlreadyExists(err) {
@@ -260,8 +256,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
 	}
 	if err != nil && !errors.IsAlreadyExists(err) {

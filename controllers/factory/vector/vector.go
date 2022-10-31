@@ -17,18 +17,17 @@ limitations under the License.
 package vector
 
 import (
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/mitchellh/mapstructure"
 )
 
-func New(dataDir string, apiEnabled bool) *VectorConfig {
+func New(vector *vectorv1alpha1.Vector) *VectorConfig {
 	sources := []Source{}
 	sinks := []Sink{}
 
 	return &VectorConfig{
-		DataDir: dataDir,
-		Api: &ApiSpec{
-			Enabled: &apiEnabled,
-		},
+		DataDir: vector.Spec.Agent.DataDir,
+		Api:     vector.Spec.Agent.Api,
 		Sources: sources,
 		Sinks:   sinks,
 	}

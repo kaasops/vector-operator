@@ -20,7 +20,7 @@ spec:
       name: Age
       type: date
     - jsonPath: .status.configCheckResult
-      name: Status
+      name: Valid
       type: boolean
     name: v1alpha1
     schema:
@@ -46,8 +46,17 @@ spec:
                 description: DisableAggregation DisableAggregation bool `json:"disableAggregation,omitempty"`
                   Vector Agent
                 properties:
-                  ApiEnabled:
-                    type: boolean
+                  api:
+                    description: ApiSpec is the Schema for the Vector Agent GraphQL
+                      API - https://vector.dev/docs/reference/api/
+                    properties:
+                      address:
+                        type: string
+                      enabled:
+                        type: boolean
+                      playground:
+                        type: boolean
+                    type: object
                   dataDir:
                     type: string
                   image:

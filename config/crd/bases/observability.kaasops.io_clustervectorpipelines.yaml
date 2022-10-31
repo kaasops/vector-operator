@@ -22,7 +22,7 @@ spec:
       name: Age
       type: date
     - jsonPath: .status.configCheckResult
-      name: Status
+      name: Valid
       type: boolean
     name: v1alpha1
     schema:

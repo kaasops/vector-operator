@@ -46,9 +46,16 @@ type VectorAgent struct {
 	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
 	Image       string          `json:"image,omitempty"`
 	DataDir     string          `json:"dataDir,omitempty"`
-	ApiEnabled  bool            `json:"ApiEnabled,omitempty"`
+	Api         *ApiSpec        `json:"api,omitempty"`
 	Service     bool            `json:"service,omitempty"`
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+}
+
+// ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/
+type ApiSpec struct {
+	Address    string `json:"address,omitempty"`
+	Enabled    bool   `json:"enabled,omitempty"`
+	Playground bool   `json:"playground,omitempty"`
 }
 
 // VectorAggregator is the Schema for the Vector Aggregator
@@ -62,7 +69,7 @@ type VectorAggregator struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-//+kubebuilder:printcolumn:name="Status",type="boolean",JSONPath=".status.configCheckResult"
+//+kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 
 // Vector is the Schema for the vectors API
 type Vector struct {

@@ -37,7 +37,7 @@ var (
 )
 
 func (cfg *Config) GenerateVectorConfig() error {
-	vectorConfig := vector.New(cfg.vaCtrl.Vector.Spec.Agent.DataDir, cfg.vaCtrl.Vector.Spec.Agent.ApiEnabled)
+	vectorConfig := vector.New(cfg.vaCtrl.Vector)
 
 	sources, transforms, sinks, err := cfg.getComponents()
 	if err != nil {

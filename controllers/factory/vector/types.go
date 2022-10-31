@@ -16,18 +16,16 @@ limitations under the License.
 
 package vector
 
-type VectorConfig struct {
-	DataDir    string      `mapstructure:"data_dir"`
-	Api        *ApiSpec    `mapstructure:"api"`
-	Sources    []Source    `mapstructure:"sources"`
-	Transforms []Transform `mapstructure:"transforms"`
-	Sinks      []Sink      `mapstructure:"sinks"`
-}
+import (
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+)
 
-type ApiSpec struct {
-	Enabled    *bool   `json:"enabled,omitempty"`
-	Address    *string `json:"address,omitempty"`
-	Playground *bool   `json:"playground,omitempty"`
+type VectorConfig struct {
+	DataDir    string                  `mapstructure:"data_dir"`
+	Api        *vectorv1alpha1.ApiSpec `mapstructure:"api"`
+	Sources    []Source                `mapstructure:"sources"`
+	Transforms []Transform             `mapstructure:"transforms"`
+	Sinks      []Sink                  `mapstructure:"sinks"`
 }
 
 type Source struct {

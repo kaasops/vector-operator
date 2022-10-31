@@ -23,6 +23,7 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	"github.com/mitchellh/mapstructure"
 )
 
 type Config struct {
@@ -77,10 +78,52 @@ func (cfg *Config) FillForVectorPipeline(vCtrl *pipeline.Controller) error {
 }
 
 func (cfg *Config) GetByteConfig() ([]byte, error) {
-	data, err := json.Marshal(cfg.VectorConfig)
+	cfgMap, err := CfgToMap(*cfg.VectorConfig)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(cfgMap)
 	if err != nil {
 		return nil, err
 	}
 
 	return data, nil
+}
+
+func CfgToMap(cfg vector.VectorConfig) (cfgMap map[string]interface{}, err error) {
+	sources := make(map[string]interface{})
+	transforms := make(map[string]interface{})
+	sinks := make(map[string]interface{})
+	for _, source := range cfg.Sources {
+		spec, err := vector.Mapper(source)
+		if err != nil {
+			return nil, err
+		}
+		sources[source.Name] = spec
+	}
+	for _, transform := range cfg.Transforms {
+		spec, err := vector.Mapper(transform)
+		if err != nil {
+			return nil, err
+		}
+		transforms[transform.Name] = spec
+	}
+	for _, sink := range cfg.Sinks {
+		spec, err := vector.Mapper(sink)
+		if err != nil {
+			return nil, err
+		}
+		sinks[sink.Name] = spec
+	}
+
+	err = mapstructure.Decode(cfg, &cfgMap)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: remove hardcoded map keys
+	cfgMap["sources"] = sources
+	cfgMap["transforms"] = transforms
+	cfgMap["sinks"] = sinks
+
+	return cfgMap, nil
 }

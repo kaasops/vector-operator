@@ -142,6 +142,7 @@ func labelsForVectorConfigCheck() map[string]string {
 
 func (cc *ConfigCheck) getNameVectorConfigCheck() string {
 	n := "configcheck-" + "-" + cc.Name + "-" + cc.Hash
+
 	return n
 }
 
@@ -173,7 +174,7 @@ func (cc *ConfigCheck) getCheckResult(pod *corev1.Pod) error {
 			if err != nil {
 				return err
 			}
-			return &ErrConfigCheck{
+			return &ConfigCheckError{
 				Reason: reason,
 			}
 		case "Succeeded":

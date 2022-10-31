@@ -54,27 +54,6 @@ func New(ctx context.Context, config []byte, c client.Client, cs *kubernetes.Cli
 	}
 }
 
-// func (cfg *Config) StartCheck() error {
-
-// 	log := log.FromContext(context.TODO()).WithValues("ConfigCheck Vector Pipeline", cfg.vaCtrl.Vector.Name)
-
-// 	configCheck := configcheck.New(cfg.Ctx, cfg.ByteConfig, cfg.vaCtrl.Client, cfg.vaCtrl.ClientSet, cfg.Name, cfg.vaCtrl.Vector.Namespace, cfg.vaCtrl.Vector.Spec.Agent.Image)
-
-// 	err := configCheck.Run()
-// 	if _, ok := err.(*configcheck.ErrConfigCheck); ok {
-// 		if err := cfg.vaCtrl.SetFailedStatus(cfg.Ctx, err); err != nil {
-// 			return err
-// 		}
-// 		log.Error(err, "Vector Config has error")
-// 		return nil
-// 	}
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return cfg.vaCtrl.SetSucceesStatus(cfg.Ctx)
-// }
-
 func (cc *ConfigCheck) Run() error {
 	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", cc.Name)
 

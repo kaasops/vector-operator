@@ -54,7 +54,7 @@ func TestGet(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range testCases {
 		t.Run(tc.name, hashCase(tc.bytes, tc.want))
 	}

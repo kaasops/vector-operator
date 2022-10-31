@@ -75,7 +75,7 @@
     </tr>
 </table>
 
-## ApiSpec
+## Api Spec
 <table>
 <tr>
       <td rowspan="4"><a href="https://vector.dev/docs/reference/api/">api</a></td>

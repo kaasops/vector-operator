@@ -24,6 +24,7 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -175,25 +176,27 @@ func (cc *ConfigCheck) cleanup() error {
 	}
 
 	podlist := corev1.PodList{}
-	secretList := corev1.SecretList{}
 	err = cc.Client.List(cc.Ctx, &podlist, &listOpts)
-	if err != nil {
-		return err
-	}
-	err = cc.Client.List(cc.Ctx, &secretList, &listOpts)
 	if err != nil {
 		return err
 	}
 	for _, pod := range podlist.Items {
 		if pod.Status.Phase == "Succeeded" {
+			for _, v := range pod.Spec.Volumes {
+				if v.Name == "config" {
+					secret := &corev1.Secret{}
+					secretName := v.Secret.SecretName
+					if err := cc.Client.Get(cc.Ctx, types.NamespacedName{Name: secretName, Namespace: pod.Namespace}, secret); err != nil {
+						return err
+					}
+					if err := cc.Client.Delete(cc.Ctx, secret); err != nil {
+						return err
+					}
+				}
+			}
 			if err := cc.Client.Delete(cc.Ctx, &pod); err != nil {
 				return err
 			}
-		}
-	}
-	for _, secret := range secretList.Items {
-		if err := cc.Client.Delete(cc.Ctx, &secret); err != nil {
-			return err
 		}
 	}
 	return nil

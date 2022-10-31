@@ -21,18 +21,16 @@ import (
 )
 
 var (
-	sourceDefault = map[string]interface{}{
-		"defaultSource": map[string]string{
-			"type": "kubernetes_logs",
-		},
+	sourceDefault = vector.Source{
+		Name: "defaultSource",
+		Type: "kubernetes_logs",
 	}
-
-	rate        int32 = 100
-	sinkDefault       = map[string]interface{}{
-		"defaultSink": map[string]interface{}{
-			"type":                "blackhole",
-			"inputs":              []string{"defaultSource"},
-			"rate":                rate,
+	sinkDefault = vector.Sink{
+		Name:   "defaultSink",
+		Type:   "blackhole",
+		Inputs: []string{"defaultSource"},
+		Options: map[string]interface{}{
+			"rate":                100,
 			"print_interval_secs": 60,
 		},
 	}
@@ -47,10 +45,10 @@ func (cfg *Config) GenerateVectorConfig() error {
 	}
 
 	if len(sources) == 0 {
-		sources = sourceDefault
+		sources = []vector.Source{sourceDefault}
 	}
 	if len(sinks) == 0 {
-		sinks = sinkDefault
+		sinks = []vector.Sink{sinkDefault}
 	}
 
 	vectorConfig.Sinks = sinks
@@ -62,45 +60,39 @@ func (cfg *Config) GenerateVectorConfig() error {
 	return nil
 }
 
-func (cfg *Config) getComponents() (map[string]interface{}, map[string]interface{}, map[string]interface{}, error) {
-	sourcesMap := make(map[string]interface{})
-	transformsMap := make(map[string]interface{})
-	sinksMap := make(map[string]interface{})
+func (cfg *Config) getComponents() (sources []vector.Source, transforms []vector.Transform, sinks []vector.Sink, err error) {
 
 	for _, vCtrl := range cfg.pCtrls {
-		sources, err := vCtrl.GetSources(nil)
+		pipelineSources, err := vCtrl.GetSources(nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		for _, source := range sources {
-			spec, err := vector.Mapper(source)
+		for _, source := range pipelineSources {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			sourcesMap[source.Name] = spec
+			sources = append(sources, source)
 		}
-		transforms, err := vCtrl.GetTransforms()
+		pipelineTransforms, err := vCtrl.GetTransforms()
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		for _, transform := range transforms {
-			spec, err := vector.Mapper(transform)
+		for _, transform := range pipelineTransforms {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			transformsMap[transform.Name] = spec
+			transforms = append(transforms, transform)
 		}
-		sinks, err := vCtrl.GetSinks()
+		pipelineSinks, err := vCtrl.GetSinks()
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		for _, sink := range sinks {
-			spec, err := vector.Mapper(sink)
+		for _, sink := range pipelineSinks {
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			sinksMap[sink.Name] = spec
+			sinks = append(sinks, sink)
 		}
 	}
-	return sourcesMap, transformsMap, sinksMap, nil
+	return sources, transforms, sinks, nil
 }

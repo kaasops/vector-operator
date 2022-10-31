@@ -107,7 +107,9 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	config.FillForVectorAgent()
+	if err := config.FillForVectorAgent(); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Get Config in Json ([]byte)
 	byteConfig, err := config.GetByteConfig()

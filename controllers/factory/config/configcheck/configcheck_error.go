@@ -20,11 +20,11 @@ type error interface {
 	Error() string
 }
 
-type ErrConfigCheck struct {
+type ConfigCheckError struct {
 	Reason string
 	Err    error
 }
 
-func (e *ErrConfigCheck) Error() string {
+func (e *ConfigCheckError) Error() string {
 	return e.Reason
 }

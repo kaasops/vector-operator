@@ -47,8 +47,9 @@ func getInitObjectMeta() metav1.ObjectMeta {
 
 var reconcileObjectCase = func(objInit, obj interface{}, want error) func(t *testing.T) {
 	return func(t *testing.T) {
-		t.Parallel()
 		t.Helper()
+		t.Parallel()
+
 		req := require.New(t)
 
 		switch obj.(type) {
@@ -117,8 +118,6 @@ var nameRequeriedError = apierrors.NewInvalid(
 )
 
 func TestCreateOrUpdateService(t *testing.T) {
-	t.Parallel()
-
 	initObj := &corev1.Service{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -166,14 +165,13 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range secriveCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateSecret(t *testing.T) {
-	t.Parallel()
-
 	initObj := &corev1.Secret{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -221,14 +219,13 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range secretCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateDaemonSet(t *testing.T) {
-	t.Parallel()
-
 	initObj := &appsv1.DaemonSet{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -276,14 +273,13 @@ func TestCreateOrUpdateDaemonSet(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range daemonSetCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateStatefulSet(t *testing.T) {
-	t.Parallel()
-
 	initObj := &appsv1.StatefulSet{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -331,14 +327,13 @@ func TestCreateOrUpdateStatefulSet(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range statefulSetCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateServiceAccount(t *testing.T) {
-	t.Parallel()
-
 	initObj := &corev1.ServiceAccount{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -386,14 +381,13 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range serviceAccountCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateClusterRole(t *testing.T) {
-	t.Parallel()
-
 	initObj := &rbacv1.ClusterRole{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -441,14 +435,13 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range clusterRoleCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
-	t.Parallel()
-
 	initObj := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: getInitObjectMeta(),
 	}
@@ -496,18 +489,18 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range clusterRoleBindingCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestCreatePod(t *testing.T) {
-	t.Parallel()
-
 	createPodCase := func(objInit, obj *corev1.Pod, want error) func(t *testing.T) {
+		t.Parallel()
 		return func(t *testing.T) {
-			t.Parallel()
 			t.Helper()
+
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
@@ -553,18 +546,18 @@ func TestCreatePod(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range podCases {
 		t.Run(tc.name, createPodCase(initObj, tc.obj, tc.err))
 	}
 }
 
 func TestGetPod(t *testing.T) {
-	t.Parallel()
-
 	getPodCase := func(objInit, obj, wantPod *corev1.Pod, want error) func(t *testing.T) {
+		t.Parallel()
 		return func(t *testing.T) {
-			t.Parallel()
 			t.Helper()
+
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
@@ -622,18 +615,18 @@ func TestGetPod(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, tc := range podCases {
 		t.Run(tc.name, getPodCase(initObj, tc.obj, tc.wantObj, tc.err))
 	}
 }
 
 func TestUpdateStatus(t *testing.T) {
-	t.Parallel()
-
 	updateStatusCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
+		t.Parallel()
 		return func(t *testing.T) {
-			t.Parallel()
 			t.Helper()
+
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
@@ -697,22 +690,7 @@ func TestUpdateStatus(t *testing.T) {
 		},
 	}
 
-	// objCase5 := &appsv1.Deployment{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      "test",
-	// 		Namespace: "test-namespace",
-	// 	},
-	// 	Status: appsv1.DeploymentStatus{
-	// 		Replicas: 10,
-	// 	},
-	// }
-	// gvrCase5 := schema.GroupVersionResource{
-	// 	Group:    "apps",
-	// 	Version:  "v1",
-	// 	Resource: "deployments",
-	// }
-	// errorCase5 := apierrors.NewNotFound(gvrCase5.GroupResource(), objCase5.ObjectMeta.Name)
-
+	t.Parallel()
 	for _, tc := range testCases {
 		t.Run(tc.name, updateStatusCase(tc.initObj, tc.updateObj, tc.err))
 	}

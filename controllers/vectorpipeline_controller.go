@@ -127,7 +127,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		// Start ConfigCheck
 		err = configCheck.Run()
-		if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+		if _, ok := err.(*configcheck.ConfigCheckError); ok {
 			if err := pCtrl.SetFailedStatus(err); err != nil {
 				return ctrl.Result{}, err
 			}

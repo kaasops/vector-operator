@@ -18,7 +18,7 @@ package vectoragent
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 )
 
 func (ctrl *Controller) SetDefault() {
@@ -27,13 +27,16 @@ func (ctrl *Controller) SetDefault() {
 	}
 
 	if ctrl.Vector.Spec.Agent.Resources.Requests == nil {
-		ctrl.Vector.Spec.Agent.Resources.Requests[corev1.ResourceMemory] = resource.MustParse("200Mi")
-		ctrl.Vector.Spec.Agent.Resources.Requests[corev1.ResourceCPU] = resource.MustParse("100m")
+		ctrl.Vector.Spec.Agent.Resources.Requests = corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("200Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("100m"),
+		}
 	}
-
 	if ctrl.Vector.Spec.Agent.Resources.Limits == nil {
-		ctrl.Vector.Spec.Agent.Resources.Limits[corev1.ResourceMemory] = resource.MustParse("1000Mi")
-		ctrl.Vector.Spec.Agent.Resources.Limits[corev1.ResourceCPU] = resource.MustParse("1000m")
+		ctrl.Vector.Spec.Agent.Resources.Limits = corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		}
 	}
 
 	if ctrl.Vector.Spec.Agent.Api.Address == "" {

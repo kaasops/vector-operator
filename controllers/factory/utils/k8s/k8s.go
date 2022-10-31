@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -74,6 +75,29 @@ func GetPod(pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func DeletePod(pod *corev1.Pod, c client.Client) error {
+	if err := c.Delete(context.TODO(), pod); err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetSecret(namespacedName types.NamespacedName, c client.Client) (*corev1.Secret, error) {
+	result := &corev1.Secret{}
+	err := c.Get(context.TODO(), namespacedName, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DeleteSecret(secret *corev1.Secret, c client.Client) error {
+	if err := c.Delete(context.TODO(), secret); err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetPodLogs(pod *corev1.Pod, cs *kubernetes.Clientset) (string, error) {

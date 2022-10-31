@@ -184,17 +184,20 @@ func (cc *ConfigCheck) cleanup() error {
 		if pod.Status.Phase == "Succeeded" {
 			for _, v := range pod.Spec.Volumes {
 				if v.Name == "config" {
-					secret := &corev1.Secret{}
-					secretName := v.Secret.SecretName
-					if err := cc.Client.Get(cc.Ctx, types.NamespacedName{Name: secretName, Namespace: pod.Namespace}, secret); err != nil {
+					nn := types.NamespacedName{
+						Name:      v.Secret.SecretName,
+						Namespace: pod.Namespace,
+					}
+					secret, err := k8s.GetSecret(nn, cc.Client)
+					if err != nil {
 						return err
 					}
-					if err := cc.Client.Delete(cc.Ctx, secret); err != nil {
+					if err := k8s.DeleteSecret(secret, cc.Client); err != nil {
 						return err
 					}
 				}
 			}
-			if err := cc.Client.Delete(cc.Ctx, &pod); err != nil {
+			if err := k8s.DeletePod(&pod, cc.Client); err != nil {
 				return err
 			}
 		}

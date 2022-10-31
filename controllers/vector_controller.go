@@ -60,27 +60,27 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	log.Info("start Reconcile Vector")
 
-	v, err := r.findVectorCustomResourceInstance(ctx, req)
+	vectorCR, err := r.findVectorCustomResourceInstance(ctx, req)
 	if err != nil {
 		log.Error(err, "Failed to get Vector")
 		return ctrl.Result{}, err
 	}
-	if v == nil {
+	if vectorCR == nil {
 		log.Info("Vector CR not found. Ignoring since object must be deleted")
 		return ctrl.Result{}, nil
 	}
 
-	if v.Spec.Agent.DataDir == "" {
-		v.Spec.Agent.DataDir = "/vector-data-dir"
+	if vectorCR.Spec.Agent.DataDir == "" {
+		vectorCR.Spec.Agent.DataDir = "/vector-data-dir"
 	}
 
-	return r.CreateOrUpdateVector(ctx, v)
+	return r.CreateOrUpdateVector(ctx, vectorCR)
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.Vector, error) {
 	// fetch the master instance
-	v := &vectorv1alpha1.Vector{}
-	err := r.Get(ctx, req.NamespacedName, v)
+	vectorCR := &vectorv1alpha1.Vector{}
+	err := r.Get(ctx, req.NamespacedName, vectorCR)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
@@ -88,7 +88,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 		return nil, err
 	}
 
-	return v, nil
+	return vectorCR, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

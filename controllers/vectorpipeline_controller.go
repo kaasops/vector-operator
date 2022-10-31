@@ -106,6 +106,9 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		// Init Controller for Vector Agent
 		vaCtrl := vectoragent.NewController(&vector, r.Client, r.Clientset)
+		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
+			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
+		}
 
 		// Get Vector Config file
 		config, err := config.New(ctx, vaCtrl)

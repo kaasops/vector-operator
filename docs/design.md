@@ -24,7 +24,7 @@ For each Vector resource, the Operator adds:
 - Add features for compress Vector configuration file. (Delete dublicates sources/Transforms/Sinks. Compress to gzip)
 
 ## Specification
-Specification access to [this]() page
+Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vector-spec) page
 
 
 # VectorPipeline
@@ -36,7 +36,7 @@ All `VectorPipelines`, with validated configuration file, added to Vector config
 - For source field `extra_namespace_label_selector` cannot be installed. The operator control this field and sets the namespace there, where VectorPipeline is defined.
 
 ## Specification
-Specification access to [this]() page
+Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page
 
 # ClusterVectorPipeline
 The `ClusterVectorPipeline` CRD defines Sources, Transforms and Sinks rules for Vector.
@@ -45,4 +45,4 @@ All `ClusterVectorPipelines`, with validated configuration file, added to Vector
 ClusterVectorPipelines works like VectorPipeline, but without restrictions.
 
 ## Specification
-Specification access to [this]() page
+Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page

@@ -27,7 +27,7 @@ func New(vector *vectorv1alpha1.Vector) *VectorConfig {
 
 	return &VectorConfig{
 		DataDir: vector.Spec.Agent.DataDir,
-		Api:     vector.Spec.Agent.Api,
+		Api:     &vector.Spec.Agent.Api,
 		Sources: sources,
 		Sinks:   sinks,
 	}

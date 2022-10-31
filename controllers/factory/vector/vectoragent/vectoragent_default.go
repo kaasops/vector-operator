@@ -16,7 +16,26 @@ limitations under the License.
 
 package vectoragent
 
+import (
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
 func (ctrl *Controller) SetDefault() {
+	if ctrl.Vector.Spec.Agent.Image == "" {
+		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.24.0-distroless-libc"
+	}
+
+	if ctrl.Vector.Spec.Agent.Resources.Requests == nil {
+		ctrl.Vector.Spec.Agent.Resources.Requests[corev1.ResourceMemory] = resource.MustParse("200Mi")
+		ctrl.Vector.Spec.Agent.Resources.Requests[corev1.ResourceCPU] = resource.MustParse("100m")
+	}
+
+	if ctrl.Vector.Spec.Agent.Resources.Limits == nil {
+		ctrl.Vector.Spec.Agent.Resources.Limits[corev1.ResourceMemory] = resource.MustParse("1000Mi")
+		ctrl.Vector.Spec.Agent.Resources.Limits[corev1.ResourceCPU] = resource.MustParse("1000m")
+	}
+
 	if ctrl.Vector.Spec.Agent.Api.Address == "" {
 		ctrl.Vector.Spec.Agent.Api.Address = "0.0.0.0:8686"
 	}

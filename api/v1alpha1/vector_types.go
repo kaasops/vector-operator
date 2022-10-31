@@ -44,11 +44,57 @@ type VectorStatus struct {
 // VectorAgent is the Schema for the Vector Agent
 type VectorAgent struct {
 	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
-	Image       string          `json:"image,omitempty"`
-	DataDir     string          `json:"dataDir,omitempty"`
-	Api         *ApiSpec        `json:"api,omitempty"`
-	Service     bool            `json:"service,omitempty"`
+	// Image - docker image settings for Vector Agent
+	// if no specified operator uses default config version
+	// +optional
+	Image string `json:"image,omitempty"`
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
+	// to use for pulling images from registries
+	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// +optional
+	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not specified - default setting will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +optional
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	// Affinity If specified, the pod's scheduling constraints.
+	// +optional
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	// SecurityContext holds pod-level security attributes and common container settings.
+	// This defaults to the default PodSecurityContext.
+	// +optional
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
+	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	// SchedulerName - defines kubernetes scheduler name
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// RuntimeClassName - defines runtime class for kubernetes pod.
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// HostAliases provides mapping between ip and hostnames,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// +optional
+	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
+	// PriorityClassName assigned to the Pods
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	DataDir string  `json:"dataDir,omitempty"`
+	Api     ApiSpec `json:"api,omitempty"`
+	Service bool    `json:"service,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/

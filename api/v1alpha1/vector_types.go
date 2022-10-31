@@ -91,6 +91,8 @@ type VectorAgent struct {
 	// HostNetwork controls whether the pod may use the node network namespace
 	// +optional
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// Env that will be added to Vector pod
+	Env []v1.EnvVar `json:"env,omitempty"`
 
 	DataDir string  `json:"dataDir,omitempty"`
 	Api     ApiSpec `json:"api,omitempty"`

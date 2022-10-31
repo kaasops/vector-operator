@@ -27,7 +27,7 @@ import (
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:shortName=cvp
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-//+kubebuilder:printcolumn:name="Status",type="boolean",JSONPath=".status.configCheckResult"
+//+kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 
 // ClusterVectorPipeline is the Schema for the clustervectorpipelines API
 type ClusterVectorPipeline struct {

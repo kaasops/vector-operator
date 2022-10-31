@@ -70,10 +70,6 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	if vectorCR.Spec.Agent.DataDir == "" {
-		vectorCR.Spec.Agent.DataDir = "/vector-data-dir"
-	}
-
 	return r.CreateOrUpdateVector(ctx, vectorCR)
 }
 
@@ -101,6 +97,8 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector) (ctrl.Result, error) {
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, r.Client, r.Clientset)
+
+	vaCtrl.SetDefault()
 
 	// Get Vector Config file
 	config, err := config.New(ctx, vaCtrl)

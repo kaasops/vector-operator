@@ -34,8 +34,15 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 				Spec: corev1.PodSpec{
 					ServiceAccountName: ctrl.getNameVectorAgent(),
 					Volumes:            ctrl.generateVectorAgentVolume(),
-					SecurityContext:    &corev1.PodSecurityContext{},
+					SecurityContext:    ctrl.Vector.Spec.Agent.SecurityContext,
+					ImagePullSecrets:   ctrl.Vector.Spec.Agent.ImagePullSecrets,
+					Affinity:           ctrl.Vector.Spec.Agent.Affinity,
+					RuntimeClassName:   ctrl.Vector.Spec.Agent.RuntimeClassName,
+					SchedulerName:      ctrl.Vector.Spec.Agent.SchedulerName,
 					Tolerations:        ctrl.Vector.Spec.Agent.Tolerations,
+					PriorityClassName:  ctrl.Vector.Spec.Agent.PodSecurityPolicyName,
+					HostNetwork:        ctrl.Vector.Spec.Agent.HostNetwork,
+					HostAliases:        ctrl.Vector.Spec.Agent.HostAliases,
 					Containers: []corev1.Container{
 						{
 							Name:  ctrl.getNameVectorAgent(),
@@ -50,6 +57,7 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 								},
 							},
 							VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
+							Resources:       ctrl.Vector.Spec.Agent.Resources,
 							SecurityContext: &corev1.SecurityContext{},
 						},
 					},

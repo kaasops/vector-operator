@@ -1,15 +1,15 @@
 # Specification
 
 - [Vector](#vector-spec)
-- VectorPipeline
-- ClusterVectorPipeline
+- [VectorPipeline](#vectorpipelinespec-clustervectorpipelinespec)
+- [ClusterVectorPipeline](#vectorpipelinespec-clustervectorpipelinespec)
 
 
 
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="9">agent</td>
+      <td rowspan="18">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.24.0-distroless-libc</code> by default</td>
     </tr>
@@ -37,8 +37,48 @@
         <td>Temporary field for enabling service for Vector DaemonSet. By default - <code>false</code></td>
     </tr>
     <tr>
+        <td>imagePullSecrets</td>
+        <td>ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries. By default not set</td>
+    </tr>
+    <tr>
+        <td>resources</td>
+        <td>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/. If not specified - default setting will be used</td>
+    </tr>
+    <tr>
+        <td>affinity</td>
+        <td>Affinity If specified, the pod's scheduling constraints. By default not set</td>
+    </tr>
+    <tr>
         <td>tolerations</td>
         <td>Tolerations for Vector DaemonSet. By default - <code>nil</code></td>
+    </tr>
+    <tr>
+        <td>securityContext</td>
+        <td>SecurityContext holds pod-level security attributes and common container settings. By default - not set</td>
+    </tr>
+    <tr>
+        <td>schedulerName</td>
+        <td>SchedulerName - defines kubernetes scheduler name. By default - not set</td>
+    </tr>
+    <tr>
+        <td>runtimeClassName</td>
+        <td>RuntimeClassName - defines runtime class for kubernetes pod.. By default - not set</td>
+    </tr>
+    <tr>
+        <td>hostAliases</td>
+        <td>HostAliases provides mapping between ip and hostnames, that would be propagated to pod.</td>
+    </tr>
+    <tr>
+        <td>podSecurityPolicyName</td>
+        <td>PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.</td>
+    </tr>
+    <tr>
+        <td>priorityClassName</td>
+        <td>PriorityClassName assigned to the Pods.</td>
+    </tr>
+    <tr>
+        <td>hostNetwork</td>
+        <td>HostNetwork controls whether the pod may use the node network namespace.</td>
     </tr>
 </table>
 

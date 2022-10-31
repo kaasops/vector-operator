@@ -23,6 +23,7 @@ import (
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -128,6 +129,10 @@ func (cc *ConfigCheck) checkVectorConfigCheckPod() error {
 		return err
 	}
 
+	err = cc.cleanup()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -181,4 +186,53 @@ func (cc *ConfigCheck) getCheckResult(pod *corev1.Pod) error {
 			return nil
 		}
 	}
+}
+
+func (cc *ConfigCheck) cleanup() error {
+	listOpts, err := cc.gcRListOptions()
+	if err != nil {
+		return err
+	}
+
+	podlist := corev1.PodList{}
+	secretList := corev1.SecretList{}
+	err = cc.Client.List(cc.Ctx, &podlist, &listOpts)
+	if err != nil {
+		return err
+	}
+	err = cc.Client.List(cc.Ctx, &secretList, &listOpts)
+	if err != nil {
+		return err
+	}
+	for _, pod := range podlist.Items {
+		if pod.Status.Phase == "Succeeded" {
+			if err := cc.Client.Delete(cc.Ctx, &pod); err != nil {
+				return err
+			}
+		}
+	}
+	for _, secret := range secretList.Items {
+		if err := cc.Client.Delete(cc.Ctx, &secret); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (cc *ConfigCheck) gcRListOptions() (client.ListOptions, error) {
+	configCheckLabels := labelsForVectorConfigCheck()
+	var requirements []labels.Requirement
+	for k, v := range configCheckLabels {
+		r, err := labels.NewRequirement(k, "==", []string{v})
+		if err != nil {
+			return client.ListOptions{}, err
+		}
+		requirements = append(requirements, *r)
+	}
+	labelsSelector := labels.NewSelector().Add(requirements...)
+
+	return client.ListOptions{
+		LabelSelector: labelsSelector,
+		Namespace:     cc.Namespace,
+	}, nil
 }

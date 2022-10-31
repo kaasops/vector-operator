@@ -62,18 +62,18 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	log.Info("start Reconcile VectorPipeline")
 
 	// Get CR VectorPipeline
-	vp, err := r.findVectorPipelineCustomResourceInstance(ctx, req)
+	vectorPipelineCR, err := r.findVectorPipelineCustomResourceInstance(ctx, req)
 	if err != nil {
 		log.Error(err, "Failed to get Vector Pipeline")
 		return ctrl.Result{}, err
 	}
-	if vp == nil {
+	if vectorPipelineCR == nil {
 		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
 		return ctrl.Result{}, nil
 	}
 
 	// Generate VectorPipeline Controller
-	vpCtrl := vectorpipeline.NewController(vp)
+	vpCtrl := vectorpipeline.NewController(vectorPipelineCR)
 	// Generate Pipeline Controller
 	pCtrl := pipeline.NewController(ctx, r.Client, vpCtrl)
 
@@ -99,20 +99,22 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	for _, v := range vectorInstances.Items {
-		if v.DeletionTimestamp != nil {
+	for _, vector := range vectorInstances.Items {
+		if vector.DeletionTimestamp != nil {
 			continue
 		}
 
 		// Init Controller for Vector Agent
-		vaCtrl := vectoragent.NewController(&v, r.Client, r.Clientset)
+		vaCtrl := vectoragent.NewController(&vector, r.Client, r.Clientset)
 
 		// Get Vector Config file
 		config, err := config.New(ctx, vaCtrl)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		config.FillForVectorPipeline(pCtrl)
+		if err := config.FillForVectorPipeline(pCtrl); err != nil {
+			return ctrl.Result{}, err
+		}
 
 		// Get Config in Json ([]byte)
 		byteConfig, err := config.GetByteConfig()
@@ -125,7 +127,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		// Start ConfigCheck
 		err = configCheck.Run()
-		if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+		if _, ok := err.(*configcheck.ConfigCheckError); ok {
 			if err := pCtrl.SetFailedStatus(err); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -154,15 +156,15 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, error) {
 	// fetch the master instance
-	vp := &vectorv1alpha1.VectorPipeline{}
-	err := r.Get(ctx, req.NamespacedName, vp)
+	vectorPipelineCR := &vectorv1alpha1.VectorPipeline{}
+	err := r.Get(ctx, req.NamespacedName, vectorPipelineCR)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return vp, nil
+	return vectorPipelineCR, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

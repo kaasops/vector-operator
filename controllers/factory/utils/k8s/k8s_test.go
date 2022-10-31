@@ -165,7 +165,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range secriveCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -219,7 +219,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range secretCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -273,7 +273,7 @@ func TestCreateOrUpdateDaemonSet(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range daemonSetCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -327,7 +327,7 @@ func TestCreateOrUpdateStatefulSet(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range statefulSetCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -381,7 +381,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range serviceAccountCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -435,7 +435,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range clusterRoleCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -489,7 +489,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range clusterRoleBindingCases {
 		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
 	}
@@ -497,7 +497,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 
 func TestCreatePod(t *testing.T) {
 	createPodCase := func(objInit, obj *corev1.Pod, want error) func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
 
@@ -546,7 +546,7 @@ func TestCreatePod(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range podCases {
 		t.Run(tc.name, createPodCase(initObj, tc.obj, tc.err))
 	}
@@ -554,7 +554,7 @@ func TestCreatePod(t *testing.T) {
 
 func TestGetPod(t *testing.T) {
 	getPodCase := func(objInit, obj, wantPod *corev1.Pod, want error) func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
 
@@ -615,7 +615,7 @@ func TestGetPod(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range podCases {
 		t.Run(tc.name, getPodCase(initObj, tc.obj, tc.wantObj, tc.err))
 	}
@@ -623,7 +623,7 @@ func TestGetPod(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	updateStatusCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
 
@@ -690,7 +690,7 @@ func TestUpdateStatus(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
+	// t.Parallel()
 	for _, tc := range testCases {
 		t.Run(tc.name, updateStatusCase(tc.initObj, tc.updateObj, tc.err))
 	}

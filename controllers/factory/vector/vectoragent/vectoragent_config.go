@@ -32,7 +32,7 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 
 	if ctrl.Vector.Status.LastAppliedConfigHash == nil || *ctrl.Vector.Status.LastAppliedConfigHash != cfgHash {
 		err := configCheck.Run()
-		if _, ok := err.(*configcheck.ErrConfigCheck); ok {
+		if _, ok := err.(*configcheck.ConfigCheckError); ok {
 			if err := ctrl.SetFailedStatus(ctx, err); err != nil {
 				return nil, err
 			}

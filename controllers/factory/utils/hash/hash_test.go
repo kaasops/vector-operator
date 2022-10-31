@@ -14,24 +14,48 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package hash
+package hash_test
 
 import (
 	"testing"
 
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
 	hashCase := func(bytes []byte, want uint32) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
 			req := require.New(t)
 
-			result := Get(bytes)
+			result := hash.Get(bytes)
 			req.Equal(result, want)
 		}
 	}
 
-	t.Run("Simple case", hashCase([]byte("test"), uint32(3632233996)))
-	t.Run("Zero case", hashCase([]byte(""), uint32(0)))
+	type testCase struct {
+		name  string
+		bytes []byte
+		want  uint32
+	}
+
+	testCases := []testCase{
+		{
+			name:  "Simple case",
+			bytes: []byte("test"),
+			want:  uint32(3632233996),
+		},
+		{
+			name:  "Zero case",
+			bytes: []byte(""),
+			want:  uint32(0),
+		},
+	}
+
+	t.Parallel()
+	for _, tc := range testCases {
+		t.Run(tc.name, hashCase(tc.bytes, tc.want))
+	}
 }

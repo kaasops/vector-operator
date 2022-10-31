@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -102,18 +101,18 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {
-	// fetch the master instance
-	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
-	err := r.Get(ctx, req.NamespacedName, cvp)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return cvp, nil
-}
+// func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {
+// 	// fetch the master instance
+// 	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
+// 	err := r.Get(ctx, req.NamespacedName, cvp)
+// 	if err != nil {
+// 		if errors.IsNotFound(err) {
+// 			return nil, nil
+// 		}
+// 		return nil, err
+// 	}
+// 	return cvp, nil
+// }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterVectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {

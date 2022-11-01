@@ -5,8 +5,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
 jobs:
   build-and-push-docker-image:
     name: Build and push Docker image

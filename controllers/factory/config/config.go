@@ -19,8 +19,11 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline/clustervectorpipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
@@ -62,15 +65,26 @@ func (cfg *Config) FillForVectorAgent() error {
 	return nil
 }
 
-func (cfg *Config) FillForVectorPipeline(vCtrl *pipeline.Controller) error {
-	cfg.Name = vCtrl.Pipeline.Name()
+func (cfg *Config) FillForVectorPipeline(pCtrl *pipeline.Controller) error {
+	cfg.Name = pCtrl.Pipeline.Name()
 
 	pCtrls := make([]pipeline.Controller, 1)
-	pCtrls[0] = *vCtrl
+	pCtrls[0] = *pCtrl
 
 	cfg.pCtrls = pCtrls
 
 	if err := cfg.GenerateVectorConfig(); err != nil {
+		return err
+	}
+
+	err := cfg.Validate()
+	if err != nil {
+		if err := pCtrl.SetFailedStatus(err); err != nil {
+			return err
+		}
+		if err := pCtrl.SetLastAppliedPipelineStatus(); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -126,4 +140,20 @@ func CfgToMap(cfg vector.VectorConfig) (cfgMap map[string]interface{}, err error
 	cfgMap["sinks"] = sinks
 
 	return cfgMap, nil
+}
+
+func (cfg *Config) Validate() error {
+	err := errors.New("type kubernetes_logs only allowed")
+	vp := cfg.pCtrls[0]
+	for _, source := range cfg.VectorConfig.Sources {
+		if vp.Pipeline.Type() != clustervectorpipeline.Type {
+			if source.Type != "kubernetes_logs" {
+				return err
+			}
+			if source.ExtraNamespaceLabelSelector != "" && source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(vp.Pipeline.Namespace()) {
+				return err
+			}
+		}
+	}
+	return nil
 }

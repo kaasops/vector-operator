@@ -289,3 +289,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 
 	return nil
 }
+
+func NamespaceNameToLabel(namespace string) string {
+	return "kubernetes.io/metadata.name=" + namespace
+}

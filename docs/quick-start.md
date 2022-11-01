@@ -4,9 +4,11 @@ Operator serves to make running Vector applications on top of Kubernetes as easy
 # Installing by Manifest
 ## Install CRDs
 ```bash
-k apply -f config/crd/bases/observability.kaasops.io_vectors.yaml
-k apply -f config/crd/bases/observability.kaasops.io_vectorpipelines.yaml
-k apply -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml      
+git clone https://github.com/kaasops/vector-operator.git
+cd vector-operator
+kubectl apply -f config/crd/bases/observability.kaasops.io_vectors.yaml
+kubectl apply -f config/crd/bases/observability.kaasops.io_vectorpipelines.yaml
+kubectl apply -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml      
 ```
 
 ## Start Vector Operator
@@ -17,9 +19,6 @@ kubectl create namespace vector-operator-system
 
 ### Create RBAC
 ```bash
-# Create ServiceAccount for Vector Operator
-kubectl create serviceaccount -n vector-operator-system vector-operator
-
 # Create Secret for Vector Operator Service Account (if Kubernetes version > 1.23)
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
@@ -31,6 +30,11 @@ metadata:
     kubernetes.io/service-account.name: vector-operator
 type: kubernetes.io/service-account-token
 EOF
+```
+
+```bash
+# Create ServiceAccount for Vector Operator
+kubectl create serviceaccount -n vector-operator-system vector-operator
 
 # Create ClusterRole for Vector Operator
 cat <<EOF | kubectl apply -f -
@@ -249,7 +253,7 @@ EOF
 
 Check Vector DaemonSet pods:
 ```bash
-k get pod -n vector-operator-system
+kubectl get pod -n vector-operator-system
 ```
 
 ### Deploy minimal VectorPipeline CR for get log-spamer logs
@@ -283,8 +287,11 @@ EOF
 ```
 
 Check VectorPipeline status:
-```
+```bash
 kubectl get vp -n test
+```
+Output:
+```bash
 NAME     AGE   VALID
 sample   48s   true
 ```
@@ -292,9 +299,22 @@ sample   48s   true
 After some times you can see log-spamer logs in Vector stdout:
 ```bash
 kubectl logs -n vector-operator-system -l app.kubernetes.io/instance=sample -f
+```
+Output
+```bash
 {"file":"/var/log/pods/vector-operator-system_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector-operator-system"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector-operator-system","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"3irbVba4Sf8qFC2i78UfjVzwUGzBu3m3AnbMbSTXkkyqTcAaLtuL6S39hAVfqx\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.766514243Z","timestamp_end":"2022-11-01T12:03:31.766514243Z"}
 {"file":"/var/log/pods/vector-operator-system_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector-operator-system"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector-operator-system","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"SJtmGewiQcE9hnEtgCjxkzHZpWbvmTNB69temrBZ6pH3aMSGsa5WXFqPBRz7gVhmnYpmpQP7\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.776769316Z","timestamp_end":"2022-11-01T12:03:31.776769316Z"}
 ```
 
 You can see field `testfield`, which we add in transform section in VectorPipeline
 
+# Cleanup
+```bash
+kubectl delete namespace test
+kubectl delete namespace vector-operator-system
+kubectl delete clusterrole vector-operator
+kubectl delete clusterrolebinding vector-operator
+kubectl delete -f config/crd/bases/observability.kaasops.io_vectors.yaml
+kubectl delete -f config/crd/bases/observability.kaasops.io_vectorpipelines.yaml
+kubectl delete -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml
+```

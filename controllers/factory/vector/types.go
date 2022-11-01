@@ -23,9 +23,9 @@ import (
 type VectorConfig struct {
 	DataDir    string                  `mapstructure:"data_dir"`
 	Api        *vectorv1alpha1.ApiSpec `mapstructure:"api"`
-	Sources    []Source                `mapstructure:"sources"`
-	Transforms []Transform             `mapstructure:"transforms"`
-	Sinks      []Sink                  `mapstructure:"sinks"`
+	Sources    []*Source               `mapstructure:"sources"`
+	Transforms []*Transform            `mapstructure:"transforms"`
+	Sinks      []*Sink                 `mapstructure:"sinks"`
 }
 
 type Source struct {

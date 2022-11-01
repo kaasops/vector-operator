@@ -132,8 +132,8 @@ func (ctrl *Controller) SelectClusterVectorPipelineSucceesed() ([]*clustervector
 	return cvpCombined, nil
 }
 
-func (ctrl *Controller) GetSources(filter []string) ([]vector.Source, error) {
-	var sources []vector.Source
+func (ctrl *Controller) GetSources(filter []string) ([]*vector.Source, error) {
+	var sources []*vector.Source
 	sourcesMap, err := decodeRaw(ctrl.Pipeline.Spec().Sources.Raw)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (ctrl *Controller) GetSources(filter []string) ([]vector.Source, error) {
 				continue
 			}
 		}
-		var source vector.Source
+		var source *vector.Source
 		if err := mapstructure.Decode(v, &source); err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func (ctrl *Controller) GetSources(filter []string) ([]vector.Source, error) {
 	return sources, nil
 }
 
-func (ctrl *Controller) GetTransforms() ([]vector.Transform, error) {
+func (ctrl *Controller) GetTransforms() ([]*vector.Transform, error) {
 	if ctrl.Pipeline.Spec().Transforms == nil {
 		return nil, nil
 	}
@@ -162,12 +162,12 @@ func (ctrl *Controller) GetTransforms() ([]vector.Transform, error) {
 	if err != nil {
 		return nil, err
 	}
-	var transforms []vector.Transform
+	var transforms []*vector.Transform
 	if err := json.Unmarshal(ctrl.Pipeline.Spec().Transforms.Raw, &transformsMap); err != nil {
 		return nil, err
 	}
 	for k, v := range transformsMap {
-		var transform vector.Transform
+		var transform *vector.Transform
 		if err := mapstructure.Decode(v, &transform); err != nil {
 			return nil, err
 		}
@@ -180,14 +180,14 @@ func (ctrl *Controller) GetTransforms() ([]vector.Transform, error) {
 	return transforms, nil
 }
 
-func (ctrl *Controller) GetSinks() ([]vector.Sink, error) {
+func (ctrl *Controller) GetSinks() ([]*vector.Sink, error) {
 	sinksMap, err := decodeRaw(ctrl.Pipeline.Spec().Sinks.Raw)
 	if err != nil {
 		return nil, err
 	}
-	var sinks []vector.Sink
+	var sinks []*vector.Sink
 	for k, v := range sinksMap {
-		var sink vector.Sink
+		var sink *vector.Sink
 		if err := mapstructure.Decode(v, &sink); err != nil {
 			return nil, err
 		}

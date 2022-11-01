@@ -17,15 +17,17 @@ limitations under the License.
 package config
 
 import (
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline/clustervectorpipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector"
 )
 
 var (
-	sourceDefault = vector.Source{
+	sourceDefault = &vector.Source{
 		Name: "defaultSource",
 		Type: "kubernetes_logs",
 	}
-	sinkDefault = vector.Sink{
+	sinkDefault = &vector.Sink{
 		Name:   "defaultSink",
 		Type:   "blackhole",
 		Inputs: []string{"defaultSource"},
@@ -45,10 +47,10 @@ func (cfg *Config) GenerateVectorConfig() error {
 	}
 
 	if len(sources) == 0 {
-		sources = []vector.Source{sourceDefault}
+		sources = []*vector.Source{sourceDefault}
 	}
 	if len(sinks) == 0 {
-		sinks = []vector.Sink{sinkDefault}
+		sinks = []*vector.Sink{sinkDefault}
 	}
 
 	vectorConfig.Sinks = sinks
@@ -60,7 +62,7 @@ func (cfg *Config) GenerateVectorConfig() error {
 	return nil
 }
 
-func (cfg *Config) getComponents() (sources []vector.Source, transforms []vector.Transform, sinks []vector.Sink, err error) {
+func (cfg *Config) getComponents() (sources []*vector.Source, transforms []*vector.Transform, sinks []*vector.Sink, err error) {
 
 	for _, vCtrl := range cfg.pCtrls {
 		pipelineSources, err := vCtrl.GetSources(nil)
@@ -70,6 +72,9 @@ func (cfg *Config) getComponents() (sources []vector.Source, transforms []vector
 		for _, source := range pipelineSources {
 			if err != nil {
 				return nil, nil, nil, err
+			}
+			if vCtrl.Pipeline.Type() != clustervectorpipeline.Type && source.Type == "kubernetes_logs" {
+				source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(vCtrl.Pipeline.Namespace())
 			}
 			sources = append(sources, source)
 		}

@@ -22,8 +22,8 @@ import (
 )
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
-	sources := []Source{}
-	sinks := []Sink{}
+	sources := []*Source{}
+	sinks := []*Sink{}
 
 	return &VectorConfig{
 		DataDir: vector.Spec.Agent.DataDir,

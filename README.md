@@ -15,48 +15,14 @@ The operator deploys and configures a vector agent daemonset on every node to co
 - [x] Building vector config from namespaced custom resources (kind: VectorPipeline)
 - [x] Configuration validation
 - [x] Full support of vector config options
-- [ ] Namespace isolation
-- [ ] Garbage collection
+- [x] Namespace isolation
 - [ ] Vector config optimization
 - [ ] Vector aggregator support
 
-
-## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
-
-### Running on the cluster
-1. Install Instances of Custom Resources:
-
-```sh
-kubectl apply -f config/samples/
-```
-
-2. Build and push your image to the location specified by `IMG`:
-	
-```sh
-make docker-build docker-push IMG=docker pull kaasops/vector-operator:latest
-```
-	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=docker pull kaasops/vector-operator:latest
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
-
-```sh
-make undeploy
-```
+## Documentation
+- Quick start [doc](https://github.com/kaasops/vector-operator/blob/main/docs/quick-start.md)
+- Design [doc](https://github.com/kaasops/vector-operator/blob/main/docs/design.md)
+- Specification [doc](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md)
 
 ## Configuration Examples 
 Configuration for CR Vector:
@@ -111,8 +77,6 @@ spec:
         - filter
         - remap
 ```
-
-
 
 
 ## Contributing

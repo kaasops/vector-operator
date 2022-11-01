@@ -23,15 +23,15 @@ import (
 type VectorConfig struct {
 	DataDir    string                  `mapstructure:"data_dir"`
 	Api        *vectorv1alpha1.ApiSpec `mapstructure:"api"`
-	Sources    []Source                `mapstructure:"sources"`
-	Transforms []Transform             `mapstructure:"transforms"`
-	Sinks      []Sink                  `mapstructure:"sinks"`
+	Sources    []*Source               `mapstructure:"sources"`
+	Transforms []*Transform            `mapstructure:"transforms"`
+	Sinks      []*Sink                 `mapstructure:"sinks"`
 }
 
 type Source struct {
 	Name                        string
 	Type                        string                 `mapper:"type"`
-	ExtraNamespaceLabelSelector string                 `mapper:"extra_namespace_label_selector"`
+	ExtraNamespaceLabelSelector string                 `mapper:"extra_namespace_label_selector,omitempty"`
 	Options                     map[string]interface{} `mapstructure:",remain"`
 }
 

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,6 +27,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline/clustervectorpipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 )
 
 // ClusterVectorPipelineReconciler reconciles a ClusterVectorPipeline object
@@ -51,68 +57,118 @@ type ClusterVectorPipelineReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx).WithValues("VectorPipeline", req.Name)
+	log := log.FromContext(ctx).WithValues("ClusterVectorPipeline", req.Name)
 
-	log.Info("start Reconcile ClusterVectorPipeline")
+	log.Info("start Reconcile VectorPipeline")
 
-	// cvp, err := r.findClusterVectorPipelineCustomResourceInstance(ctx, req)
-	// if err != nil {
-	// 	log.Error(err, "Failed to get Cluster Vector Pipeline")
-	// 	return ctrl.Result{}, err
-	// }
-	// if cvp == nil {
-	// 	log.Info("Cluster Vector Pipeline CR not found. Ignoring since object must be deleted")
-	// 	return ctrl.Result{}, nil
-	// }
-	// hash, err := vectorpipeline.GetSpecHash(cvp.Spec)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
-	// if cvp.Status.LastAppliedPipelineHash != nil && *hash == *cvp.Status.LastAppliedPipelineHash {
-	// 	log.Info("ClusterVectorPipeline has no changes. Finish Reconcile ClusterVectorPipeline")
-	// 	return ctrl.Result{}, nil
-	// }
+	// Get CR VectorPipeline
+	vectorPipelineCR, err := r.findClusterVectorPipelineCustomResourceInstance(ctx, req)
+	if err != nil {
+		log.Error(err, "Failed to get Vector Pipeline")
+		return ctrl.Result{}, err
+	}
+	if vectorPipelineCR == nil {
+		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
+		return ctrl.Result{}, nil
+	}
 
-	// vectorInstances := &vectorv1alpha1.VectorList{}
-	// err = r.List(ctx, vectorInstances)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	// Generate VectorPipeline Controller
+	vpCtrl := clustervectorpipeline.NewController(vectorPipelineCR)
+	// Generate Pipeline Controller
+	pCtrl := pipeline.NewController(ctx, r.Client, vpCtrl)
 
-	// if len(vectorInstances.Items) == 0 {
-	// 	log.Info("Vertors not found")
-	// 	return ctrl.Result{}, nil
-	// }
+	// Check Pipeline hash
+	checkResult, err := pCtrl.CheckHash()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if checkResult {
+		log.Info("VectorPipeline has no changes. Finish Reconcile VectorPipeline")
+		return ctrl.Result{}, nil
+	}
 
-	// for _, v := range vectorInstances.Items {
-	// 	if v.DeletionTimestamp != nil {
-	// 		continue
-	// 	}
-	// 	if err = checkConfig(ctx, &v, vp, r.Client, r.Clientset); err != nil {
-	// 		return ctrl.Result{}, err
-	// 	}
-	// 	if err = vectorpipeline.SetLastAppliedPipelineStatus(ctx, vp, r.Client); err != nil {
-	// 		return ctrl.Result{}, err
-	// 	}
+	// Generate Pipeline ConfigCheck for all Vectors
+	vectorInstances := &vectorv1alpha1.VectorList{}
+	err = r.List(ctx, vectorInstances)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	// }
+	if len(vectorInstances.Items) == 0 {
+		log.Info("Vertors not found")
+		return ctrl.Result{}, nil
+	}
 
-	log.Info("finish Reconcile ClusterVectorPipeline")
+	for _, vector := range vectorInstances.Items {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
+
+		// Init Controller for Vector Agent
+		vaCtrl := vectoragent.NewController(&vector, r.Client, r.Clientset)
+		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
+			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
+		}
+
+		// Get Vector Config file
+		config, err := config.New(ctx, vaCtrl)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := config.FillForVectorPipeline(pCtrl); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Get Config in Json ([]byte)
+		byteConfig, err := config.GetByteConfig()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Init CheckConfig
+		configCheck := configcheck.New(ctx, byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
+
+		// Start ConfigCheck
+		err = configCheck.Run()
+		if _, ok := err.(*configcheck.ConfigCheckError); ok {
+			if err := pCtrl.SetFailedStatus(err); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err = pCtrl.SetLastAppliedPipelineStatus(); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err = pCtrl.SetSucceesStatus(); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err = pCtrl.SetLastAppliedPipelineStatus(); err != nil {
+			return ctrl.Result{}, err
+		}
+
+	}
+
+	log.Info("finish Reconcile VectorPipeline")
 	return ctrl.Result{}, nil
 }
 
-// func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {
-// 	// fetch the master instance
-// 	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
-// 	err := r.Get(ctx, req.NamespacedName, cvp)
-// 	if err != nil {
-// 		if errors.IsNotFound(err) {
-// 			return nil, nil
-// 		}
-// 		return nil, err
-// 	}
-// 	return cvp, nil
-// }
+func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {
+	// fetch the master instance
+	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
+	err := r.Get(ctx, req.NamespacedName, cvp)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return cvp, nil
+}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterVectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {

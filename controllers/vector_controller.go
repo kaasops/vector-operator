@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -101,16 +102,17 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	vaCtrl.SetDefault()
 
 	// Get Vector Config file
-	config, err := config.New(ctx, vaCtrl)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if err := config.FillForVectorAgent(); err != nil {
+	configBuilder, err := config.NewConfigBuilder(ctx, vaCtrl, pipelines...)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Get Config in Json ([]byte)
-	byteConfig, err := config.GetByteConfig()
+	byteConfig, err := configBuilder.GetByteConfig()
 	if err != nil {
 		return ctrl.Result{}, err
 	}

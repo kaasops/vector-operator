@@ -17,17 +17,24 @@ limitations under the License.
 package config
 
 import (
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline/clustervectorpipeline"
+	"context"
+	"encoding/json"
+	"errors"
+
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
-	"github.com/kaasops/vector-operator/controllers/factory/vector"
+	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	"github.com/mitchellh/mapstructure"
 )
 
 var (
-	sourceDefault = &vector.Source{
+	KubernetesSourceType = "kubernetes_logs"
+	sourceDefault        = &Source{
 		Name: "defaultSource",
-		Type: "kubernetes_logs",
+		Type: KubernetesSourceType,
 	}
-	sinkDefault = &vector.Sink{
+	sinkDefault = &Sink{
 		Name:   "defaultSink",
 		Type:   "blackhole",
 		Inputs: []string{"defaultSource"},
@@ -38,34 +45,88 @@ var (
 	}
 )
 
-func (cfg *Config) GenerateVectorConfig() error {
-	vectorConfig := vector.New(cfg.vaCtrl.Vector)
+type ConfigBuilder struct {
+	Name      string
+	Ctx       context.Context
+	vaCtrl    *vectoragent.Controller
+	Pipelines []pipeline.Pipeline
+}
 
-	sources, transforms, sinks, err := cfg.getComponents()
+func NewConfigBuilder(ctx context.Context, vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) (*ConfigBuilder, error) {
+	return &ConfigBuilder{
+		Ctx:       ctx,
+		vaCtrl:    vaCtrl,
+		Pipelines: pipelines,
+	}, nil
+}
+
+func (b *ConfigBuilder) GetByteConfig() ([]byte, error) {
+	config, err := b.generateVectorConfig()
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	data, err := vectorConfigToByte(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (b *ConfigBuilder) GetByteConfigWithValidate() ([]byte, error) {
+	validateError := errors.New("type kubernetes_logs only allowed")
+	config, err := b.generateVectorConfig()
+	if err != nil {
+		return nil, err
+	}
+	if len(b.Pipelines) != 0 {
+		for _, pipeline := range b.Pipelines {
+			for _, source := range config.Sources {
+				if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind {
+					if source.Type != KubernetesSourceType {
+						return nil, validateError
+					}
+					if source.ExtraNamespaceLabelSelector != "" && source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(pipeline.GetNamespace()) {
+						return nil, validateError
+					}
+				}
+			}
+		}
+	}
+	data, err := vectorConfigToByte(config)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (b *ConfigBuilder) generateVectorConfig() (*VectorConfig, error) {
+	vectorConfig := New(b.vaCtrl.Vector)
+
+	sources, transforms, sinks, err := b.getComponents()
+	if err != nil {
+		return nil, err
 	}
 
 	if len(sources) == 0 {
-		sources = []*vector.Source{sourceDefault}
+		sources = []*Source{sourceDefault}
 	}
 	if len(sinks) == 0 {
-		sinks = []*vector.Sink{sinkDefault}
+		sinks = []*Sink{sinkDefault}
 	}
 
 	vectorConfig.Sinks = sinks
 	vectorConfig.Sources = sources
 	vectorConfig.Transforms = transforms
 
-	cfg.VectorConfig = vectorConfig
-
-	return nil
+	return vectorConfig, nil
 }
 
-func (cfg *Config) getComponents() (sources []*vector.Source, transforms []*vector.Transform, sinks []*vector.Sink, err error) {
+func (b *ConfigBuilder) getComponents() (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
 
-	for _, vCtrl := range cfg.pCtrls {
-		pipelineSources, err := vCtrl.GetSources(nil)
+	for _, pipeline := range b.Pipelines {
+		pipelineSources, err := getSources(pipeline, nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -73,12 +134,12 @@ func (cfg *Config) getComponents() (sources []*vector.Source, transforms []*vect
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			if vCtrl.Pipeline.Type() != clustervectorpipeline.Type && source.Type == "kubernetes_logs" {
-				source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(vCtrl.Pipeline.Namespace())
+			if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind && source.Type == KubernetesSourceType {
+				source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())
 			}
 			sources = append(sources, source)
 		}
-		pipelineTransforms, err := vCtrl.GetTransforms()
+		pipelineTransforms, err := getTransforms(pipeline)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -88,7 +149,7 @@ func (cfg *Config) getComponents() (sources []*vector.Source, transforms []*vect
 			}
 			transforms = append(transforms, transform)
 		}
-		pipelineSinks, err := vCtrl.GetSinks()
+		pipelineSinks, err := getSinks(pipeline)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -100,4 +161,122 @@ func (cfg *Config) getComponents() (sources []*vector.Source, transforms []*vect
 		}
 	}
 	return sources, transforms, sinks, nil
+}
+
+func vectorConfigToByte(config *VectorConfig) ([]byte, error) {
+	cfgMap, err := cfgToMap(config)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(cfgMap)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func getSources(pipeline pipeline.Pipeline, filter []string) ([]*Source, error) {
+	var sources []*Source
+	sourcesMap, err := decodeRaw(pipeline.GetSpec().Sources.Raw)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sourcesMap {
+		if len(filter) != 0 {
+			if !contains(filter, k) {
+				continue
+			}
+		}
+		var source *Source
+		if err := mapstructure.Decode(v, &source); err != nil {
+			return nil, err
+		}
+		source.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+		sources = append(sources, source)
+	}
+	return sources, nil
+}
+
+func getTransforms(pipeline pipeline.Pipeline) ([]*Transform, error) {
+	if pipeline.GetSpec().Transforms == nil {
+		return nil, nil
+	}
+	transformsMap, err := decodeRaw(pipeline.GetSpec().Transforms.Raw)
+	if err != nil {
+		return nil, err
+	}
+	var transforms []*Transform
+	if err := json.Unmarshal(pipeline.GetSpec().Transforms.Raw, &transformsMap); err != nil {
+		return nil, err
+	}
+	for k, v := range transformsMap {
+		var transform *Transform
+		if err := mapstructure.Decode(v, &transform); err != nil {
+			return nil, err
+		}
+		transform.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+		for i, inputName := range transform.Inputs {
+			transform.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+		}
+		transforms = append(transforms, transform)
+	}
+	return transforms, nil
+}
+
+func getSinks(pipeline pipeline.Pipeline) ([]*Sink, error) {
+	sinksMap, err := decodeRaw(pipeline.GetSpec().Sinks.Raw)
+	if err != nil {
+		return nil, err
+	}
+	var sinks []*Sink
+	for k, v := range sinksMap {
+		var sink *Sink
+		if err := mapstructure.Decode(v, &sink); err != nil {
+			return nil, err
+		}
+		sink.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+		for i, inputName := range sink.Inputs {
+			sink.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+		}
+		sinks = append(sinks, sink)
+	}
+	return sinks, nil
+}
+
+func cfgToMap(config *VectorConfig) (cfgMap map[string]interface{}, err error) {
+	sources := make(map[string]interface{})
+	transforms := make(map[string]interface{})
+	sinks := make(map[string]interface{})
+	for _, source := range config.Sources {
+		spec, err := Mapper(source)
+		if err != nil {
+			return nil, err
+		}
+		sources[source.Name] = spec
+	}
+	for _, transform := range config.Transforms {
+		spec, err := Mapper(transform)
+		if err != nil {
+			return nil, err
+		}
+		transforms[transform.Name] = spec
+	}
+	for _, sink := range config.Sinks {
+		spec, err := Mapper(sink)
+		if err != nil {
+			return nil, err
+		}
+		sinks[sink.Name] = spec
+	}
+
+	err = mapstructure.Decode(config, &cfgMap)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: remove hardcoded map keys
+	cfgMap["sources"] = sources
+	cfgMap["transforms"] = transforms
+	cfgMap["sinks"] = sinks
+
+	return cfgMap, nil
 }

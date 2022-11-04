@@ -22,8 +22,8 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 )
 
-func (ctrl *Controller) GetSpecHash() (*uint32, error) {
-	a, err := json.Marshal(ctrl.Pipeline.Spec())
+func GetSpecHash(pipeline Pipeline) (*uint32, error) {
+	a, err := json.Marshal(pipeline.GetSpec())
 	if err != nil {
 		return nil, err
 	}
@@ -32,13 +32,13 @@ func (ctrl *Controller) GetSpecHash() (*uint32, error) {
 }
 
 // CheckHash returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
-func (ctrl *Controller) CheckHash() (bool, error) {
-	hash, err := ctrl.GetSpecHash()
+func CheckHash(pipeline Pipeline) (bool, error) {
+	hash, err := GetSpecHash(pipeline)
 	if err != nil {
 		return false, err
 	}
 
-	if ctrl.Pipeline.GetLastAppliedPipeline() != nil && *hash == *ctrl.Pipeline.GetLastAppliedPipeline() {
+	if pipeline.GetLastAppliedPipeline() != nil && *hash == *pipeline.GetLastAppliedPipeline() {
 		return true, nil
 	}
 

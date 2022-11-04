@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package vector
+package config
 
 import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"

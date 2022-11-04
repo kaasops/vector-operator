@@ -17,143 +17,49 @@ limitations under the License.
 package config
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline/clustervectorpipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
-	"github.com/kaasops/vector-operator/controllers/factory/vector"
-	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/mitchellh/mapstructure"
 )
 
-type Config struct {
-	Name string
+func New(vector *vectorv1alpha1.Vector) *VectorConfig {
+	sources := []*Source{}
+	sinks := []*Sink{}
 
-	Ctx    context.Context
-	vaCtrl *vectoragent.Controller
-	pCtrls []pipeline.Controller
-
-	VectorConfig *vector.VectorConfig
+	return &VectorConfig{
+		DataDir: vector.Spec.Agent.DataDir,
+		Api:     &vector.Spec.Agent.Api,
+		Sources: sources,
+		Sinks:   sinks,
+	}
 }
 
-func New(ctx context.Context, vaCtrl *vectoragent.Controller) (*Config, error) {
-	cfg := &Config{
-		Ctx:    ctx,
-		vaCtrl: vaCtrl,
+func Mapper(c ConfigComponent) (map[string]interface{}, error) {
+	spec := c.GetOptions()
+	config := &mapstructure.DecoderConfig{
+		Result:               &spec,
+		ZeroFields:           false,
+		TagName:              "mapper",
+		IgnoreUntaggedFields: true,
 	}
-
-	return cfg, nil
-}
-
-func (cfg *Config) FillForVectorAgent() error {
-	cfg.Name = cfg.vaCtrl.Vector.Name
-
-	pCtrl := pipeline.NewController(cfg.Ctx, cfg.vaCtrl.Client, nil)
-	pCtrls, err := pCtrl.SelectSucceesed()
-	if err != nil {
-		return err
-	}
-	cfg.pCtrls = pCtrls
-
-	if err := cfg.GenerateVectorConfig(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (cfg *Config) FillForVectorPipeline(pCtrl *pipeline.Controller) error {
-	cfg.Name = pCtrl.Pipeline.Name()
-
-	pCtrls := make([]pipeline.Controller, 1)
-	pCtrls[0] = *pCtrl
-
-	cfg.pCtrls = pCtrls
-
-	if err := cfg.GenerateVectorConfig(); err != nil {
-		return err
-	}
-
-	err := cfg.Validate()
-	if err != nil {
-		if err := pCtrl.SetFailedStatus(err); err != nil {
-			return err
-		}
-		if err := pCtrl.SetLastAppliedPipelineStatus(); err != nil {
-			return err
-		}
-		return err
-	}
-
-	return nil
-}
-
-func (cfg *Config) GetByteConfig() ([]byte, error) {
-	cfgMap, err := CfgToMap(*cfg.VectorConfig)
+	decoder, err := mapstructure.NewDecoder(config)
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(cfgMap)
+	err = decoder.Decode(c)
 	if err != nil {
 		return nil, err
 	}
-
-	return data, nil
+	return spec, nil
 }
 
-func CfgToMap(cfg vector.VectorConfig) (cfgMap map[string]interface{}, err error) {
-	sources := make(map[string]interface{})
-	transforms := make(map[string]interface{})
-	sinks := make(map[string]interface{})
-	for _, source := range cfg.Sources {
-		spec, err := vector.Mapper(source)
-		if err != nil {
-			return nil, err
-		}
-		sources[source.Name] = spec
-	}
-	for _, transform := range cfg.Transforms {
-		spec, err := vector.Mapper(transform)
-		if err != nil {
-			return nil, err
-		}
-		transforms[transform.Name] = spec
-	}
-	for _, sink := range cfg.Sinks {
-		spec, err := vector.Mapper(sink)
-		if err != nil {
-			return nil, err
-		}
-		sinks[sink.Name] = spec
-	}
-
-	err = mapstructure.Decode(cfg, &cfgMap)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: remove hardcoded map keys
-	cfgMap["sources"] = sources
-	cfgMap["transforms"] = transforms
-	cfgMap["sinks"] = sinks
-
-	return cfgMap, nil
+func (t Source) GetOptions() map[string]interface{} {
+	return t.Options
 }
 
-func (cfg *Config) Validate() error {
-	err := errors.New("type kubernetes_logs only allowed")
-	vp := cfg.pCtrls[0]
-	for _, source := range cfg.VectorConfig.Sources {
-		if vp.Pipeline.Type() != clustervectorpipeline.Type {
-			if source.Type != "kubernetes_logs" {
-				return err
-			}
-			if source.ExtraNamespaceLabelSelector != "" && source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(vp.Pipeline.Namespace()) {
-				return err
-			}
-		}
-	}
-	return nil
+func (t Transform) GetOptions() map[string]interface{} {
+	return t.Options
+}
+
+func (t Sink) GetOptions() map[string]interface{} {
+	return t.Options
 }

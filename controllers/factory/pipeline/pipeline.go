@@ -64,7 +64,7 @@ func GetValidPipelines(ctx context.Context, client client.Client) ([]Pipeline, e
 	return validPipelines, nil
 }
 
-func SetSucceesStatus(ctx context.Context, client client.Client, p Pipeline) error {
+func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) error {
 	var status = true
 
 	p.SetConfigCheck(status)

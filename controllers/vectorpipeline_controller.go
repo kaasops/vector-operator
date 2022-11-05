@@ -140,7 +140,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 
-		if err = pipeline.SetSucceesStatus(ctx, r.Client, vectorPipelineCR); err != nil {
+		if err = pipeline.SetSuccessStatus(ctx, r.Client, vectorPipelineCR); err != nil {
 			return ctrl.Result{}, err
 		}
 

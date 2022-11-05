@@ -30,7 +30,6 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/config"
 	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline/vectorpipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 )
 
@@ -72,13 +71,8 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	// Generate VectorPipeline Controller
-	vpCtrl := vectorpipeline.NewController(vectorPipelineCR)
-	// Generate Pipeline Controller
-	pCtrl := pipeline.NewController(ctx, r.Client, vpCtrl)
-
 	// Check Pipeline hash
-	checkResult, err := pCtrl.CheckHash()
+	checkResult, err := pipeline.CheckHash(vectorPipelineCR)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -111,18 +105,20 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Get Vector Config file
-		config, err := config.New(ctx, vaCtrl)
+		configBuilder, err := config.NewConfigBuilder(ctx, vaCtrl, vectorPipelineCR)
 		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if err := config.FillForVectorPipeline(pCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		// Get Config in Json ([]byte)
-		byteConfig, err := config.GetByteConfig()
+		byteConfig, err := configBuilder.GetByteConfigWithValidate()
 		if err != nil {
-			return ctrl.Result{}, err
+			if err := pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
 
 		// Init CheckConfig
@@ -131,10 +127,10 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Start ConfigCheck
 		err = configCheck.Run()
 		if _, ok := err.(*configcheck.ConfigCheckError); ok {
-			if err := pCtrl.SetFailedStatus(err); err != nil {
+			if err := pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
 				return ctrl.Result{}, err
 			}
-			if err = pCtrl.SetLastAppliedPipelineStatus(); err != nil {
+			if err := pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -143,11 +139,11 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 
-		if err = pCtrl.SetSucceesStatus(); err != nil {
+		if err = pipeline.SetSucceesStatus(ctx, r.Client, vectorPipelineCR); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err = pCtrl.SetLastAppliedPipelineStatus(); err != nil {
+		if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
 			return ctrl.Result{}, err
 		}
 

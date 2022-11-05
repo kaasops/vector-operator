@@ -159,9 +159,7 @@ func (cc *ConfigCheck) getCheckResult(pod *corev1.Pod) error {
 			if err != nil {
 				return err
 			}
-			return &ConfigCheckError{
-				Reason: reason,
-			}
+			return newValidationError(reason)
 		case "Succeeded":
 			log.Info("Config Check completed successfully")
 			return nil

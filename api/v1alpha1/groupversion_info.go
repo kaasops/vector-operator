@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the observability v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=observability.kaasops.io
+// +kubebuilder:object:generate=true
+// +groupName=observability.kaasops.io
 package v1alpha1
 
 import (

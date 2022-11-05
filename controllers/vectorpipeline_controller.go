@@ -105,7 +105,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Get Vector Config file
-		configBuilder, err := config.NewConfigBuilder(ctx, vaCtrl, vectorPipelineCR)
+		configBuilder, err := config.NewBuilder(ctx, vaCtrl, vectorPipelineCR)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

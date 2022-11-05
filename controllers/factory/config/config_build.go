@@ -45,22 +45,22 @@ var (
 	}
 )
 
-type ConfigBuilder struct {
+type Builder struct {
 	Name      string
 	Ctx       context.Context
 	vaCtrl    *vectoragent.Controller
 	Pipelines []pipeline.Pipeline
 }
 
-func NewConfigBuilder(ctx context.Context, vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) (*ConfigBuilder, error) {
-	return &ConfigBuilder{
+func NewBuilder(ctx context.Context, vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) (*Builder, error) {
+	return &Builder{
 		Ctx:       ctx,
 		vaCtrl:    vaCtrl,
 		Pipelines: pipelines,
 	}, nil
 }
 
-func (b *ConfigBuilder) GetByteConfig() ([]byte, error) {
+func (b *Builder) GetByteConfig() ([]byte, error) {
 	config, err := b.generateVectorConfig()
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (b *ConfigBuilder) GetByteConfig() ([]byte, error) {
 	return data, nil
 }
 
-func (b *ConfigBuilder) GetByteConfigWithValidate() ([]byte, error) {
+func (b *Builder) GetByteConfigWithValidate() ([]byte, error) {
 	validateError := errors.New("type kubernetes_logs only allowed")
 	config, err := b.generateVectorConfig()
 	if err != nil {
@@ -101,7 +101,7 @@ func (b *ConfigBuilder) GetByteConfigWithValidate() ([]byte, error) {
 	return data, nil
 }
 
-func (b *ConfigBuilder) generateVectorConfig() (*VectorConfig, error) {
+func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	vectorConfig := New(b.vaCtrl.Vector)
 
 	sources, transforms, sinks, err := b.getComponents()
@@ -123,7 +123,7 @@ func (b *ConfigBuilder) generateVectorConfig() (*VectorConfig, error) {
 	return vectorConfig, nil
 }
 
-func (b *ConfigBuilder) getComponents() (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
+func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
 
 	for _, pipeline := range b.Pipelines {
 		pipelineSources, err := getSources(pipeline, nil)

@@ -106,7 +106,7 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	configBuilder, err := config.NewConfigBuilder(ctx, vaCtrl, pipelines...)
+	configBuilder, err := config.NewBuilder(ctx, vaCtrl, pipelines...)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

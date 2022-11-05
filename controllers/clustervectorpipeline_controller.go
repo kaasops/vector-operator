@@ -18,8 +18,9 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -126,7 +127,7 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 
 		// Start ConfigCheck
 		err = configCheck.Run()
-		if _, ok := err.(*configcheck.ConfigCheckError); ok {
+		if errors.Is(err, configcheck.ValidationError) {
 			if err = pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -158,7 +159,7 @@ func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourc
 	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
 	err := r.Get(ctx, req.NamespacedName, cvp)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if api_errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err

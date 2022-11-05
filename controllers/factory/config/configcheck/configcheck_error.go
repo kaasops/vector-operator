@@ -16,15 +16,13 @@ limitations under the License.
 
 package configcheck
 
-type error interface {
-	Error() string
-}
+import (
+	"errors"
+	"fmt"
+)
 
-type ConfigCheckError struct {
-	Reason string
-	Err    error
-}
+var ValidationError = errors.New("config validation error")
 
-func (e *ConfigCheckError) Error() string {
-	return e.Reason
+func newValidationError(reason string) error {
+	return fmt.Errorf("%w: %s", ValidationError, reason)
 }

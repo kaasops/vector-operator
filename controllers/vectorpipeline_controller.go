@@ -18,8 +18,9 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -105,7 +106,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Get Vector Config file
-		configBuilder, err := config.NewConfigBuilder(ctx, vaCtrl, vectorPipelineCR)
+		configBuilder, err := config.NewBuilder(ctx, vaCtrl, vectorPipelineCR)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -126,7 +127,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		// Start ConfigCheck
 		err = configCheck.Run()
-		if _, ok := err.(*configcheck.ConfigCheckError); ok {
+		if errors.Is(err, configcheck.ValidationError) {
 			if err := pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -139,7 +140,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 
-		if err = pipeline.SetSucceesStatus(ctx, r.Client, vectorPipelineCR); err != nil {
+		if err = pipeline.SetSuccessStatus(ctx, r.Client, vectorPipelineCR); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -158,7 +159,7 @@ func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx 
 	vectorPipelineCR := &vectorv1alpha1.VectorPipeline{}
 	err := r.Get(ctx, req.NamespacedName, vectorPipelineCR)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if api_errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err

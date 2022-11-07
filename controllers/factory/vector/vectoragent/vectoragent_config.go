@@ -18,6 +18,7 @@ package vectoragent
 
 import (
 	"context"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -32,7 +33,7 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 
 	if ctrl.Vector.Status.LastAppliedConfigHash == nil || *ctrl.Vector.Status.LastAppliedConfigHash != cfgHash {
 		err := configCheck.Run()
-		if _, ok := err.(*configcheck.ConfigCheckError); ok {
+		if errors.Is(err, configcheck.ValidationError) {
 			if err := ctrl.SetFailedStatus(ctx, err); err != nil {
 				return nil, err
 			}

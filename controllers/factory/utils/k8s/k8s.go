@@ -133,7 +133,7 @@ func reconcileService(obj runtime.Object, c client.Client) error {
 	desired := obj.(*corev1.Service)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -145,11 +145,7 @@ func reconcileService(obj runtime.Object, c client.Client) error {
 			return err
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileSecret(obj runtime.Object, c client.Client) error {
@@ -158,7 +154,7 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 	desired := obj.(*corev1.Secret)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -169,11 +165,7 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 			return c.Update(context.TODO(), existing)
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
@@ -182,7 +174,7 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 	desired := obj.(*appsv1.DaemonSet)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -193,11 +185,7 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 			return c.Update(context.TODO(), existing)
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
@@ -206,7 +194,7 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 	desired := obj.(*appsv1.StatefulSet)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -217,11 +205,7 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 			return c.Update(context.TODO(), existing)
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
@@ -230,17 +214,13 @@ func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
 	desired := obj.(*corev1.ServiceAccount)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileClusterRole(obj runtime.Object, c client.Client) error {
@@ -249,7 +229,7 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 	desired := obj.(*rbacv1.ClusterRole)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -259,11 +239,7 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 			return c.Update(context.TODO(), existing)
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
@@ -272,7 +248,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 	desired := obj.(*rbacv1.ClusterRoleBinding)
 
 	err := c.Create(context.TODO(), desired)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) {
 		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -283,11 +259,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 			return c.Update(context.TODO(), existing)
 		}
 	}
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func NamespaceNameToLabel(namespace string) string {

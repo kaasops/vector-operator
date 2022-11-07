@@ -17,9 +17,62 @@ limitations under the License.
 package config
 
 import (
+	"context"
+	"errors"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
+	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func ReconcileConfig(ctx context.Context, client client.Client, p pipeline.Pipeline, vaCtrl *vectoragent.Controller) error {
+	// Get Vector Config file
+	configBuilder, err := NewBuilder(ctx, vaCtrl, p)
+	if err != nil {
+		return err
+	}
+
+	byteConfig, err := configBuilder.GetByteConfigWithValidate()
+	if err != nil {
+		if err := pipeline.SetFailedStatus(ctx, client, p, err); err != nil {
+			return err
+		}
+		if err = pipeline.SetLastAppliedPipelineStatus(ctx, client, p); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Init CheckConfig
+	configCheck := configcheck.New(ctx, byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
+
+	// Start ConfigCheck
+	err = configCheck.Run()
+	if errors.Is(err, configcheck.ValidationError) {
+		if err = pipeline.SetFailedStatus(ctx, client, p, err); err != nil {
+			return err
+		}
+		if err = pipeline.SetLastAppliedPipelineStatus(ctx, client, p); err != nil {
+			return err
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	if err = pipeline.SetSuccessStatus(ctx, client, p); err != nil {
+		return err
+	}
+
+	if err = pipeline.SetLastAppliedPipelineStatus(ctx, client, p); err != nil {
+		return err
+	}
+	return nil
+}
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
 	sources := []*Source{}

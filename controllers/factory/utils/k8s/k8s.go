@@ -141,9 +141,9 @@ func reconcileService(obj runtime.Object, c client.Client) error {
 		if !equality.Semantic.DeepEqual(existing, desired) {
 			existing.Spec = desired.Spec
 			existing.Labels = desired.Labels
-			err := c.Update(context.TODO(), existing)
-			return err
+			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }
@@ -164,6 +164,7 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }
@@ -184,6 +185,7 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }
@@ -204,6 +206,7 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }
@@ -219,6 +222,7 @@ func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
+		return nil
 	}
 	return err
 }
@@ -238,6 +242,7 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 			existing.Rules = desired.Rules
 			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }
@@ -258,6 +263,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 			existing.Subjects = desired.Subjects
 			return c.Update(context.TODO(), existing)
 		}
+		return nil
 	}
 	return err
 }

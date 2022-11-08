@@ -74,7 +74,7 @@ func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) err
 func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, err error) error {
 	var reason = err.Error()
 
-	p.SetConfigCheck(true)
+	p.SetConfigCheck(false)
 	p.SetReason(&reason)
 
 	return p.UpdateStatus(ctx, client)

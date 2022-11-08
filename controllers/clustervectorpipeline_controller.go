@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,7 +28,6 @@ import (
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 )
@@ -104,50 +102,9 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
 			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
 		}
-
-		// Get Vector Config file
-		configBuilder, err := config.NewBuilder(ctx, vaCtrl, vectorPipelineCR)
-		if err != nil {
+		if err := config.ReconcileConfig(ctx, r.Client, vectorPipelineCR, vaCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
-
-		byteConfig, err := configBuilder.GetByteConfigWithValidate()
-		if err != nil {
-			if err := pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
-				return ctrl.Result{}, err
-			}
-			if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-
-		// Init CheckConfig
-		configCheck := configcheck.New(ctx, byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
-
-		// Start ConfigCheck
-		err = configCheck.Run()
-		if errors.Is(err, configcheck.ValidationError) {
-			if err = pipeline.SetFailedStatus(ctx, r.Client, vectorPipelineCR, err); err != nil {
-				return ctrl.Result{}, err
-			}
-			if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if err = pipeline.SetSuccessStatus(ctx, r.Client, vectorPipelineCR); err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, vectorPipelineCR); err != nil {
-			return ctrl.Result{}, err
-		}
-
 	}
 
 	log.Info("finish Reconcile VectorPipeline")

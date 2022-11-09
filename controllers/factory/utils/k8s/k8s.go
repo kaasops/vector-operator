@@ -180,9 +180,9 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
-			existing.Spec = desired.Spec
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) || !equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
 			existing.Labels = desired.Labels
+			existing.Spec = desired.Spec
 			return c.Update(context.TODO(), existing)
 		}
 		return nil
@@ -201,9 +201,9 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
-			existing.Spec = desired.Spec
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) || !equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
 			existing.Labels = desired.Labels
+			existing.Spec = desired.Spec
 			return c.Update(context.TODO(), existing)
 		}
 		return nil
@@ -238,7 +238,9 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Rules, existing.Rules) {
+			existing.Labels = desired.Labels
 			existing.Rules = desired.Rules
 			return c.Update(context.TODO(), existing)
 		}
@@ -258,7 +260,10 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.RoleRef, existing.RoleRef) ||
+			!equality.Semantic.DeepDerivative(desired.Subjects, existing.Subjects) {
+			existing.Labels = desired.Labels
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
 			return c.Update(context.TODO(), existing)

@@ -31,8 +31,6 @@ import (
 )
 
 type ConfigCheck struct {
-	Ctx context.Context
-
 	Config []byte
 
 	Client    client.Client
@@ -44,9 +42,8 @@ type ConfigCheck struct {
 	Hash      string
 }
 
-func New(ctx context.Context, config []byte, c client.Client, cs *kubernetes.Clientset, name, namespace, image string) *ConfigCheck {
+func New(config []byte, c client.Client, cs *kubernetes.Clientset, name, namespace, image string) *ConfigCheck {
 	return &ConfigCheck{
-		Ctx:       ctx,
 		Config:    config,
 		Client:    c,
 		ClientSet: cs,
@@ -56,7 +53,7 @@ func New(ctx context.Context, config []byte, c client.Client, cs *kubernetes.Cli
 	}
 }
 
-func (cc *ConfigCheck) Run() error {
+func (cc *ConfigCheck) Run(ctx context.Context) error {
 	log := log.FromContext(context.TODO()).WithValues("Vector ConfigCheck", cc.Name)
 
 	log.Info("start ConfigCheck")
@@ -71,7 +68,7 @@ func (cc *ConfigCheck) Run() error {
 		return err
 	}
 
-	if err := cc.checkVectorConfigCheckPod(); err != nil {
+	if err := cc.checkVectorConfigCheckPod(ctx); err != nil {
 		return err
 	}
 
@@ -96,7 +93,7 @@ func (cc *ConfigCheck) ensureVectorConfigCheckConfig() error {
 	return k8s.CreateOrUpdateSecret(vectorConfigCheckSecret, cc.Client)
 }
 
-func (cc *ConfigCheck) checkVectorConfigCheckPod() error {
+func (cc *ConfigCheck) checkVectorConfigCheckPod(ctx context.Context) error {
 	vectorConfigCheckPod := cc.createVectorConfigCheckPod()
 
 	err := k8s.CreatePod(vectorConfigCheckPod, cc.Client)
@@ -109,7 +106,7 @@ func (cc *ConfigCheck) checkVectorConfigCheckPod() error {
 		return err
 	}
 
-	err = cc.cleanup()
+	err = cc.cleanup(ctx)
 	if err != nil {
 		return err
 	}
@@ -167,14 +164,14 @@ func (cc *ConfigCheck) getCheckResult(pod *corev1.Pod) error {
 	}
 }
 
-func (cc *ConfigCheck) cleanup() error {
+func (cc *ConfigCheck) cleanup(ctx context.Context) error {
 	listOpts, err := cc.gcRListOptions()
 	if err != nil {
 		return err
 	}
 
 	podlist := corev1.PodList{}
-	err = cc.Client.List(cc.Ctx, &podlist, &listOpts)
+	err = cc.Client.List(ctx, &podlist, &listOpts)
 	if err != nil {
 		return err
 	}

@@ -29,10 +29,10 @@ import (
 func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
 	cfgHash := hash.Get(ctrl.Config)
 
-	configCheck := configcheck.New(ctx, ctrl.Config, ctrl.Client, ctrl.ClientSet, ctrl.Vector.Name, ctrl.Vector.Namespace, ctrl.Vector.Spec.Agent.Image)
+	configCheck := configcheck.New(ctrl.Config, ctrl.Client, ctrl.ClientSet, ctrl.Vector.Name, ctrl.Vector.Namespace, ctrl.Vector.Spec.Agent.Image)
 
 	if ctrl.Vector.Status.LastAppliedConfigHash == nil || *ctrl.Vector.Status.LastAppliedConfigHash != cfgHash {
-		err := configCheck.Run()
+		err := configCheck.Run(ctx)
 		if errors.Is(err, configcheck.ValidationError) {
 			if err := ctrl.SetFailedStatus(ctx, err); err != nil {
 				return nil, err

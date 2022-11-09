@@ -14,7 +14,7 @@ kubectl apply -f config/crd/bases/observability.kaasops.io_clustervectorpipeline
 ## Start Vector Operator
 ### Create namespace for Vector Operator
 ```bash
-kubectl create namespace vector-operator-system
+kubectl create namespace vector
 ```
 
 ### Create RBAC
@@ -25,7 +25,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: vector-operator-sa-token
-  namespace: vector-operator-system
+  namespace: vector
   annotations:
     kubernetes.io/service-account.name: vector-operator
 type: kubernetes.io/service-account-token
@@ -34,7 +34,7 @@ EOF
 
 ```bash
 # Create ServiceAccount for Vector Operator
-kubectl create serviceaccount -n vector-operator-system vector-operator
+kubectl create serviceaccount -n vector vector-operator
 
 # Create ClusterRole for Vector Operator
 cat <<EOF | kubectl apply -f -
@@ -139,7 +139,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: vector-operator
-  namespace: vector-operator-system
+  namespace: vector
 EOF
 ```
 
@@ -150,7 +150,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vector-operator
-  namespace: vector-operator-system
+  namespace: vector
   labels:
     app.kubernetes.io/name: vector-operator
 spec:
@@ -238,7 +238,7 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: sample
-  namespace: vector-operator-system
+  namespace: vector
 spec:
   agent:
     tolerations:
@@ -253,7 +253,7 @@ EOF
 
 Check Vector DaemonSet pods:
 ```bash
-kubectl get pod -n vector-operator-system
+kubectl get pod -n vector
 ```
 
 ### Deploy minimal VectorPipeline CR for get log-spamer logs
@@ -298,12 +298,12 @@ sample   48s   true
 
 After some times you can see log-spamer logs in Vector stdout:
 ```bash
-kubectl logs -n vector-operator-system -l app.kubernetes.io/instance=sample -f
+kubectl logs -n vector -l app.kubernetes.io/instance=sample -f
 ```
 Output
 ```bash
-{"file":"/var/log/pods/vector-operator-system_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector-operator-system"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector-operator-system","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"3irbVba4Sf8qFC2i78UfjVzwUGzBu3m3AnbMbSTXkkyqTcAaLtuL6S39hAVfqx\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.766514243Z","timestamp_end":"2022-11-01T12:03:31.766514243Z"}
-{"file":"/var/log/pods/vector-operator-system_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector-operator-system"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector-operator-system","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"SJtmGewiQcE9hnEtgCjxkzHZpWbvmTNB69temrBZ6pH3aMSGsa5WXFqPBRz7gVhmnYpmpQP7\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.776769316Z","timestamp_end":"2022-11-01T12:03:31.776769316Z"}
+{"file":"/var/log/pods/vector_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"3irbVba4Sf8qFC2i78UfjVzwUGzBu3m3AnbMbSTXkkyqTcAaLtuL6S39hAVfqx\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.766514243Z","timestamp_end":"2022-11-01T12:03:31.766514243Z"}
+{"file":"/var/log/pods/vector_log-spamer-788b9ffbf5-nmz4m_9585867b-5457-4729-a682-db3bed0ffd67/log-spamer/0.log","kubernetes":{"container_id":"containerd://d280076162fcd9a1521a8054c215521c1f2d7a4e8e72fe63b2195dd2b7d99b7d","container_image":"zvlb/log-spamer:latest","container_name":"log-spamer","namespace_labels":{"kubernetes.io/metadata.name":"vector"},"node_labels":{"beta.kubernetes.io/arch":"amd64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"amd64","kubernetes.io/hostname":"lux-kube-node13","kubernetes.io/os":"linux"},"pod_ip":"172.24.35.158","pod_ips":["172.24.35.158"],"pod_labels":{"app":"log-spamer","pod-template-hash":"788b9ffbf5"},"pod_name":"log-spamer-788b9ffbf5-nmz4m","pod_namespace":"vector","pod_node_name":"lux-kube-node13","pod_owner":"ReplicaSet/log-spamer-788b9ffbf5","pod_uid":"9585867b-5457-4729-a682-db3bed0ffd67"},"message":"{\"level\":\"info\",\"time\":\"2022-11-01T12:03:31Z\",\"message\":\"SJtmGewiQcE9hnEtgCjxkzHZpWbvmTNB69temrBZ6pH3aMSGsa5WXFqPBRz7gVhmnYpmpQP7\"}","source_type":"kubernetes_logs","stream":"stderr","testfield":"test","timestamp":"2022-11-01T12:03:31.776769316Z","timestamp_end":"2022-11-01T12:03:31.776769316Z"}
 ```
 
 You can see field `testfield`, which we add in transform section in VectorPipeline
@@ -311,7 +311,7 @@ You can see field `testfield`, which we add in transform section in VectorPipeli
 # Cleanup
 ```bash
 kubectl delete namespace test
-kubectl delete namespace vector-operator-system
+kubectl delete namespace vector
 kubectl delete clusterrole vector-operator
 kubectl delete clusterrolebinding vector-operator
 kubectl delete -f config/crd/bases/observability.kaasops.io_vectors.yaml

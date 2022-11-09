@@ -19,6 +19,8 @@ The operator deploys and configures a vector agent daemonset on every node to co
 - [ ] Vector config optimization
 - [ ] Vector aggregator support
 
+[RoadMap](https://github.com/orgs/kaasops/projects/1)
+
 ## Documentation
 - Quick start [doc](https://github.com/kaasops/vector-operator/blob/main/docs/quick-start.md)
 - Design [doc](https://github.com/kaasops/vector-operator/blob/main/docs/design.md)

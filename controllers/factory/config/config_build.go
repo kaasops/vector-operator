@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 
@@ -47,17 +46,15 @@ var (
 
 type Builder struct {
 	Name      string
-	Ctx       context.Context
 	vaCtrl    *vectoragent.Controller
 	Pipelines []pipeline.Pipeline
 }
 
-func NewBuilder(ctx context.Context, vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) (*Builder, error) {
+func NewBuilder(vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) *Builder {
 	return &Builder{
-		Ctx:       ctx,
 		vaCtrl:    vaCtrl,
 		Pipelines: pipelines,
-	}, nil
+	}
 }
 
 func (b *Builder) GetByteConfig() ([]byte, error) {

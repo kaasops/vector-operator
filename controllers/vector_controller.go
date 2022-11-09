@@ -106,10 +106,7 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	configBuilder, err := config.NewBuilder(ctx, vaCtrl, pipelines...)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	configBuilder := config.NewBuilder(vaCtrl, pipelines...)
 
 	// Get Config in Json ([]byte)
 	byteConfig, err := configBuilder.GetByteConfig()

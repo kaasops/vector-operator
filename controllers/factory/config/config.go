@@ -30,10 +30,7 @@ import (
 
 func ReconcileConfig(ctx context.Context, client client.Client, p pipeline.Pipeline, vaCtrl *vectoragent.Controller) error {
 	// Get Vector Config file
-	configBuilder, err := NewBuilder(ctx, vaCtrl, p)
-	if err != nil {
-		return err
-	}
+	configBuilder := NewBuilder(vaCtrl, p)
 
 	byteConfig, err := configBuilder.GetByteConfigWithValidate()
 	if err != nil {
@@ -47,10 +44,10 @@ func ReconcileConfig(ctx context.Context, client client.Client, p pipeline.Pipel
 	}
 
 	// Init CheckConfig
-	configCheck := configcheck.New(ctx, byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
+	configCheck := configcheck.New(byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
 
 	// Start ConfigCheck
-	err = configCheck.Run()
+	err = configCheck.Run(ctx)
 	if errors.Is(err, configcheck.ValidationError) {
 		if err = pipeline.SetFailedStatus(ctx, client, p, err); err != nil {
 			return err

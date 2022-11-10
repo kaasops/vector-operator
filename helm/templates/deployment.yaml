@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vector-operator
+  namespace: vector-operator-system
+  labels:
+    app.kubernetes.io/name: vector-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vector-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vector-operator
+        app.kubernetes.io/managed-by: "helm"
+        meta.helm.sh/release-name: vector-operator
+    spec:
+      volumes:
+        - name: kube-api-access
+          secret:
+            secretName: vector-operator-sa-token
+            defaultMode: 420
+      automountServiceAccountToken: false
+      serviceAccount: vector-operator
+      serviceAccountName: vector-operator      
+      containers:
+      - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: vector-operator
+        volumeMounts:
+            - name: kube-api-access
+              readOnly: true
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+        securityContext:
+{{- toYaml .Values.image.securityContext | nindent 10 }}     
+         
+    

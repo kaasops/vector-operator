@@ -122,7 +122,7 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	vaCtrl.Config = byteConfig
 
 	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(); err != nil {
+	if err := vaCtrl.EnsureVectorAgent(ctx); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

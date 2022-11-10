@@ -32,82 +32,82 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateOrUpdateService(svc *corev1.Service, c client.Client) error {
-	return reconcileService(svc, c)
+func CreateOrUpdateService(ctx context.Context, svc *corev1.Service, c client.Client) error {
+	return reconcileService(ctx, svc, c)
 }
 
-func CreateOrUpdateSecret(secret *corev1.Secret, c client.Client) error {
-	return reconcileSecret(secret, c)
+func CreateOrUpdateSecret(ctx context.Context, secret *corev1.Secret, c client.Client) error {
+	return reconcileSecret(ctx, secret, c)
 }
 
-func CreateOrUpdateDaemonSet(daemonSet *appsv1.DaemonSet, c client.Client) error {
-	return reconcileDaemonSet(daemonSet, c)
+func CreateOrUpdateDaemonSet(ctx context.Context, daemonSet *appsv1.DaemonSet, c client.Client) error {
+	return reconcileDaemonSet(ctx, daemonSet, c)
 }
 
-func CreateOrUpdateStatefulSet(statefulSet *appsv1.StatefulSet, c client.Client) error {
-	return reconcileStatefulSet(statefulSet, c)
+func CreateOrUpdateStatefulSet(ctx context.Context, statefulSet *appsv1.StatefulSet, c client.Client) error {
+	return reconcileStatefulSet(ctx, statefulSet, c)
 }
 
-func CreateOrUpdateServiceAccount(secret *corev1.ServiceAccount, c client.Client) error {
-	return reconcileServiceAccount(secret, c)
+func CreateOrUpdateServiceAccount(ctx context.Context, secret *corev1.ServiceAccount, c client.Client) error {
+	return reconcileServiceAccount(ctx, secret, c)
 }
 
-func CreateOrUpdateClusterRole(secret *rbacv1.ClusterRole, c client.Client) error {
-	return reconcileClusterRole(secret, c)
+func CreateOrUpdateClusterRole(ctx context.Context, secret *rbacv1.ClusterRole, c client.Client) error {
+	return reconcileClusterRole(ctx, secret, c)
 }
 
-func CreateOrUpdateClusterRoleBinding(secret *rbacv1.ClusterRoleBinding, c client.Client) error {
-	return reconcileClusterRoleBinding(secret, c)
+func CreateOrUpdateClusterRoleBinding(ctx context.Context, secret *rbacv1.ClusterRoleBinding, c client.Client) error {
+	return reconcileClusterRoleBinding(ctx, secret, c)
 }
 
-func CreatePod(pod *corev1.Pod, c client.Client) error {
-	err := c.Create(context.TODO(), pod)
+func CreatePod(ctx context.Context, pod *corev1.Pod, c client.Client) error {
+	err := c.Create(ctx, pod)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetPod(pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
+func GetPod(ctx context.Context, pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
 	result := &corev1.Pod{}
-	err := c.Get(context.TODO(), client.ObjectKeyFromObject(pod), result)
+	err := c.Get(ctx, client.ObjectKeyFromObject(pod), result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func DeletePod(pod *corev1.Pod, c client.Client) error {
-	if err := c.Delete(context.TODO(), pod); err != nil {
+func DeletePod(ctx context.Context, pod *corev1.Pod, c client.Client) error {
+	if err := c.Delete(ctx, pod); err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetSecret(namespacedName types.NamespacedName, c client.Client) (*corev1.Secret, error) {
+func GetSecret(ctx context.Context, namespacedName types.NamespacedName, c client.Client) (*corev1.Secret, error) {
 	result := &corev1.Secret{}
-	err := c.Get(context.TODO(), namespacedName, result)
+	err := c.Get(ctx, namespacedName, result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func DeleteSecret(secret *corev1.Secret, c client.Client) error {
-	if err := c.Delete(context.TODO(), secret); err != nil {
+func DeleteSecret(ctx context.Context, secret *corev1.Secret, c client.Client) error {
+	if err := c.Delete(ctx, secret); err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetPodLogs(pod *corev1.Pod, cs *kubernetes.Clientset) (string, error) {
+func GetPodLogs(ctx context.Context, pod *corev1.Pod, cs *kubernetes.Clientset) (string, error) {
 	count := int64(100)
 	podLogOptions := corev1.PodLogOptions{
 		TailLines: &count,
 	}
 
 	req := cs.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
-	podLogs, err := req.Stream(context.TODO())
+	podLogs, err := req.Stream(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -127,14 +127,14 @@ func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error
 	return c.Status().Update(ctx, obj)
 }
 
-func reconcileService(obj runtime.Object, c client.Client) error {
+func reconcileService(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &corev1.Service{}
 	desired := obj.(*corev1.Service)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -144,21 +144,21 @@ func reconcileService(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
 			existing.Spec = desired.Spec
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileSecret(obj runtime.Object, c client.Client) error {
+func reconcileSecret(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &corev1.Secret{}
 	desired := obj.(*corev1.Secret)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -168,21 +168,21 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
 			existing.Data = desired.Data
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
+func reconcileDaemonSet(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &appsv1.DaemonSet{}
 	desired := obj.(*appsv1.DaemonSet)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -192,21 +192,21 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
 			existing.Spec = desired.Spec
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
+func reconcileStatefulSet(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &appsv1.StatefulSet{}
 	desired := obj.(*appsv1.StatefulSet)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -216,21 +216,21 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
 			existing.Spec = desired.Spec
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
+func reconcileServiceAccount(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &corev1.ServiceAccount{}
 	desired := obj.(*corev1.ServiceAccount)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -238,21 +238,21 @@ func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
 			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileClusterRole(obj runtime.Object, c client.Client) error {
+func reconcileClusterRole(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &rbacv1.ClusterRole{}
 	desired := obj.(*rbacv1.ClusterRole)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -262,21 +262,21 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 			existing.Labels = desired.Labels
 			existing.Annotations = desired.Annotations
 			existing.Rules = desired.Rules
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}
 	return err
 }
 
-func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
+func reconcileClusterRoleBinding(ctx context.Context, obj runtime.Object, c client.Client) error {
 
 	existing := &rbacv1.ClusterRoleBinding{}
 	desired := obj.(*rbacv1.ClusterRoleBinding)
 
-	err := c.Create(context.TODO(), desired)
+	err := c.Create(ctx, desired)
 	if errors.IsAlreadyExists(err) {
-		err := c.Get(context.TODO(), client.ObjectKeyFromObject(desired), existing)
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
 		}
@@ -288,7 +288,7 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 			existing.Annotations = desired.Annotations
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
-			return c.Update(context.TODO(), existing)
+			return c.Update(ctx, existing)
 		}
 		return nil
 	}

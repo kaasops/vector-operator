@@ -25,83 +25,79 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (ctrl *Controller) EnsureVectorAgent() error {
-	ctx := context.Background()
+func (ctrl *Controller) EnsureVectorAgent(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent")
 
-	if err := ctrl.ensureVectorAgentRBAC(); err != nil {
+	if err := ctrl.ensureVectorAgentRBAC(ctx); err != nil {
 		return err
 	}
 
 	if ctrl.Vector.Spec.Agent.Service {
-		if err := ctrl.ensureVectorAgentService(); err != nil {
+		if err := ctrl.ensureVectorAgentService(ctx); err != nil {
 			return err
 		}
 	}
 
-	if err := ctrl.ensureVectorAgentConfig(); err != nil {
+	if err := ctrl.ensureVectorAgentConfig(ctx); err != nil {
 		return err
 	}
 
-	if err := ctrl.ensureVectorAgentDaemonSet(); err != nil {
+	if err := ctrl.ensureVectorAgentDaemonSet(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (ctrl *Controller) ensureVectorAgentRBAC() error {
-	ctx := context.Background()
+func (ctrl *Controller) ensureVectorAgentRBAC(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent RBAC")
 
-	if err := ctrl.ensureVectorAgentServiceAccount(); err != nil {
+	if err := ctrl.ensureVectorAgentServiceAccount(ctx); err != nil {
 		return err
 	}
-	if err := ctrl.ensureVectorAgentClusterRole(); err != nil {
+	if err := ctrl.ensureVectorAgentClusterRole(ctx); err != nil {
 		return err
 	}
-	if err := ctrl.ensureVectorAgentClusterRoleBinding(); err != nil {
+	if err := ctrl.ensureVectorAgentClusterRoleBinding(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (ctrl *Controller) ensureVectorAgentServiceAccount() error {
+func (ctrl *Controller) ensureVectorAgentServiceAccount(ctx context.Context) error {
 	vectorAgentServiceAccount := ctrl.createVectorAgentServiceAccount()
 
-	return k8s.CreateOrUpdateServiceAccount(vectorAgentServiceAccount, ctrl.Client)
+	return k8s.CreateOrUpdateServiceAccount(ctx, vectorAgentServiceAccount, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentClusterRole() error {
+func (ctrl *Controller) ensureVectorAgentClusterRole(ctx context.Context) error {
 	vectorAgentClusterRole := ctrl.createVectorAgentClusterRole()
 
-	return k8s.CreateOrUpdateClusterRole(vectorAgentClusterRole, ctrl.Client)
+	return k8s.CreateOrUpdateClusterRole(ctx, vectorAgentClusterRole, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentClusterRoleBinding() error {
+func (ctrl *Controller) ensureVectorAgentClusterRoleBinding(ctx context.Context) error {
 	vectorAgentClusterRoleBinding := ctrl.createVectorAgentClusterRoleBinding()
 
-	return k8s.CreateOrUpdateClusterRoleBinding(vectorAgentClusterRoleBinding, ctrl.Client)
+	return k8s.CreateOrUpdateClusterRoleBinding(ctx, vectorAgentClusterRoleBinding, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentService() error {
-	ctx := context.Background()
+func (ctrl *Controller) ensureVectorAgentService(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-service", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent Service")
 
 	vectorAgentService := ctrl.createVectorAgentService()
 
-	return k8s.CreateOrUpdateService(vectorAgentService, ctrl.Client)
+	return k8s.CreateOrUpdateService(ctx, vectorAgentService, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentConfig() error {
-	ctx := context.Background()
+func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-secret", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent Secret")
@@ -111,18 +107,17 @@ func (ctrl *Controller) ensureVectorAgentConfig() error {
 		return err
 	}
 
-	return k8s.CreateOrUpdateSecret(vectorAgentSecret, ctrl.Client)
+	return k8s.CreateOrUpdateSecret(ctx, vectorAgentSecret, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentDaemonSet() error {
-	ctx := context.Background()
+func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent DaemonSet")
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
 
-	return k8s.CreateOrUpdateDaemonSet(vectorAgentDaemonSet, ctrl.Client)
+	return k8s.CreateOrUpdateDaemonSet(ctx, vectorAgentDaemonSet, ctrl.Client)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {

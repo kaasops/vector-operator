@@ -45,7 +45,7 @@ func getInitObjectMeta() metav1.ObjectMeta {
 	return ObjectMeta
 }
 
-var reconcileObjectCase = func(objInit, obj interface{}, want error) func(t *testing.T) {
+var reconcileObjectCase = func(ctx context.Context, objInit, obj interface{}, want error) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 		t.Parallel()
@@ -58,49 +58,49 @@ var reconcileObjectCase = func(objInit, obj interface{}, want error) func(t *tes
 			service := obj.(*corev1.Service)
 
 			cl := fake.NewClientBuilder().WithObjects(serviceInit).Build()
-			err := k8s.CreateOrUpdateService(service, cl)
+			err := k8s.CreateOrUpdateService(ctx, service, cl)
 			req.Equal(err, want)
 		case *corev1.Secret:
 			secretInit := objInit.(*corev1.Secret)
 			secret := obj.(*corev1.Secret)
 
 			cl := fake.NewClientBuilder().WithObjects(secretInit).Build()
-			err := k8s.CreateOrUpdateSecret(secret, cl)
+			err := k8s.CreateOrUpdateSecret(ctx, secret, cl)
 			req.Equal(err, want)
 		case *appsv1.DaemonSet:
 			daemonSetInit := objInit.(*appsv1.DaemonSet)
 			daemonSet := obj.(*appsv1.DaemonSet)
 
 			cl := fake.NewClientBuilder().WithObjects(daemonSetInit).Build()
-			err := k8s.CreateOrUpdateDaemonSet(daemonSet, cl)
+			err := k8s.CreateOrUpdateDaemonSet(ctx, daemonSet, cl)
 			req.Equal(err, want)
 		case *appsv1.StatefulSet:
 			statefulSetInit := objInit.(*appsv1.StatefulSet)
 			statefulSet := obj.(*appsv1.StatefulSet)
 
 			cl := fake.NewClientBuilder().WithObjects(statefulSetInit).Build()
-			err := k8s.CreateOrUpdateStatefulSet(statefulSet, cl)
+			err := k8s.CreateOrUpdateStatefulSet(ctx, statefulSet, cl)
 			req.Equal(err, want)
 		case *corev1.ServiceAccount:
 			serviceAccountInit := objInit.(*corev1.ServiceAccount)
 			serviceAccount := obj.(*corev1.ServiceAccount)
 
 			cl := fake.NewClientBuilder().WithObjects(serviceAccountInit).Build()
-			err := k8s.CreateOrUpdateServiceAccount(serviceAccount, cl)
+			err := k8s.CreateOrUpdateServiceAccount(ctx, serviceAccount, cl)
 			req.Equal(err, want)
 		case *rbacv1.ClusterRole:
 			clusterRoleInit := objInit.(*rbacv1.ClusterRole)
 			clusterRole := obj.(*rbacv1.ClusterRole)
 
 			cl := fake.NewClientBuilder().WithObjects(clusterRoleInit).Build()
-			err := k8s.CreateOrUpdateClusterRole(clusterRole, cl)
+			err := k8s.CreateOrUpdateClusterRole(ctx, clusterRole, cl)
 			req.Equal(err, want)
 		case *rbacv1.ClusterRoleBinding:
 			clusterRoleBindingInit := objInit.(*rbacv1.ClusterRoleBinding)
 			clusterRoleBinding := obj.(*rbacv1.ClusterRoleBinding)
 
 			cl := fake.NewClientBuilder().WithObjects(clusterRoleBindingInit).Build()
-			err := k8s.CreateOrUpdateClusterRoleBinding(clusterRoleBinding, cl)
+			err := k8s.CreateOrUpdateClusterRoleBinding(ctx, clusterRoleBinding, cl)
 			req.Equal(err, want)
 		}
 	}
@@ -167,7 +167,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range secriveCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -221,7 +221,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range secretCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -275,7 +275,7 @@ func TestCreateOrUpdateDaemonSet(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range daemonSetCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -329,7 +329,7 @@ func TestCreateOrUpdateStatefulSet(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range statefulSetCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -383,7 +383,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range serviceAccountCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -437,7 +437,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range clusterRoleCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -491,7 +491,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 
 	// t.Parallel()
 	for _, tc := range clusterRoleBindingCases {
-		t.Run(tc.name, reconcileObjectCase(initObj, tc.obj, tc.err))
+		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
 	}
 }
 
@@ -505,7 +505,7 @@ func TestCreatePod(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			err := k8s.CreatePod(obj, cl)
+			err := k8s.CreatePod(context.Background(), obj, cl)
 			req.Equal(err, want)
 		}
 	}
@@ -562,7 +562,7 @@ func TestGetPod(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
 
-			result, err := k8s.GetPod(obj, cl)
+			result, err := k8s.GetPod(context.Background(), obj, cl)
 			if result != nil {
 				req.Equal(result.ObjectMeta, wantPod.ObjectMeta)
 			}

@@ -138,9 +138,12 @@ func reconcileService(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
-			existing.Spec = desired.Spec
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
+			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
 			return c.Update(context.TODO(), existing)
 		}
 		return nil
@@ -159,9 +162,12 @@ func reconcileSecret(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepEqual(existing, desired) {
-			existing.Data = desired.Data
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
+			!equality.Semantic.DeepDerivative(desired.Data, existing.Data) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Data = desired.Data
 			return c.Update(context.TODO(), existing)
 		}
 		return nil
@@ -180,8 +186,11 @@ func reconcileDaemonSet(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) || !equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
+			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
 			existing.Spec = desired.Spec
 			return c.Update(context.TODO(), existing)
 		}
@@ -201,8 +210,11 @@ func reconcileStatefulSet(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) || !equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
+			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
 			existing.Spec = desired.Spec
 			return c.Update(context.TODO(), existing)
 		}
@@ -222,6 +234,12 @@ func reconcileServiceAccount(obj runtime.Object, c client.Client) error {
 		if err != nil {
 			return err
 		}
+		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) {
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			return c.Update(context.TODO(), existing)
+		}
 		return nil
 	}
 	return err
@@ -239,8 +257,10 @@ func reconcileClusterRole(obj runtime.Object, c client.Client) error {
 			return err
 		}
 		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
 			!equality.Semantic.DeepDerivative(desired.Rules, existing.Rules) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
 			existing.Rules = desired.Rules
 			return c.Update(context.TODO(), existing)
 		}
@@ -261,9 +281,11 @@ func reconcileClusterRoleBinding(obj runtime.Object, c client.Client) error {
 			return err
 		}
 		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
+			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
 			!equality.Semantic.DeepDerivative(desired.RoleRef, existing.RoleRef) ||
 			!equality.Semantic.DeepDerivative(desired.Subjects, existing.Subjects) {
 			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
 			return c.Update(context.TODO(), existing)

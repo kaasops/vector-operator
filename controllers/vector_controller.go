@@ -25,7 +25,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -99,8 +98,6 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
-		Owns(&rbacv1.ClusterRole{}).
-		Owns(&rbacv1.ClusterRoleBinding{}).
 		Complete(r)
 }
 
@@ -132,6 +129,4 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
-
-	// return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 }

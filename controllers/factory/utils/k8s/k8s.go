@@ -45,8 +45,7 @@ func NewNotSupportedError(obj client.Object) error {
 func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Client) error {
 	switch obj.(type) {
 	case *appsv1.Deployment:
-		runtimeObj := obj.DeepCopyObject()
-		return createOrUpdateDeployment(ctx, runtimeObj, c)
+		return createOrUpdateDeployment(ctx, obj, c)
 	case *appsv1.StatefulSet:
 		return createOrUpdateStatefulSet(ctx, obj, c)
 	case *appsv1.DaemonSet:
@@ -56,8 +55,7 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 	case *corev1.Service:
 		return createOrUpdateService(ctx, obj, c)
 	case *corev1.ServiceAccount:
-		runtimeObj := obj.DeepCopyObject()
-		return createOrUpdateServiceAccount(ctx, runtimeObj, c)
+		return createOrUpdateServiceAccount(ctx, obj, c)
 	case *rbacv1.ClusterRole:
 		return createOrUpdateClusterRole(ctx, obj, c)
 	case *rbacv1.ClusterRoleBinding:

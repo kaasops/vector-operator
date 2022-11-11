@@ -82,7 +82,7 @@ func (cc *ConfigCheck) ensureVectorConfigCheckRBAC(ctx context.Context) error {
 func (cc *ConfigCheck) ensureVectorConfigCheckServiceAccount(ctx context.Context) error {
 	vectorAgentServiceAccount := cc.createVectorConfigCheckServiceAccount()
 
-	return k8s.CreateOrUpdateServiceAccount(ctx, vectorAgentServiceAccount, cc.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentServiceAccount, cc.Client)
 }
 func (cc *ConfigCheck) ensureVectorConfigCheckConfig(ctx context.Context) error {
 	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig()
@@ -90,7 +90,7 @@ func (cc *ConfigCheck) ensureVectorConfigCheckConfig(ctx context.Context) error 
 		return err
 	}
 
-	return k8s.CreateOrUpdateSecret(ctx, vectorConfigCheckSecret, cc.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorConfigCheckSecret, cc.Client)
 }
 
 func (cc *ConfigCheck) checkVectorConfigCheckPod(ctx context.Context) error {
@@ -142,7 +142,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) erro
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 
 	for {
-		existing, err := k8s.GetPod(ctx, pod, cc.Client)
+		existing, err := k8s.GetPod(ctx, client.ObjectKeyFromObject(pod), cc.Client)
 		if err != nil {
 			return err
 		}

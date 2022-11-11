@@ -28,12 +28,30 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+type objCase struct {
+	name    string
+	initObj client.Object
+	obj     client.Object
+	want    error
+}
+
+var nameRequeriedError = api_errors.NewInvalid(
+	schema.GroupKind{},
+	"",
+	field.ErrorList{
+		field.Required(
+			field.NewPath("metadata.name"),
+			"name is required",
+		),
+	},
 )
 
 func getInitObjectMeta() metav1.ObjectMeta {
@@ -45,466 +63,585 @@ func getInitObjectMeta() metav1.ObjectMeta {
 	return ObjectMeta
 }
 
-var reconcileObjectCase = func(ctx context.Context, objInit, obj interface{}, want error) func(t *testing.T) {
-	return func(t *testing.T) {
-		t.Helper()
-		t.Parallel()
+func TestCreateOrUpdateResource(t *testing.T) {
+	createOrUpdateResourceCase := func(initObj, obj client.Object, want error) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
 
-		req := require.New(t)
-
-		switch obj.(type) {
-		case *corev1.Service:
-			serviceInit := objInit.(*corev1.Service)
-			service := obj.(*corev1.Service)
-
-			cl := fake.NewClientBuilder().WithObjects(serviceInit).Build()
-			err := k8s.CreateOrUpdateService(ctx, service, cl)
-			req.Equal(err, want)
-		case *corev1.Secret:
-			secretInit := objInit.(*corev1.Secret)
-			secret := obj.(*corev1.Secret)
-
-			cl := fake.NewClientBuilder().WithObjects(secretInit).Build()
-			err := k8s.CreateOrUpdateSecret(ctx, secret, cl)
-			req.Equal(err, want)
-		case *appsv1.DaemonSet:
-			daemonSetInit := objInit.(*appsv1.DaemonSet)
-			daemonSet := obj.(*appsv1.DaemonSet)
-
-			cl := fake.NewClientBuilder().WithObjects(daemonSetInit).Build()
-			err := k8s.CreateOrUpdateDaemonSet(ctx, daemonSet, cl)
-			req.Equal(err, want)
-		case *appsv1.StatefulSet:
-			statefulSetInit := objInit.(*appsv1.StatefulSet)
-			statefulSet := obj.(*appsv1.StatefulSet)
-
-			cl := fake.NewClientBuilder().WithObjects(statefulSetInit).Build()
-			err := k8s.CreateOrUpdateStatefulSet(ctx, statefulSet, cl)
-			req.Equal(err, want)
-		case *corev1.ServiceAccount:
-			serviceAccountInit := objInit.(*corev1.ServiceAccount)
-			serviceAccount := obj.(*corev1.ServiceAccount)
-
-			cl := fake.NewClientBuilder().WithObjects(serviceAccountInit).Build()
-			err := k8s.CreateOrUpdateServiceAccount(ctx, serviceAccount, cl)
-			req.Equal(err, want)
-		case *rbacv1.ClusterRole:
-			clusterRoleInit := objInit.(*rbacv1.ClusterRole)
-			clusterRole := obj.(*rbacv1.ClusterRole)
-
-			cl := fake.NewClientBuilder().WithObjects(clusterRoleInit).Build()
-			err := k8s.CreateOrUpdateClusterRole(ctx, clusterRole, cl)
-			req.Equal(err, want)
-		case *rbacv1.ClusterRoleBinding:
-			clusterRoleBindingInit := objInit.(*rbacv1.ClusterRoleBinding)
-			clusterRoleBinding := obj.(*rbacv1.ClusterRoleBinding)
-
-			cl := fake.NewClientBuilder().WithObjects(clusterRoleBindingInit).Build()
-			err := k8s.CreateOrUpdateClusterRoleBinding(ctx, clusterRoleBinding, cl)
-			req.Equal(err, want)
+			cl := fake.NewClientBuilder().WithObjects(initObj).Build()
+			result := k8s.CreateOrUpdateResource(context.Background(), obj, cl)
+			req.Equal(result, want)
 		}
 	}
-}
 
-var nameRequeriedError = apierrors.NewInvalid(
-	schema.GroupKind{},
-	"",
-	field.ErrorList{
-		field.Required(
-			field.NewPath("metadata.name"),
-			"name is required",
-		),
-	},
-)
+	var cases []objCase
 
-func TestCreateOrUpdateService(t *testing.T) {
-	initObj := &corev1.Service{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type secriveCase struct {
-		name string
-		obj  *corev1.Service
-		err  error
-	}
-
-	secriveCases := []secriveCase{
+	// Deployment cases
+	deploymentCases := []objCase{
 		{
 			name: "Create Simple case",
-			obj: &corev1.Service{
+			initObj: &appsv1.Deployment{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create Alredy exist case",
-			obj: &corev1.Service{
+			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
+			obj: &appsv1.Deployment{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
 		},
 		{
 			name: "Create with Another Namespace case",
-			obj: &corev1.Service{
+			initObj: &appsv1.Deployment{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace2",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create without Name case",
-			obj: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{},
-			},
-			err: nameRequeriedError,
-		},
-	}
-
-	// t.Parallel()
-	for _, tc := range secriveCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateSecret(t *testing.T) {
-	initObj := &corev1.Secret{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type secretCase struct {
-		name string
-		obj  *corev1.Secret
-		err  error
-	}
-
-	secretCases := []secretCase{
-		{
-			name: "Create Simple case",
-			obj: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test-namespace",
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "Create Alredy exist case",
-			obj: &corev1.Secret{
+			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
-		},
-		{
-			name: "Create with Another Namespace case",
-			obj: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test-namespace2",
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "Create without Name case",
-			obj: &corev1.Secret{
+			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
-		},
-	}
-
-	// t.Parallel()
-	for _, tc := range secretCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateDaemonSet(t *testing.T) {
-	initObj := &appsv1.DaemonSet{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type daemonSetCase struct {
-		name string
-		obj  *appsv1.DaemonSet
-		err  error
-	}
-
-	daemonSetCases := []daemonSetCase{
-		{
-			name: "Create Simple case",
-			obj: &appsv1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "init",
-					Namespace: "test-namespace",
-				},
-			},
-			err: nil,
+			want: nameRequeriedError,
 		},
 		{
-			name: "Create Alredy exist case",
-			obj: &appsv1.DaemonSet{
+			name: "Update exist case",
+			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
-		},
-		{
-			name: "Create with Another Namespace case",
-			obj: &appsv1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test-namespace2",
+			obj: &appsv1.Deployment{
+				ObjectMeta: getInitObjectMeta(),
+				Spec: appsv1.DeploymentSpec{
+					MinReadySeconds: 2,
 				},
 			},
-			err: nil,
-		},
-		{
-			name: "Create without Name case",
-			obj: &appsv1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{},
-			},
-			err: nameRequeriedError,
+			want: nil,
 		},
 	}
+	cases = append(cases, deploymentCases...)
 
-	// t.Parallel()
-	for _, tc := range daemonSetCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateStatefulSet(t *testing.T) {
-	initObj := &appsv1.StatefulSet{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type statefulSetCase struct {
-		name string
-		obj  *appsv1.StatefulSet
-		err  error
-	}
-
-	statefulSetCases := []statefulSetCase{
+	// StatefulSet cases
+	statefulSetCases := []objCase{
 		{
 			name: "Create Simple case",
+			initObj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "init",
+					Name:      "test",
 					Namespace: "test-namespace",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create Alredy exist case",
+			initObj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create with Another Namespace case",
+			initObj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace2",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create without Name case",
+			initObj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
+			want: nameRequeriedError,
+		},
+		{
+			name: "Update exist case",
+			initObj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.StatefulSet{
+				ObjectMeta: getInitObjectMeta(),
+				Spec: appsv1.StatefulSetSpec{
+					MinReadySeconds: 2,
+				},
+			},
+			want: nil,
 		},
 	}
+	cases = append(cases, statefulSetCases...)
 
-	// t.Parallel()
-	for _, tc := range statefulSetCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateServiceAccount(t *testing.T) {
-	initObj := &corev1.ServiceAccount{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type serviceAccountCase struct {
-		name string
-		obj  *corev1.ServiceAccount
-		err  error
-	}
-
-	serviceAccountCases := []serviceAccountCase{
+	// DaemonSet cases
+	daemonSetCases := []objCase{
 		{
 			name: "Create Simple case",
-			obj: &corev1.ServiceAccount{
+			initObj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.DaemonSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "init",
+					Name:      "test",
 					Namespace: "test-namespace",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create Alredy exist case",
-			obj: &corev1.ServiceAccount{
+			initObj: &appsv1.DaemonSet{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
+			obj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
 		},
 		{
 			name: "Create with Another Namespace case",
+			initObj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace2",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create without Name case",
+			initObj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{},
+			},
+			want: nameRequeriedError,
+		},
+		{
+			name: "Update exist case",
+			initObj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &appsv1.DaemonSet{
+				ObjectMeta: getInitObjectMeta(),
+				Spec: appsv1.DaemonSetSpec{
+					MinReadySeconds: 2,
+				},
+			},
+			want: nil,
+		},
+	}
+	cases = append(cases, daemonSetCases...)
+
+	// Secret cases
+	secretCases := []objCase{
+		{
+			name: "Create Simple case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create Alredy exist case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
+		},
+		{
+			name: "Create with Another Namespace case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace2",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create without Name case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{},
+			},
+			want: nameRequeriedError,
+		},
+		{
+			name: "Update exist case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+				Data: map[string][]byte{
+					"test": []byte("test"),
+				},
+			},
+			want: nil,
+		},
+	}
+	cases = append(cases, secretCases...)
+
+	// Service cases
+	serviceCases := []objCase{
+		{
+			name: "Create Simple case",
+			initObj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create Alredy exist case",
+			initObj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
+		},
+		{
+			name: "Create with Another Namespace case",
+			initObj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace2",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create without Name case",
+			initObj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{},
+			},
+			want: nameRequeriedError,
+		},
+		{
+			name: "Update exist case",
+			initObj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Service{
+				ObjectMeta: getInitObjectMeta(),
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "1.1.1.1",
+				},
+			},
+			want: nil,
+		},
+	}
+	cases = append(cases, serviceCases...)
+
+	// ServiceAccount cases
+	serviceAccountCases := []objCase{
+		{
+			name: "Create Simple case",
+			initObj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "Create Alredy exist case",
+			initObj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
+		},
+		{
+			name: "Create with Another Namespace case",
+			initObj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace2",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create without Name case",
+			initObj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
+			want: nameRequeriedError,
 		},
-	}
-
-	// t.Parallel()
-	for _, tc := range serviceAccountCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateClusterRole(t *testing.T) {
-	initObj := &rbacv1.ClusterRole{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type clusterRoleCase struct {
-		name string
-		obj  *rbacv1.ClusterRole
-		err  error
-	}
-
-	clusterRoleCases := []clusterRoleCase{
 		{
-			name: "Create Simple case",
-			obj: &rbacv1.ClusterRole{
+			name: "Update exist case",
+			initObj: &corev1.ServiceAccount{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "init",
 					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"test": "test",
+					},
 				},
 			},
-			err: nil,
+			want: nil,
+		},
+	}
+	cases = append(cases, serviceAccountCases...)
+
+	// ClusterRole cases
+	clusterRoleCases := []objCase{
+		{
+			name: "Create Simple case",
+			initObj: &rbacv1.ClusterRole{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			want: nil,
 		},
 		{
 			name: "Create Alredy exist case",
+			initObj: &rbacv1.ClusterRole{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create with Another Namespace case",
+			initObj: &rbacv1.ClusterRole{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace2",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create without Name case",
+			initObj: &rbacv1.ClusterRole{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
+			want: nameRequeriedError,
 		},
-	}
-
-	// t.Parallel()
-	for _, tc := range clusterRoleCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
-	}
-}
-
-func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
-	initObj := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
-	type clusterRoleBindingCase struct {
-		name string
-		obj  *rbacv1.ClusterRoleBinding
-		err  error
-	}
-
-	clusterRoleBindingCases := []clusterRoleBindingCase{
 		{
-			name: "Create Simple case",
-			obj: &rbacv1.ClusterRoleBinding{
+			name: "Update exist case",
+			initObj: &rbacv1.ClusterRole{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "init",
 					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"test": "test",
+					},
 				},
 			},
-			err: nil,
+			want: nil,
+		},
+	}
+	cases = append(cases, clusterRoleCases...)
+
+	// ClusterRoleBinding cases
+	clusterRoleBindingCases := []objCase{
+		{
+			name: "Create Simple case",
+			initObj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			want: nil,
 		},
 		{
 			name: "Create Alredy exist case",
+			initObj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create with Another Namespace case",
+			initObj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test-namespace2",
 				},
 			},
-			err: nil,
+			want: nil,
 		},
 		{
 			name: "Create without Name case",
+			initObj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
+			want: nameRequeriedError,
+		},
+		{
+			name: "Update exist case",
+			initObj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "init",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"test": "test",
+					},
+				},
+			},
+			want: nil,
 		},
 	}
+	cases = append(cases, clusterRoleBindingCases...)
 
-	// t.Parallel()
-	for _, tc := range clusterRoleBindingCases {
-		t.Run(tc.name, reconcileObjectCase(context.Background(), initObj, tc.obj, tc.err))
+	// Not supported type case
+	notSuppurtedcase := []objCase{
+		{
+			name: "Update exist case",
+			initObj: &rbacv1.RoleBinding{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "init",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"test": "test",
+					},
+				},
+			},
+			want: k8s.NewNotSupportedError(&rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "init",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"test": "test",
+					},
+				},
+			},
+			),
+		},
+	}
+	cases = append(cases, notSuppurtedcase...)
+
+	for _, tc := range cases {
+		t.Run(tc.name, createOrUpdateResourceCase(tc.initObj, tc.obj, tc.want))
 	}
 }
 
 func TestCreatePod(t *testing.T) {
 	createPodCase := func(objInit, obj *corev1.Pod, want error) func(t *testing.T) {
-		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
-
+			t.Parallel()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
-
 			err := k8s.CreatePod(context.Background(), obj, cl)
 			req.Equal(err, want)
 		}
@@ -536,17 +673,17 @@ func TestCreatePod(t *testing.T) {
 			obj: &corev1.Pod{
 				ObjectMeta: getInitObjectMeta(),
 			},
-			err: apierrors.NewAlreadyExists(
-				schema.GroupResource{
-					Group:    "",
-					Resource: "pods",
-				},
-				"init",
-			),
+			err: nil,
+			// err: api_errors.NewAlreadyExists(
+			// 	schema.GroupResource{
+			// 		Group:    "",
+			// 		Resource: "pods",
+			// 	},
+			// 	"init",
+			// ),
 		},
 	}
 
-	// t.Parallel()
 	for _, tc := range podCases {
 		t.Run(tc.name, createPodCase(initObj, tc.obj, tc.err))
 	}
@@ -554,15 +691,13 @@ func TestCreatePod(t *testing.T) {
 
 func TestGetPod(t *testing.T) {
 	getPodCase := func(objInit, obj, wantPod *corev1.Pod, want error) func(t *testing.T) {
-		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
-
+			t.Parallel()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
-
-			result, err := k8s.GetPod(context.Background(), obj, cl)
+			result, err := k8s.GetPod(context.Background(), client.ObjectKeyFromObject(obj), cl)
 			if result != nil {
 				req.Equal(result.ObjectMeta, wantPod.ObjectMeta)
 			}
@@ -570,12 +705,9 @@ func TestGetPod(t *testing.T) {
 		}
 	}
 
-	initObj := &corev1.Pod{
-		ObjectMeta: getInitObjectMeta(),
-	}
-
 	type podCase struct {
 		name    string
+		initObj *corev1.Pod
 		obj     *corev1.Pod
 		wantObj *corev1.Pod
 		err     error
@@ -584,6 +716,9 @@ func TestGetPod(t *testing.T) {
 	podCases := []podCase{
 		{
 			name: "Get not exist pod case",
+			initObj: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -591,7 +726,7 @@ func TestGetPod(t *testing.T) {
 				},
 			},
 			wantObj: nil,
-			err: apierrors.NewNotFound(
+			err: api_errors.NewNotFound(
 				schema.GroupResource{
 					Group:    "",
 					Resource: "pods",
@@ -601,6 +736,9 @@ func TestGetPod(t *testing.T) {
 		},
 		{
 			name: "Get exist pod case",
+			initObj: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
 			obj: &corev1.Pod{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -615,24 +753,199 @@ func TestGetPod(t *testing.T) {
 		},
 	}
 
-	// t.Parallel()
 	for _, tc := range podCases {
-		t.Run(tc.name, getPodCase(initObj, tc.obj, tc.wantObj, tc.err))
+		t.Run(tc.name, getPodCase(tc.initObj, tc.obj, tc.wantObj, tc.err))
+	}
+}
+
+func TestDeletePod(t *testing.T) {
+	deletePodCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
+
+			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
+			pod := obj.(*corev1.Pod)
+			err := k8s.DeletePod(context.Background(), pod, cl)
+			req.Equal(err, want)
+		}
+	}
+
+	var cases []objCase
+
+	// DeletePodcases
+	deletePodCases := []objCase{
+		{
+			name: "Delete Simple case",
+			initObj: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
+		},
+		{
+			name: "Delete not exist case",
+			initObj: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace2",
+				},
+			},
+			want: api_errors.NewNotFound(
+				schema.GroupResource{
+					Group:    "",
+					Resource: "pods",
+				},
+				"test",
+			),
+		},
+	}
+	cases = append(cases, deletePodCases...)
+
+	for _, tc := range cases {
+		t.Run(tc.name, deletePodCase(tc.initObj, tc.obj, tc.want))
+	}
+}
+
+func TestGetSecret(t *testing.T) {
+	getSecretCase := func(objInit, obj, wantSecret *corev1.Secret, want error) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
+
+			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
+			result, err := k8s.GetSecret(context.Background(), client.ObjectKeyFromObject(obj), cl)
+			if result != nil {
+				req.Equal(result.ObjectMeta, wantSecret.ObjectMeta)
+			}
+			req.Equal(err, want)
+		}
+	}
+
+	type secretCase struct {
+		name    string
+		initObj *corev1.Secret
+		obj     *corev1.Secret
+		wantObj *corev1.Secret
+		err     error
+	}
+
+	podCases := []secretCase{
+		{
+			name: "Get not exist secret case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			wantObj: nil,
+			err: api_errors.NewNotFound(
+				schema.GroupResource{
+					Group:    "",
+					Resource: "secrets",
+				},
+				"test",
+			),
+		},
+		{
+			name: "Get exist secret case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			wantObj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "init",
+					Namespace:       "test-namespace",
+					ResourceVersion: "999",
+				},
+			},
+			err: nil,
+		},
+	}
+
+	for _, tc := range podCases {
+		t.Run(tc.name, getSecretCase(tc.initObj, tc.obj, tc.wantObj, tc.err))
+	}
+}
+
+func TestDeleteSecret(t *testing.T) {
+	deleteSecretCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
+
+			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
+			secret := obj.(*corev1.Secret)
+			err := k8s.DeleteSecret(context.Background(), secret, cl)
+			req.Equal(err, want)
+		}
+	}
+
+	var cases []objCase
+
+	// DeletePodcases
+	deleteSecretCases := []objCase{
+		{
+			name: "Delete Simple case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: nil,
+		},
+		{
+			name: "Delete not exist case",
+			initObj: &corev1.Secret{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			obj: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace2",
+				},
+			},
+			want: api_errors.NewNotFound(
+				schema.GroupResource{
+					Group:    "",
+					Resource: "secrets",
+				},
+				"test",
+			),
+		},
+	}
+	cases = append(cases, deleteSecretCases...)
+
+	for _, tc := range cases {
+		t.Run(tc.name, deleteSecretCase(tc.initObj, tc.obj, tc.want))
 	}
 }
 
 func TestUpdateStatus(t *testing.T) {
 	updateStatusCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
-		// t.Parallel()
 		return func(t *testing.T) {
 			t.Helper()
-
+			t.Parallel()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
-
 			err := k8s.UpdateStatus(context.Background(), obj, cl)
-
 			req.Equal(err, want)
 		}
 	}
@@ -690,8 +1003,43 @@ func TestUpdateStatus(t *testing.T) {
 		},
 	}
 
-	// t.Parallel()
 	for _, tc := range testCases {
 		t.Run(tc.name, updateStatusCase(tc.initObj, tc.updateObj, tc.err))
+	}
+}
+
+func TestNamespaceNameToLabel(t *testing.T) {
+	namespaceNameToLabelCase := func(in, want string) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
+
+			result := k8s.NamespaceNameToLabel(in)
+			req.Equal(result, want)
+		}
+	}
+
+	type testCase struct {
+		name string
+		in   string
+		want string
+	}
+
+	testCases := []testCase{
+		{
+			name: "Simple case",
+			in:   "test",
+			want: "kubernetes.io/metadata.name=test",
+		},
+		{
+			name: "Zero case",
+			in:   "",
+			want: "kubernetes.io/metadata.name=",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, namespaceNameToLabelCase(tc.in, tc.want))
 	}
 }

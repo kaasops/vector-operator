@@ -72,19 +72,19 @@ func (ctrl *Controller) ensureVectorAgentRBAC(ctx context.Context) error {
 func (ctrl *Controller) ensureVectorAgentServiceAccount(ctx context.Context) error {
 	vectorAgentServiceAccount := ctrl.createVectorAgentServiceAccount()
 
-	return k8s.CreateOrUpdateServiceAccount(ctx, vectorAgentServiceAccount, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentServiceAccount, ctrl.Client)
 }
 
 func (ctrl *Controller) ensureVectorAgentClusterRole(ctx context.Context) error {
 	vectorAgentClusterRole := ctrl.createVectorAgentClusterRole()
 
-	return k8s.CreateOrUpdateClusterRole(ctx, vectorAgentClusterRole, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentClusterRole, ctrl.Client)
 }
 
 func (ctrl *Controller) ensureVectorAgentClusterRoleBinding(ctx context.Context) error {
 	vectorAgentClusterRoleBinding := ctrl.createVectorAgentClusterRoleBinding()
 
-	return k8s.CreateOrUpdateClusterRoleBinding(ctx, vectorAgentClusterRoleBinding, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentClusterRoleBinding, ctrl.Client)
 }
 
 func (ctrl *Controller) ensureVectorAgentService(ctx context.Context) error {
@@ -94,7 +94,7 @@ func (ctrl *Controller) ensureVectorAgentService(ctx context.Context) error {
 
 	vectorAgentService := ctrl.createVectorAgentService()
 
-	return k8s.CreateOrUpdateService(ctx, vectorAgentService, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentService, ctrl.Client)
 }
 
 func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
@@ -107,7 +107,7 @@ func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
 		return err
 	}
 
-	return k8s.CreateOrUpdateSecret(ctx, vectorAgentSecret, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client)
 }
 
 func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
@@ -117,7 +117,7 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
 
-	return k8s.CreateOrUpdateDaemonSet(ctx, vectorAgentDaemonSet, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentDaemonSet, ctrl.Client)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {

@@ -19,58 +19,371 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateOrUpdateService(ctx context.Context, svc *corev1.Service, c client.Client) error {
-	return reconcileService(ctx, svc, c)
+var (
+	ErrNotSupported = errors.New("Not Supported type for create or update kubernetes resource")
+)
+
+func NewNotSupportedError(obj client.Object) error {
+	return fmt.Errorf("%w.\n %+v", ErrNotSupported, obj)
 }
 
-func CreateOrUpdateSecret(ctx context.Context, secret *corev1.Secret, c client.Client) error {
-	return reconcileSecret(ctx, secret, c)
+func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Client) error {
+	switch obj.(type) {
+	case *appsv1.Deployment:
+		runtimeObj := obj.DeepCopyObject()
+		return createOrUpdateDeployment(ctx, runtimeObj, c)
+	case *appsv1.StatefulSet:
+		return createOrUpdateStatefulSet(ctx, obj, c)
+	case *appsv1.DaemonSet:
+		return createOrUpdateDaemonSet(ctx, obj, c)
+	case *corev1.Secret:
+		return createOrUpdateSecret(ctx, obj, c)
+	case *corev1.Service:
+		return createOrUpdateService(ctx, obj, c)
+	case *corev1.ServiceAccount:
+		runtimeObj := obj.DeepCopyObject()
+		return createOrUpdateServiceAccount(ctx, runtimeObj, c)
+	case *rbacv1.ClusterRole:
+		return createOrUpdateClusterRole(ctx, obj, c)
+	case *rbacv1.ClusterRoleBinding:
+		return createOrUpdateClusterRoleBinding(ctx, obj, c)
+	default:
+		return NewNotSupportedError(obj)
+	}
 }
 
-func CreateOrUpdateDaemonSet(ctx context.Context, daemonSet *appsv1.DaemonSet, c client.Client) error {
-	return reconcileDaemonSet(ctx, daemonSet, c)
+func createOrUpdateDeployment(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*appsv1.Deployment)
+
+	// Create Deployment
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &appsv1.Deployment{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Spec,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Spec,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
 }
 
-func CreateOrUpdateStatefulSet(ctx context.Context, statefulSet *appsv1.StatefulSet, c client.Client) error {
-	return reconcileStatefulSet(ctx, statefulSet, c)
+func createOrUpdateStatefulSet(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*appsv1.StatefulSet)
+
+	// Create StatefulSet
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &appsv1.StatefulSet{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Spec,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Spec,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
 }
 
-func CreateOrUpdateServiceAccount(ctx context.Context, secret *corev1.ServiceAccount, c client.Client) error {
-	return reconcileServiceAccount(ctx, secret, c)
+func createOrUpdateDaemonSet(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*appsv1.DaemonSet)
+
+	// Create DaemonSet
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &appsv1.DaemonSet{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Spec,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Spec,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
 }
 
-func CreateOrUpdateClusterRole(ctx context.Context, secret *rbacv1.ClusterRole, c client.Client) error {
-	return reconcileClusterRole(ctx, secret, c)
+func createOrUpdateSecret(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*corev1.Secret)
+
+	// Create Secret
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &corev1.Secret{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Data,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Data,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Data = desired.Data
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
 }
 
-func CreateOrUpdateClusterRoleBinding(ctx context.Context, secret *rbacv1.ClusterRoleBinding, c client.Client) error {
-	return reconcileClusterRoleBinding(ctx, secret, c)
+func createOrUpdateService(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*corev1.Service)
+
+	// Create Service
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &corev1.Service{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Spec,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Spec,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
 }
+
+func createOrUpdateServiceAccount(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*corev1.ServiceAccount)
+
+	// Create ServiceAccount
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &corev1.ServiceAccount{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
+}
+
+func createOrUpdateClusterRole(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*rbacv1.ClusterRole)
+
+	// Create ClusterRole
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &rbacv1.ClusterRole{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Rules,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Rules,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Rules = desired.Rules
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
+}
+
+func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*rbacv1.ClusterRoleBinding)
+
+	// Create ClusterRoleBinding
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &rbacv1.ClusterRoleBinding{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// Init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.RoleRef,
+			desired.Subjects,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.RoleRef,
+			existing.Subjects,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.RoleRef = desired.RoleRef
+			existing.Subjects = desired.Subjects
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
+}
+
+// Something else:
 
 func CreatePod(ctx context.Context, pod *corev1.Pod, c client.Client) error {
 	err := c.Create(ctx, pod)
-	if err != nil {
-		return err
+	if api_errors.IsAlreadyExists(err) {
+		return nil
 	}
-	return nil
+	return err
 }
 
-func GetPod(ctx context.Context, pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
+func GetPod(ctx context.Context, namespacedName types.NamespacedName, c client.Client) (*corev1.Pod, error) {
 	result := &corev1.Pod{}
-	err := c.Get(ctx, client.ObjectKeyFromObject(pod), result)
+	err := c.Get(ctx, namespacedName, result)
 	if err != nil {
 		return nil, err
 	}
@@ -125,174 +438,6 @@ func GetPodLogs(ctx context.Context, pod *corev1.Pod, cs *kubernetes.Clientset) 
 
 func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error {
 	return c.Status().Update(ctx, obj)
-}
-
-func reconcileService(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &corev1.Service{}
-	desired := obj.(*corev1.Service)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileSecret(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &corev1.Secret{}
-	desired := obj.(*corev1.Secret)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.Data, existing.Data) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Data = desired.Data
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileDaemonSet(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &appsv1.DaemonSet{}
-	desired := obj.(*appsv1.DaemonSet)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileStatefulSet(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &appsv1.StatefulSet{}
-	desired := obj.(*appsv1.StatefulSet)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.Spec, existing.Spec) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileServiceAccount(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &corev1.ServiceAccount{}
-	desired := obj.(*corev1.ServiceAccount)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileClusterRole(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &rbacv1.ClusterRole{}
-	desired := obj.(*rbacv1.ClusterRole)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.Rules, existing.Rules) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Rules = desired.Rules
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
-}
-
-func reconcileClusterRoleBinding(ctx context.Context, obj runtime.Object, c client.Client) error {
-
-	existing := &rbacv1.ClusterRoleBinding{}
-	desired := obj.(*rbacv1.ClusterRoleBinding)
-
-	err := c.Create(ctx, desired)
-	if errors.IsAlreadyExists(err) {
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-		if !equality.Semantic.DeepDerivative(desired.ObjectMeta.Labels, existing.ObjectMeta.Labels) ||
-			!equality.Semantic.DeepDerivative(desired.Annotations, existing.Annotations) ||
-			!equality.Semantic.DeepDerivative(desired.RoleRef, existing.RoleRef) ||
-			!equality.Semantic.DeepDerivative(desired.Subjects, existing.Subjects) {
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.RoleRef = desired.RoleRef
-			existing.Subjects = desired.Subjects
-			return c.Update(ctx, existing)
-		}
-		return nil
-	}
-	return err
 }
 
 func NamespaceNameToLabel(namespace string) string {

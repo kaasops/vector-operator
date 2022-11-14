@@ -411,7 +411,7 @@ func DeleteSecret(ctx context.Context, secret *corev1.Secret, c client.Client) e
 	return nil
 }
 
-func GetPodLogs(ctx context.Context, pod *corev1.Pod, cs *kubernetes.Clientset) (string, error) {
+func GetPodLogs(ctx context.Context, pod *corev1.Pod, cs kubernetes.Interface) (string, error) {
 	count := int64(100)
 	podLogOptions := corev1.PodLogOptions{
 		TailLines: &count,

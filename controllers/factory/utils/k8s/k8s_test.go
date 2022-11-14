@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -1041,5 +1042,44 @@ func TestNamespaceNameToLabel(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, namespaceNameToLabelCase(tc.in, tc.want))
+	}
+}
+
+func TestGetPodLogs(t *testing.T) {
+	getPodLogsCase := func(initPod, pod *corev1.Pod, want string, err error) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+			t.Parallel()
+			req := require.New(t)
+			clientset := fakeclientset.NewSimpleClientset(initPod)
+			result, err1 := k8s.GetPodLogs(context.TODO(), pod, clientset)
+			if result != "" {
+				req.Equal(result, want)
+			}
+			req.Equal(err1, err)
+		}
+	}
+	type testCase struct {
+		name    string
+		initPod *corev1.Pod
+		pod     *corev1.Pod
+		want    string
+		err     error
+	}
+	testCases := []testCase{
+		{
+			name: "Simple case",
+			initPod: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			pod: &corev1.Pod{
+				ObjectMeta: getInitObjectMeta(),
+			},
+			want: "fake logs",
+			err:  nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, getPodLogsCase(tc.initPod, tc.pod, tc.want, tc.err))
 	}
 }

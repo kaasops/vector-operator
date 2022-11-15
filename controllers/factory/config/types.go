@@ -31,7 +31,7 @@ type VectorConfig struct {
 type Source struct {
 	Name                        string
 	Type                        string                 `mapper:"type"`
-	ExtraNamespaceLabelSelector string                 `mapper:"extra_namespace_label_selector,omitempty"`
+	ExtraNamespaceLabelSelector string                 `mapstructure:"extra_namespace_label_selector" mapper:"extra_namespace_label_selector,omitempty"`
 	Options                     map[string]interface{} `mapstructure:",remain"`
 }
 

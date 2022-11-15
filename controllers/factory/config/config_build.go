@@ -44,6 +44,11 @@ var (
 	}
 )
 
+var (
+	PipelineTypeError  error = errors.New("type kubernetes_logs only allowed")
+	PipelineScopeError error = errors.New("logs from external namespace not allowed")
+)
+
 type Builder struct {
 	Name      string
 	vaCtrl    *vectoragent.Controller
@@ -72,7 +77,6 @@ func (b *Builder) GetByteConfig() ([]byte, error) {
 }
 
 func (b *Builder) GetByteConfigWithValidate() ([]byte, error) {
-	validateError := errors.New("type kubernetes_logs only allowed")
 	config, err := b.generateVectorConfig()
 	if err != nil {
 		return nil, err
@@ -82,10 +86,12 @@ func (b *Builder) GetByteConfigWithValidate() ([]byte, error) {
 			for _, source := range config.Sources {
 				if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind {
 					if source.Type != KubernetesSourceType {
-						return nil, validateError
+						return nil, PipelineTypeError
 					}
-					if source.ExtraNamespaceLabelSelector != "" && source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(pipeline.GetNamespace()) {
-						return nil, validateError
+					if source.ExtraNamespaceLabelSelector != "" {
+						if source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(pipeline.GetNamespace()) {
+							return nil, PipelineScopeError
+						}
 					}
 				}
 			}
@@ -131,8 +137,10 @@ func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, s
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind && source.Type == KubernetesSourceType {
-				source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())
+			if source.Type == KubernetesSourceType {
+				if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind && source.ExtraNamespaceLabelSelector == "" {
+					source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())
+				}
 			}
 			sources = append(sources, source)
 		}

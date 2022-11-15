@@ -1,4 +1,7 @@
 ### Added
+
+
+### v0.0.2
 - [[45](https://github.com/kaasops/vector-operator/pull/45)] **Tests**: Add tests for k8s utils && refactor k8s utils
 - [[44](https://github.com/kaasops/vector-operator/pull/44)] **Features**: Add validations errors for VectorPipeline
 - [[37](https://github.com/kaasops/vector-operator/pull/37)] **Cleanup**: Fix context-in-struct warning

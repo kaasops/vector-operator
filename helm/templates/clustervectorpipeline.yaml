@@ -1,0 +1,8 @@
+{{- if .Values.ClusterVectorPipeline -}}
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: {{ .Values.ClusterVectorPipeline.name }}
+spec:  
+{{- toYaml .Values.ClusterVectorPipeline.spec | nindent 2 }} 
+ {{- end }}

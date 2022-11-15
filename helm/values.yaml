@@ -29,3 +29,11 @@ serviceAccount:
   create: false
   name: "vector-operator"
   annotations: {}
+
+ClusterVectorPipeline:
+    name: test1
+    spec: {}  
+
+VectorPipeline: 
+  name: test12
+  spec: {}    

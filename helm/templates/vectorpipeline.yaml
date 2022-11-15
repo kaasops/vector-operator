@@ -1,0 +1,8 @@
+{{- if .Values.VectorPipeline -}}
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: {{ .Values.VectorPipeline.name }}
+spec:  
+{{- toYaml .Values.VectorPipeline.spec | nindent 2 }} 
+ {{- end }}

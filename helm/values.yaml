@@ -25,15 +25,38 @@ resources:
 rbac:
  create: true
 
+vector: 
+ create: true
+ name: "vector-agent"
+ tolerations: []
+
+
 serviceAccount:
   create: false
   name: "vector-operator"
   annotations: {}
 
-ClusterVectorPipeline:
-    name: test1
-    spec: {}  
+ClusterVectorPipeline: 
+ - name: ""
+   sources: {}
+   transforms: {}
+   sinks: {}
+ - name: ""
+   sources: {}
+   transforms: {}
+   sinks: {}  
 
 VectorPipeline: 
-  name: test12
-  spec: {}    
+  - name: ""
+    namespace: ""
+    sources: {}
+    transforms: {}
+    sinks: {}
+  - name: ""
+    namespace: ""
+    sources: {}
+    transforms: {}
+    sinks: {}  
+  
+
+

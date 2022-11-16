@@ -1,8 +1,15 @@
-{{- if .Values.VectorPipeline -}}
+{{- range $pipeline  := .Values.VectorPipeline }}
 apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorPipeline
 metadata:
-  name: {{ .Values.VectorPipeline.name }}
-spec:  
-{{- toYaml .Values.VectorPipeline.spec | nindent 2 }} 
- {{- end }}
+  name: {{ $pipeline.name }} 
+  namespace: {{ $pipeline.nanamespace }}
+spec:
+  sources: 
+  {{  toYaml $pipeline.sources | nindent 6 }}
+  transforms: 
+  {{  toYaml $pipeline.sources | nindent 6 }}
+  sinks:
+  {{  toYaml $pipeline.sources | nindent 6 }} 
+---
+{{- end }}

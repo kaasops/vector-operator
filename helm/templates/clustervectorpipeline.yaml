@@ -7,9 +7,9 @@ spec:
   sources: 
   {{  toYaml $pipeline.sources | nindent 6 }}
   transforms: 
-  {{  toYaml $pipeline.sources | nindent 6 }}
+  {{  toYaml $pipeline.transforms | nindent 6 }}
   sinks:
-  {{  toYaml $pipeline.sources | nindent 6 }} 
+  {{  toYaml $pipeline.transforms | nindent 6 }} 
 ---
 {{- end }}
 

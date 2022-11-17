@@ -156,7 +156,9 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 }
 
 func (ctrl *Controller) generateVectorAgentEnvs() []corev1.EnvVar {
-	envs := []corev1.EnvVar{
+	envs := ctrl.Vector.Spec.Agent.Env
+
+	envs = append(envs, []corev1.EnvVar{
 		{
 			Name: "VECTOR_SELF_NODE_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -192,7 +194,7 @@ func (ctrl *Controller) generateVectorAgentEnvs() []corev1.EnvVar {
 			Name:  "SYSFS_ROOT",
 			Value: "/host/sys",
 		},
-	}
+	}...)
 
 	return envs
 }

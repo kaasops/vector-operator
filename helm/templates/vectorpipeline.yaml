@@ -3,7 +3,6 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorPipeline
 metadata:
   name: {{ $pipeline.name }} 
-  namespace: {{ $pipeline.nanamespace }}
 spec:
   sources: 
   {{  toYaml $pipeline.sources | nindent 6 }}

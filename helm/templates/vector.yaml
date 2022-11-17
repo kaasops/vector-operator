@@ -3,12 +3,16 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: {{ .Values.vector.name }}
+  namespace: {{ .Release.Namespace }}
 spec:
   agent:
-    service: true
-    image: "timberio/vector:0.24.0-distroless-libc"
-     {{- with .Values.tolerations }}
+    image: {{ .Values.vector.agent.image }}
+    {{- with .Values.tolerations }}
     tolerations:
-      {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.env }}
+    env:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
 {{- end }}        

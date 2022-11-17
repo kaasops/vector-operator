@@ -1,44 +1,18 @@
 {{- if .Values.rbac.create -}}
-
----
-{{- if semverCompare ">= 1.24" .Capabilities.KubeVersion.Version }}
-apiVersion: v1
-kind: Secret
-metadata:
-  name: vector-operator-sa-token
-  annotations:
-    kubernetes.io/service-account.name:  {{ include "vector-operator.serviceAccountName" . }}
-type: kubernetes.io/service-account-token
-{{- end }}
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ include "vector-operator.serviceAccountName" . }} 
-secrets:
-  - name: vector-operator-sa-token 
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ include "vector-operator.name" . }}
- 
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ include "vector-operator.name" . }}
-subjects:
-- kind: ServiceAccount
-  name: {{ include "vector-operator.name" . }}
-  namespace: {{ include "vector-operator.namespace" . }} 
-
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "vector-operator.name" . }}
+  name: {{ template "chart.fullname" . }}-clusterrole
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+{{- with .Values.rbac.extraLabels }}
+{{ toYaml . | indent 4}}
+{{- end }}
+  {{- with .Values.rbac.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 rules:
 - apiGroups:
   - ""
@@ -120,5 +94,5 @@ rules:
   verbs:
   - get
   - patch
-  - update  
-{{- end }}  
+  - update
+{{- end -}}

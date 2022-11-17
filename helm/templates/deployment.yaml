@@ -1,30 +1,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "vector-operator.name" . }}
-  namespace: {{ include "vector-operator.namespace" . }} 
+  name: {{ include "chart.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "vector-operator.name" . }} 
+    {{- include "chart.labels" . | nindent 4 }}
+{{- with .Values.extraLabels }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "vector-operator.name" . }} 
+      {{- include "chart.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "vector-operator.name" . }} 
-        app.kubernetes.io/managed-by: "helm"
-        meta.helm.sh/release-name: {{ include "vector-operator.name" . }} 
+        {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       volumes:
         - name: kube-api-access
           secret:
-            secretName: vector-operator-sa-token
+            secretName: {{ include "chart.serviceAccountName" . }}
             defaultMode: 420
-      automountServiceAccountToken: false
-      serviceAccountName: {{ include "vector-operator.serviceAccountName" . }}   
+      serviceAccountName: {{ include "chart.serviceAccountName" . }} 
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-      - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+      - image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        securityContext:
+            {{- toYaml .Values.securityContext | nindent 10 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: vector-operator
         volumeMounts:
@@ -33,7 +50,5 @@ spec:
               mountPath: /var/run/secrets/kubernetes.io/serviceaccount
         resources:
 {{ toYaml .Values.resources | indent 12 }}
-        securityContext:
-{{- toYaml .Values.image.securityContext | nindent 10 }}     
          
     

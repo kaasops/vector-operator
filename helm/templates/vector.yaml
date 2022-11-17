@@ -3,7 +3,6 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: {{ .Values.vector.name }}
-  namespace: vector-operator-system
 spec:
   agent:
     service: true

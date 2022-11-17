@@ -1,6 +1,6 @@
 apiVersion: v2
 name: vector-operator
-description: A Helm chart A Helm chart to install vector-operator
+description: A Helm chart to install vector-operator
 
 # A chart can be either an 'application' or a 'library' chart.
 #

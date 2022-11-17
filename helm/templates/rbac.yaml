@@ -1,4 +1,4 @@
-{{- if .Values.rbac.create  -}}
+{{- if .Values.rbac.create -}}
 
 ---
 {{- if semverCompare ">= 1.24" .Capabilities.KubeVersion.Version }}
@@ -6,9 +6,8 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: vector-operator-sa-token
-  namespace: vector-operator-system
   annotations:
-    kubernetes.io/service-account.name: vector-operator
+    kubernetes.io/service-account.name:  {{ include "vector-operator.serviceAccountName" . }}
 type: kubernetes.io/service-account-token
 {{- end }}
 
@@ -16,8 +15,7 @@ type: kubernetes.io/service-account-token
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: vector-operator
-  namespace: vector-operator-system
+  name: {{ include "vector-operator.serviceAccountName" . }} 
 secrets:
   - name: vector-operator-sa-token 
 
@@ -25,21 +23,22 @@ secrets:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: vector-operator
+  name: {{ include "vector-operator.name" . }}
+ 
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: vector-operator
+  name: {{ include "vector-operator.name" . }}
 subjects:
 - kind: ServiceAccount
-  name: vector-operator
-  namespace: vector-operator-system
+  name: {{ include "vector-operator.name" . }}
+  namespace: {{ include "vector-operator.namespace" . }} 
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: vector-operator
+  name: {{ include "vector-operator.name" . }}
 rules:
 - apiGroups:
   - ""

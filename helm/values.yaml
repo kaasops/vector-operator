@@ -1,3 +1,7 @@
+fullnameOverride: ""
+nameOverride: ""
+namespaceOverride: ""
+
 image:
   repository: kaasops/vector-operator
   tag: "latest"
@@ -17,7 +21,7 @@ image:
 resources: 
   limits:
     cpu: "2"
-    memory: 1Gi
+    memory: 2Gi
   requests:
     cpu: 100m
     memory: 50Mi
@@ -27,13 +31,13 @@ rbac:
 
 vector: 
  create: true
- name: "vector-agent"
+ name: ""
  tolerations: []
 
 
 serviceAccount:
   create: false
-  name: "vector-operator"
+  name: ""
   annotations: {}
 
 ClusterVectorPipeline: 
@@ -48,12 +52,10 @@ ClusterVectorPipeline:
 
 VectorPipeline: 
   - name: ""
-    namespace: ""
     sources: {}
     transforms: {}
     sinks: {}
   - name: ""
-    namespace: ""
     sources: {}
     transforms: {}
     sinks: {}  

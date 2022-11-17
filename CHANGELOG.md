@@ -1,4 +1,5 @@
 ### Added
+- [[47](https://github.com/kaasops/vector-operator/pull/47)] **Features**: Init Helm chart
 
 ### v0.0.3
 - [[46](https://github.com/kaasops/vector-operator/pull/46)] **Fix**: Fix error with envs forwarding from CR Vector

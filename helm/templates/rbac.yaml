@@ -1,0 +1,124 @@
+{{- if .Values.rbac.create -}}
+
+---
+{{- if semverCompare ">= 1.24" .Capabilities.KubeVersion.Version }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vector-operator-sa-token
+  annotations:
+    kubernetes.io/service-account.name:  {{ include "vector-operator.serviceAccountName" . }}
+type: kubernetes.io/service-account-token
+{{- end }}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "vector-operator.serviceAccountName" . }} 
+secrets:
+  - name: vector-operator-sa-token 
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "vector-operator.name" . }}
+ 
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "vector-operator.name" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "vector-operator.name" . }}
+  namespace: {{ include "vector-operator.namespace" . }} 
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "vector-operator.name" . }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - pods
+  - serviceaccounts
+  - services
+  - namespaces
+  - nodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  - clusterrolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  - extensions
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines
+  - vectorpipelines
+  - vectors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - clustervectorpipelines/status
+  - vectorpipelines/status
+  - vectors/status
+  verbs:
+  - get
+  - patch
+  - update  
+{{- end }}  

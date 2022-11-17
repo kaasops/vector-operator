@@ -1,0 +1,14 @@
+{{- if .Values.vector.create  -}}
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: {{ .Values.vector.name }}
+spec:
+  agent:
+    service: true
+    image: "timberio/vector:0.24.0-distroless-libc"
+     {{- with .Values.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}        

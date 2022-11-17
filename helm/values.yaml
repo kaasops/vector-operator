@@ -1,0 +1,64 @@
+fullnameOverride: ""
+nameOverride: ""
+namespaceOverride: ""
+
+image:
+  repository: kaasops/vector-operator
+  tag: "latest"
+  pullPolicy: IfNotPresent
+  
+  securityContext: 
+    allowPrivilegeEscalation: false
+    runAsGroup: 1000
+    runAsNonRoot: true    
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+
+resources: 
+  limits:
+    cpu: "2"
+    memory: 2Gi
+  requests:
+    cpu: 100m
+    memory: 50Mi
+
+rbac:
+ create: true
+
+vector: 
+ create: true
+ name: ""
+ tolerations: []
+
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+ClusterVectorPipeline: 
+ - name: ""
+   sources: {}
+   transforms: {}
+   sinks: {}
+ - name: ""
+   sources: {}
+   transforms: {}
+   sinks: {}  
+
+VectorPipeline: 
+  - name: ""
+    sources: {}
+    transforms: {}
+    sinks: {}
+  - name: ""
+    sources: {}
+    transforms: {}
+    sinks: {}  
+  
+
+

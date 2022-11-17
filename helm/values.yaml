@@ -1,0 +1,77 @@
+fullnameOverride: ""
+nameOverride: ""
+namespaceOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: kaasops/vector-operator
+  tag: "" # rewrites Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+# -- enables CRD creation and management.
+# -- with this option, if you remove this chart, all crd resources will be deleted with it.
+createCRD: true
+
+strategy: {}
+# rollingUpdate:
+#  maxSurge: 25%
+#  maxUnavailable: 25%
+# type: RollingUpdate
+
+imagePullSecrets: []
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsGroup: 1000
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 50Mi
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+rbac:
+  create: true
+  annotations: {}
+  extraLabels: {}
+
+ClusterVectorPipeline: {}
+#  - name: ""
+#    sources: {}
+#    transforms: {}
+#    sinks: {}
+#  - name: ""
+#    sources: {}
+#    transforms: {}
+#    sinks: {}
+
+# extra Labels for Pods, Deployment
+extraLabels: {}
+
+# Annotations to be added to the deployment
+annotations: {}
+
+vector:
+  create: true
+  name: "vector"
+  agent:
+    image: timberio/vector:0.24.0-distroless-libc
+

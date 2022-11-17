@@ -1,5 +1,7 @@
 ### Added
 
+### v0.0.3
+- [[46](https://github.com/kaasops/vector-operator/pull/46)] **Fix**: Fix error with envs forwarding from CR Vector
 
 ### v0.0.2
 - [[45](https://github.com/kaasops/vector-operator/pull/45)] **Tests**: Add tests for k8s utils && refactor k8s utils

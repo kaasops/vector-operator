@@ -60,7 +60,7 @@ extraLabels: {}
 annotations: {}
 
 vector:
-  create: true
+  create: false
   name: "vector"
   agent:
     image: timberio/vector:0.24.0-distroless-libc

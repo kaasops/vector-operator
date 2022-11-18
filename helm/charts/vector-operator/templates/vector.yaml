@@ -1,18 +1,12 @@
-{{- if .Values.vector.create  -}}
+{{- if .Values.vector.enable  -}}
 apiVersion: observability.kaasops.io/v1alpha1
 kind: Vector
 metadata:
   name: {{ .Values.vector.name }}
   namespace: {{ .Release.Namespace }}
 spec:
+{{- with .Values.vector.agent }}
   agent:
-    image: {{ .Values.vector.agent.image }}
-    {{- with .Values.tolerations }}
-    tolerations:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-    {{- with .Values.env }}
-    env:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-{{- end }}        
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}

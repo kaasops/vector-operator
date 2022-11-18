@@ -1,4 +1,5 @@
 ### Added
+- [[51](https://github.com/kaasops/vector-operator/pull/51)] **Fix**: Fix error with install vector CR in helm
 - [[50](https://github.com/kaasops/vector-operator/pull/50)] **Fix**: Fix error with SA in helm && Update helm
 
 ### v0.0.4

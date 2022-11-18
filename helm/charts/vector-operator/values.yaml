@@ -60,10 +60,13 @@ extraLabels: {}
 annotations: {}
 
 vector:
-  create: false
+  enable: false
   name: "vector"
-  agent:
-    image: timberio/vector:0.24.0-distroless-libc
+  # agent:
+  #   image: timberio/vector:0.24.0-distroless-libc
+  #   env:
+  #   - name: "testenv"
+  #     value: "testvalues"
 
 ClusterVectorPipeline: {}
 #  - name: ""

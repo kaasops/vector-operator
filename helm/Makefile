@@ -14,4 +14,3 @@ package:
 # Create index file (use only for initial setup)
 index:
 	helm repo index --url ${URL} /
-	mv index.yaml

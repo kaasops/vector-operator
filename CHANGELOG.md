@@ -1,5 +1,5 @@
 ### Added
-
+- [[50](https://github.com/kaasops/vector-operator/pull/50)] **Fix**: Fix error with SA in helm && Update helm
 
 ### v0.0.4
 - [[49](https://github.com/kaasops/vector-operator/pull/49)] **Refactor**: Add default resurces for configcheck

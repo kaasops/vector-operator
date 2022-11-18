@@ -53,16 +53,6 @@ rbac:
   annotations: {}
   extraLabels: {}
 
-ClusterVectorPipeline: {}
-#  - name: ""
-#    sources: {}
-#    transforms: {}
-#    sinks: {}
-#  - name: ""
-#    sources: {}
-#    transforms: {}
-#    sinks: {}
-
 # extra Labels for Pods, Deployment
 extraLabels: {}
 
@@ -75,3 +65,12 @@ vector:
   agent:
     image: timberio/vector:0.24.0-distroless-libc
 
+ClusterVectorPipeline: {}
+#  - name: ""
+#    sources: {}
+#    transforms: {}
+#    sinks: {}
+#  - name: ""
+#    sources: {}
+#    transforms: {}
+#    sinks: {}

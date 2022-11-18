@@ -18,6 +18,7 @@ package configcheck
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,8 +39,18 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 				{
 					Name:  "config-check",
 					Image: cc.Image,
-					Args:  []string{"validate", "/etc/vector/*.json"},
-					Env:   generateVectorConfigCheckEnvs(),
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("100Mi"),
+						},
+					},
+					Args: []string{"validate", "/etc/vector/*.json"},
+					Env:  generateVectorConfigCheckEnvs(),
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          "prom-exporter",

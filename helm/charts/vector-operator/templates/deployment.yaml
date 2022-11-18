@@ -30,11 +30,6 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      volumes:
-        - name: kube-api-access
-          secret:
-            secretName: {{ include "chart.serviceAccountName" . }}
-            defaultMode: 420
       serviceAccountName: {{ include "chart.serviceAccountName" . }} 
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -44,10 +39,6 @@ spec:
             {{- toYaml .Values.securityContext | nindent 10 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: vector-operator
-        volumeMounts:
-            - name: kube-api-access
-              readOnly: true
-              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
         resources:
 {{ toYaml .Values.resources | indent 12 }}
          

@@ -11,7 +11,7 @@ spec:
   transforms: 
 {{-  toYaml $pipeline.transforms | nindent 4 }}
   sinks:
-{{-  toYaml $pipeline.transforms | nindent 4 }} 
+{{-  toYaml $pipeline.sinks | nindent 4 }} 
 {{- end }}
 
 

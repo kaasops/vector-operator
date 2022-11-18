@@ -1,17 +1,17 @@
-{{- range $pipeline  := .Values.ClusterVectorPipeline }}
+{{ $namespace := .Release.Namespace }}
+{{- range $pipeline  := .Values.clustervectorpipeline }}
 apiVersion: observability.kaasops.io/v1alpha1
 kind: ClusterVectorPipeline
 metadata: 
   name: {{ $pipeline.name }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $namespace }}
 spec:
   sources: 
-  {{  toYaml $pipeline.sources | nindent 6 }}
+{{-  toYaml $pipeline.sources | nindent 4 }}
   transforms: 
-  {{  toYaml $pipeline.transforms | nindent 6 }}
+{{-  toYaml $pipeline.transforms | nindent 4 }}
   sinks:
-  {{  toYaml $pipeline.transforms | nindent 6 }} 
----
+{{-  toYaml $pipeline.transforms | nindent 4 }} 
 {{- end }}
 
 

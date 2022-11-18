@@ -1,4 +1,8 @@
 ### Added
+
+
+### v0.0.4
+- [[49](https://github.com/kaasops/vector-operator/pull/49)] **Refactor**: Add default resurces for configcheck
 - [[48](https://github.com/kaasops/vector-operator/pull/48)] **Features**: Add helm repo (with GitHub Pages)
 - [[47](https://github.com/kaasops/vector-operator/pull/47)] **Features**: Init Helm chart
 

@@ -68,7 +68,7 @@ vector:
   #   - name: "testenv"
   #     value: "testvalues"
 
-ClusterVectorPipeline: {}
+clustervectorpipeline: {}
 #  - name: ""
 #    sources: {}
 #    transforms: {}

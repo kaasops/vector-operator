@@ -50,7 +50,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 						},
 					},
 					Args: []string{"validate", "/etc/vector/*.json"},
-					Env:  generateVectorConfigCheckEnvs(),
+					Env:  cc.generateVectorConfigCheckEnvs(),
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          "prom-exporter",
@@ -154,8 +154,10 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMo
 	return volumeMount
 }
 
-func generateVectorConfigCheckEnvs() []corev1.EnvVar {
-	envs := []corev1.EnvVar{
+func (cc *ConfigCheck) generateVectorConfigCheckEnvs() []corev1.EnvVar {
+	envs := cc.Envs
+
+	envs = append(envs, []corev1.EnvVar{
 		{
 			Name: "VECTOR_SELF_NODE_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -191,7 +193,7 @@ func generateVectorConfigCheckEnvs() []corev1.EnvVar {
 			Name:  "SYSFS_ROOT",
 			Value: "/host/sys",
 		},
-	}
+	}...)
 
 	return envs
 }

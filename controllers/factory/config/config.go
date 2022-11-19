@@ -44,7 +44,15 @@ func ReconcileConfig(ctx context.Context, client client.Client, p pipeline.Pipel
 	}
 
 	// Init CheckConfig
-	configCheck := configcheck.New(byteConfig, vaCtrl.Client, vaCtrl.ClientSet, vaCtrl.Vector.Name, vaCtrl.Vector.Namespace, vaCtrl.Vector.Spec.Agent.Image)
+	configCheck := configcheck.New(
+		byteConfig,
+		vaCtrl.Client,
+		vaCtrl.ClientSet,
+		vaCtrl.Vector.Name,
+		vaCtrl.Vector.Namespace,
+		vaCtrl.Vector.Spec.Agent.Image,
+		vaCtrl.Vector.Spec.Agent.Env,
+	)
 
 	// Start ConfigCheck
 	err = configCheck.Run(ctx)

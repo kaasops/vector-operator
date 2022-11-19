@@ -1,4 +1,6 @@
 ### Added
+
+### v0.0.5
 - [[56](https://github.com/kaasops/vector-operator/pull/56)] **Fix**: Fix envs forwarding issue for configCheck 
 - [[51](https://github.com/kaasops/vector-operator/pull/51)] **Fix**: Fix error with install vector CR in helm
 - [[50](https://github.com/kaasops/vector-operator/pull/50)] **Fix**: Fix error with SA in helm && Update helm

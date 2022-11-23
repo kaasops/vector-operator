@@ -1,6 +1,76 @@
 # Quick start
 Operator serves to make running Vector applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
+- [Installing by Helm](#installing-by-helm)
+- [Installing by Manifest](#installing-by-manifest)
+
+
+# Installing by Helm
+For easy install to Kubernetes you can use [Helm Chart](https://github.com/kaasops/vector-operator/tree/main/helm/charts/vector-operator)
+
+
+## Add a chart helm repository
+Access a Kubernetes cluster.
+
+Add a chart helm repository with follow commands:
+```bash
+helm repo add vector-operator https://kaasops.github.io/vector-operator/helm
+helm repo update
+```
+
+List all charts and versions of vm repository available to installation:
+```bash
+helm search repo vector-operator/
+```
+
+The command must display existing helm chart e.g.
+```
+NAME                            CHART VERSION   APP VERSION     DESCRIPTION                            
+vector-operator/vector-operator 0.0.6           v0.0.6          A Helm chart to install Vector Operator
+```
+
+## Installing the chart
+Export default values of `vector-operator` chart to file values.yaml:
+```bash
+helm show values vector-operator/vector-operator > values.yaml
+```
+Change the values according to the need of the environment in values.yaml file.
+
+Test the installation with command:
+```bash
+helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE --debug --dry-run
+```
+
+Install chart with command:
+
+```bash
+helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE
+```
+
+Get the pods lists by running these commands:
+```bash
+kubectl get pods -A | grep 'vector-operator'
+# or list all resorces of vector-operator
+kubectl get all -n NAMESPACE | grep vector
+```
+
+Get the application by running this commands:
+```bash
+helm list -f vector-operator -n NAMESPACE
+```
+
+See the history of versions of vector-operator application with command.
+```bah
+helm history vector-operator -n NAMESPACE
+```
+
+## How to uninstall VectorOperator
+Remove application with command.
+```bash
+helm uninstall vector-operator -n NAMESPACE
+```
+
+
 # Installing by Manifest
 ## Install CRDs
 ```bash

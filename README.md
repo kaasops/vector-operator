@@ -26,6 +26,7 @@ The operator deploys and configures a vector agent daemonset on every node to co
 - Design [doc](https://github.com/kaasops/vector-operator/blob/main/docs/design.md)
 - Specification [doc](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md)
 - Secure credentials [doc](https://github.com/kaasops/vector-operator/blob/main/docs/secure-credential.md)
+- Logs from file [doc](https://github.com/kaasops/vector-operator/blob/main/docs/logs-from-file.md)
 
 ## Configuration Examples 
 Configuration for CR Vector:

@@ -3,3 +3,4 @@
 - Design [doc](https://github.com/kaasops/vector-operator/blob/main/docs/design.md)
 - Specification [doc](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md)
 - Secure credentials [doc](https://github.com/kaasops/vector-operator/blob/main/docs/secure-credential.md)
+- Logs from file [doc](https://github.com/kaasops/vector-operator/blob/main/docs/logs-from-file.md)

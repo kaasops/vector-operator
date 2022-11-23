@@ -96,6 +96,14 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 			},
 		},
 		{
+			Name: "journal",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/var/log/journal",
+				},
+			},
+		},
+		{
 			Name: "var-lib",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
@@ -137,6 +145,10 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      "var-log",
 			MountPath: "/var/log/",
+		},
+		{
+			Name:      "journal",
+			MountPath: "/run/log/journal",
 		},
 		{
 			Name:      "var-lib",

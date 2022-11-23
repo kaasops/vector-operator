@@ -1,5 +1,9 @@
 ### Added
 
+### v0.0.6
+- [[60](https://github.com/kaasops/vector-operator/pull/60)] **Fix**: Fix Vector agent DaemosSet for collect journald service logs
+- [[60](https://github.com/kaasops/vector-operator/pull/60)] **Docs**: Add docs
+
 ### v0.0.5
 - [[56](https://github.com/kaasops/vector-operator/pull/56)] **Fix**: Fix envs forwarding issue for configCheck 
 - [[51](https://github.com/kaasops/vector-operator/pull/51)] **Fix**: Fix error with install vector CR in helm

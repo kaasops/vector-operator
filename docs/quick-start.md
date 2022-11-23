@@ -48,6 +48,7 @@ rules:
   resources:
   - secrets
   - pods
+  - pods/log
   - serviceaccounts
   - services
   - namespaces

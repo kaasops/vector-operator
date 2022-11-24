@@ -65,9 +65,22 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 		log.Error(err, "Failed to get Vector Pipeline")
 		return ctrl.Result{}, err
 	}
-	if vectorPipelineCR == nil {
-		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
+
+	vectorInstances, err := listVectorCustomResourceInstances(ctx, r.Client)
+
+	if err != nil {
+		log.Error(err, "Failed to get Vector Instances")
 		return ctrl.Result{}, nil
+	}
+
+	if len(vectorInstances) == 0 {
+		log.Info("Vertors not found")
+		return ctrl.Result{}, nil
+	}
+
+	if vectorPipelineCR == nil {
+		log.Info("ClusterVectorPIpeline CR not found. Ignoring since object must be deleted")
+		return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
 	}
 
 	// Check Pipeline hash
@@ -76,39 +89,28 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, err
 	}
 	if checkResult {
-		log.Info("VectorPipeline has no changes. Finish Reconcile VectorPipeline")
+		log.Info("ClusterVectorPipeline has no changes. Finish Reconcile VectorPipeline")
 		return ctrl.Result{}, nil
 	}
 
-	// Generate Pipeline ConfigCheck for all Vectors
-	vectorInstances := &vectorv1alpha1.VectorList{}
-	err = r.List(ctx, vectorInstances)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if len(vectorInstances.Items) == 0 {
-		log.Info("Vertors not found")
-		return ctrl.Result{}, nil
-	}
-
-	for _, vector := range vectorInstances.Items {
+	for _, vector := range vectorInstances {
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
 
 		// Init Controller for Vector Agent
-		vaCtrl := vectoragent.NewController(&vector, r.Client, r.Clientset)
+		vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
 			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
 		}
+
 		if err := config.ReconcileConfig(ctx, r.Client, vectorPipelineCR, vaCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	log.Info("finish Reconcile VectorPipeline")
-	return ctrl.Result{}, nil
+	log.Info("finish Reconcile ClusterVectorPipeline")
+	return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
 }
 
 func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {

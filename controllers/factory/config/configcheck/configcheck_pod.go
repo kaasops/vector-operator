@@ -81,9 +81,7 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 		{
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/vector",
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		{

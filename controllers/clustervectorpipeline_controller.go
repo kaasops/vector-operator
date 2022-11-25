@@ -78,9 +78,9 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, nil
 	}
 
-	if vectorPipelineCR == nil {
+	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
 		log.Info("ClusterVectorPIpeline CR not found. Ignoring since object must be deleted")
-		return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
+		return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
 	}
 
 	// Check Pipeline hash
@@ -110,7 +110,7 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	log.Info("finish Reconcile ClusterVectorPipeline")
-	return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
+	return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
 }
 
 func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {

@@ -28,17 +28,19 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -58,11 +60,15 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var namespace string
+	var watchLabel string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&namespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
+	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -78,27 +84,22 @@ func main() {
 		panic(err)
 	}
 
-	mgr, err := ctrl.NewManager(config, ctrl.Options{
+	mgrOptions := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "79cbe7f3.kaasops.io",
-		ClientDisableCacheFor: []client.Object{&corev1.Secret{}, &corev1.ConfigMap{}, &corev1.Pod{}, &appsv1.Deployment{},
-			&appsv1.StatefulSet{}, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleBinding{}},
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
-		//
-		// In the default scaffold provided, the program ends immediately after
-		// the manager stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
-		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+	customMgrOptions, err := setupCustomCache(&mgrOptions, namespace, watchLabel)
+
+	if err != nil {
+		setupLog.Error(err, "unable to set up custom cache settings")
+		os.Exit(1)
+	}
+
+	mgr, err := ctrl.NewManager(config, *customMgrOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -144,4 +145,46 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel string) (*ctrl.Options, error) {
+	if namespace == "" && watchLabel == "" {
+		return mgrOptions, nil
+	}
+
+	var namespaceSelector fields.Selector
+	var labelSelector labels.Selector
+	if namespace != "" {
+		namespaceSelector = fields.Set{"metadata.namespace": namespace}.AsSelector()
+	}
+	if watchLabel != "" {
+		labelSelector = labels.Set{k8s.ManagedByLabelKey: "vector-operator", k8s.NameLabelKey: watchLabel}.AsSelector()
+	}
+
+	selectorsByObject := cache.SelectorsByObject{
+		&corev1.Pod{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+		&appsv1.DaemonSet{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+		&corev1.Service{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+		&corev1.Secret{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+		&corev1.ServiceAccount{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+	}
+
+	mgrOptions.NewCache = cache.BuilderWithOptions(cache.Options{SelectorsByObject: selectorsByObject})
+
+	return mgrOptions, nil
 }

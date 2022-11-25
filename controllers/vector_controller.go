@@ -18,11 +18,13 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,6 +62,25 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
 
+	if req.Namespace == "" {
+		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
+		if err != nil {
+			log.Error(err, "Failed to list vector instances")
+			return ctrl.Result{}, err
+		}
+		for _, v := range vectors {
+			if v.Name == req.Name {
+				log.Info("start Reconcile Vector")
+				_, err := createOrUpdateVector(ctx, r.Client, r.Clientset, v)
+				if err != nil {
+					log.Error(err, "Failed to reconciler vector")
+					return ctrl.Result{}, err
+				}
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
 	log.Info("start Reconcile Vector")
 
 	vectorCR, err := r.findVectorCustomResourceInstance(ctx, req)
@@ -72,7 +93,32 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	return r.CreateOrUpdateVector(ctx, vectorCR)
+	return createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR)
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&vectorv1alpha1.Vector{}).
+		Owns(&appsv1.DaemonSet{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.Secret{}).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&rbacv1.ClusterRole{}).
+		Owns(&rbacv1.ClusterRoleBinding{}).
+		Complete(r)
+}
+
+func listVectorCustomResourceInstances(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
+	vectorlist := vectorv1alpha1.VectorList{}
+	err = client.List(ctx, &vectorlist)
+	if err != nil {
+		return nil, err
+	}
+	for _, vector := range vectorlist.Items {
+		vectors = append(vectors, &vector)
+	}
+	return vectors, nil
 }
 
 func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.Vector, error) {
@@ -89,16 +135,32 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	return vectorCR, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.Vector{}).
-		Complete(r)
+func reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
+	if len(vectors) == 0 {
+		return ctrl.Result{}, nil
+	}
+
+	for _, vector := range vectors {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
+
+		// Init Controller for Vector Agent
+		vaCtrl := vectoragent.NewController(vector, client, clientset)
+		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
+			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
+		}
+
+		if _, err := createOrUpdateVector(ctx, client, clientset, vector); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
 }
 
-func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1alpha1.Vector) (ctrl.Result, error) {
+func createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector) (ctrl.Result, error) {
 	// Init Controller for Vector Agent
-	vaCtrl := vectoragent.NewController(v, r.Client, r.Clientset)
+	vaCtrl := vectoragent.NewController(v, client, clientset)
 
 	vaCtrl.SetDefault()
 
@@ -120,5 +182,5 @@ func (r *VectorReconciler) CreateOrUpdateVector(ctx context.Context, v *vectorv1
 	if err := vaCtrl.EnsureVectorAgent(ctx); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+	return ctrl.Result{}, nil
 }

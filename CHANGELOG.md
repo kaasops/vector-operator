@@ -1,5 +1,8 @@
 ### Added
 
+### v0.0.7
+- [[61]](https://github.com/kaasops/vector-operator/pull/61) **Feature** Filter cache and disable time reconcile
+
 ### v0.0.6
 - [[60](https://github.com/kaasops/vector-operator/pull/60)] **Fix**: Fix Vector agent DaemosSet for collect journald service logs
 - [[60](https://github.com/kaasops/vector-operator/pull/60)] **Docs**: Add docs

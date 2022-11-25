@@ -23,6 +23,8 @@ import (
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -114,7 +116,7 @@ func (cc *ConfigCheck) checkVectorConfigCheckPod(ctx context.Context) error {
 		return err
 	}
 
-	err = cc.cleanup(ctx)
+	err = cc.cleanup(ctx, vectorConfigCheckPod)
 	if err != nil {
 		return err
 	}
@@ -131,7 +133,7 @@ func labelsForVectorConfigCheck() map[string]string {
 }
 
 func (cc *ConfigCheck) getNameVectorConfigCheck() string {
-	n := "configcheck-" + "-" + cc.Name + "-" + cc.Hash
+	n := "configcheck" + "-" + cc.Name + "-" + cc.Hash
 
 	return n
 }
@@ -146,16 +148,19 @@ func randStringRunes() string {
 	return string(b)
 }
 
-func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) error {
+func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
-
+	log.Info("Trying to get configcheck result")
 	for {
-		existing, err := k8s.GetPod(ctx, client.ObjectKeyFromObject(pod), cc.Client)
+		pod, err := k8s.FetchPod(ctx, pod, cc.Client)
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			return err
 		}
 
-		switch existing.Status.Phase {
+		switch pod.Status.Phase {
 		case "Pending":
 			log.Info("wait Validate Vector Config Result")
 			time.Sleep(5 * time.Second)
@@ -172,37 +177,32 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) erro
 	}
 }
 
-func (cc *ConfigCheck) cleanup(ctx context.Context) error {
-	listOpts, err := cc.gcRListOptions()
+func (cc *ConfigCheck) cleanup(ctx context.Context, pod *corev1.Pod) error {
+	pod, err := k8s.FetchPod(ctx, pod, cc.Client)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
-
-	podlist := corev1.PodList{}
-	err = cc.Client.List(ctx, &podlist, &listOpts)
-	if err != nil {
-		return err
-	}
-	for _, pod := range podlist.Items {
-		if pod.Status.Phase == "Succeeded" {
-			for _, v := range pod.Spec.Volumes {
-				if v.Name == "config" {
-					nn := types.NamespacedName{
-						Name:      v.Secret.SecretName,
-						Namespace: pod.Namespace,
-					}
-					secret, err := k8s.GetSecret(ctx, nn, cc.Client)
-					if err != nil {
-						return err
-					}
-					if err := k8s.DeleteSecret(ctx, secret, cc.Client); err != nil {
-						return err
-					}
+	if pod.Status.Phase == "Succeeded" {
+		for _, v := range pod.Spec.Volumes {
+			if v.Name == "config" {
+				nn := types.NamespacedName{
+					Name:      v.Secret.SecretName,
+					Namespace: pod.Namespace,
+				}
+				secret, err := k8s.GetSecret(ctx, nn, cc.Client)
+				if err != nil {
+					return err
+				}
+				if err := k8s.DeleteSecret(ctx, secret, cc.Client); err != nil {
+					return err
 				}
 			}
-			if err := k8s.DeletePod(ctx, &pod, cc.Client); err != nil {
-				return err
-			}
+		}
+		if err := k8s.DeletePod(ctx, pod, cc.Client); err != nil {
+			return err
 		}
 	}
 	return nil

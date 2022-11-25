@@ -25,29 +25,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (ctrl *Controller) EnsureVectorAgent(ctx context.Context) error {
+func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) error {
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
-
 	log.Info("start Reconcile Vector Agent")
-
-	if err := ctrl.ensureVectorAgentRBAC(ctx); err != nil {
-		return err
-	}
-
-	if ctrl.Vector.Spec.Agent.Service {
-		if err := ctrl.ensureVectorAgentService(ctx); err != nil {
-			return err
-		}
-	}
 
 	if err := ctrl.ensureVectorAgentConfig(ctx); err != nil {
 		return err
 	}
+	if !configOnly {
+		if err := ctrl.ensureVectorAgentRBAC(ctx); err != nil {
+			return err
+		}
 
-	if err := ctrl.ensureVectorAgentDaemonSet(ctx); err != nil {
-		return err
+		if ctrl.Vector.Spec.Agent.Service {
+			if err := ctrl.ensureVectorAgentService(ctx); err != nil {
+				return err
+			}
+		}
+
+		if err := ctrl.ensureVectorAgentDaemonSet(ctx); err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 

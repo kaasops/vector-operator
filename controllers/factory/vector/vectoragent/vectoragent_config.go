@@ -18,49 +18,11 @@ package vectoragent
 
 import (
 	"context"
-	"errors"
 
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 )
 
 func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
-	cfgHash := hash.Get(ctrl.Config)
-
-	configCheck := configcheck.New(
-		ctrl.Config,
-		ctrl.Client,
-		ctrl.ClientSet,
-		ctrl.Vector.Name,
-		ctrl.Vector.Namespace,
-		ctrl.Vector.Spec.Agent.Image,
-		ctrl.Vector.Spec.Agent.Env,
-	)
-
-	if ctrl.Vector.Status.LastAppliedConfigHash == nil || *ctrl.Vector.Status.LastAppliedConfigHash != cfgHash {
-		err := configCheck.Run(ctx)
-		if errors.Is(err, configcheck.ValidationError) {
-			if err := ctrl.SetFailedStatus(ctx, err); err != nil {
-				return nil, err
-			}
-			return nil, err
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if err := ctrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
-			return nil, err
-		}
-
-		if err := ctrl.SetSucceesStatus(ctx); err != nil {
-			return nil, err
-		}
-
-	}
-
 	labels := ctrl.labelsForVectorAgent()
 	config := map[string][]byte{
 		"agent.json": ctrl.Config,

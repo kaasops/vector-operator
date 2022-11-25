@@ -94,6 +94,19 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR)
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&vectorv1alpha1.Vector{}).
+		Owns(&appsv1.DaemonSet{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.Secret{}).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&rbacv1.ClusterRole{}).
+		Owns(&rbacv1.ClusterRoleBinding{}).
+		Complete(r)
+}
+
 func listVectorCustomResourceInstances(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
 	vectorlist := vectorv1alpha1.VectorList{}
 	err = client.List(ctx, &vectorlist)
@@ -118,19 +131,6 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	}
 
 	return vectorCR, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.Vector{}).
-		Owns(&appsv1.DaemonSet{}).
-		Owns(&corev1.Service{}).
-		Owns(&corev1.Secret{}).
-		Owns(&corev1.ServiceAccount{}).
-		Owns(&rbacv1.ClusterRole{}).
-		Owns(&rbacv1.ClusterRoleBinding{}).
-		Complete(r)
 }
 
 func reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {

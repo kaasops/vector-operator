@@ -59,6 +59,10 @@ extraLabels: {}
 # Annotations to be added to the deployment
 annotations: {}
 
+# Args to path to operator
+args:
+#  - "-watch-namespace vector"
+
 vector:
   enable: false
   name: "vector"

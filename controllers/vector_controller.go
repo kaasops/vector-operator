@@ -69,11 +69,13 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 		for _, v := range vectors {
-			log.Info("start Reconcile Vector")
-			_, err := createOrUpdateVector(ctx, r.Client, r.Clientset, v)
-			if err != nil {
-				log.Error(err, "Failed to reconciler vector")
-				return ctrl.Result{}, err
+			if v.Name == req.Name {
+				log.Info("start Reconcile Vector")
+				_, err := createOrUpdateVector(ctx, r.Client, r.Clientset, v)
+				if err != nil {
+					log.Error(err, "Failed to reconciler vector")
+					return ctrl.Result{}, err
+				}
 			}
 		}
 		return ctrl.Result{}, nil

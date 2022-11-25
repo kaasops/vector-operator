@@ -61,14 +61,14 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var namespace string
-	var loggingRef string
+	var watchLabel string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&namespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
-	flag.StringVar(&loggingRef, "watch-logging-name", "", "Filter the list of watched objects based on which logging they belong to by checking the app.kubernetes.io/managed-by label")
+	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -92,7 +92,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "79cbe7f3.kaasops.io",
 	}
-	customMgrOptions, err := setupCustomCache(&mgrOptions, namespace, loggingRef)
+	customMgrOptions, err := setupCustomCache(&mgrOptions, namespace, watchLabel)
 
 	if err != nil {
 		setupLog.Error(err, "unable to set up custom cache settings")
@@ -147,8 +147,8 @@ func main() {
 	}
 }
 
-func setupCustomCache(mgrOptions *ctrl.Options, namespace string, loggingRef string) (*ctrl.Options, error) {
-	if namespace == "" && loggingRef == "" {
+func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel string) (*ctrl.Options, error) {
+	if namespace == "" && watchLabel == "" {
 		return mgrOptions, nil
 	}
 
@@ -157,8 +157,8 @@ func setupCustomCache(mgrOptions *ctrl.Options, namespace string, loggingRef str
 	if namespace != "" {
 		namespaceSelector = fields.Set{"metadata.namespace": namespace}.AsSelector()
 	}
-	if loggingRef != "" {
-		labelSelector = labels.Set{k8s.ManagedByLabelKey: "vector-operator", k8s.NameLabelKey: loggingRef}.AsSelector()
+	if watchLabel != "" {
+		labelSelector = labels.Set{k8s.ManagedByLabelKey: "vector-operator", k8s.NameLabelKey: watchLabel}.AsSelector()
 	}
 
 	selectorsByObject := cache.SelectorsByObject{
@@ -170,7 +170,15 @@ func setupCustomCache(mgrOptions *ctrl.Options, namespace string, loggingRef str
 			Field: namespaceSelector,
 			Label: labelSelector,
 		},
+		&corev1.Service{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
 		&corev1.Secret{}: {
+			Field: namespaceSelector,
+			Label: labelSelector,
+		},
+		&corev1.ServiceAccount{}: {
 			Field: namespaceSelector,
 			Label: labelSelector,
 		},

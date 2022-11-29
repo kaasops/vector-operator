@@ -82,7 +82,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
 		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
 		for _, vector := range vectorInstances {
-			ReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
 			return ctrl.Result{}, nil
 		}
 	}

@@ -111,10 +111,15 @@ func (r *ClusterVectorPipelineReconciler) Reconcile(ctx context.Context, req ctr
 		if err := config.ReconcileConfig(ctx, r.Client, vectorPipelineCR, vaCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// Start vector reconcilation
+		if *vectorPipelineCR.Status.ConfigCheckResult {
+			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+		}
 	}
 
 	log.Info("finish Reconcile ClusterVectorPipeline")
-	return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
+	return ctrl.Result{}, nil
 }
 
 func (r *ClusterVectorPipelineReconciler) findClusterVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.ClusterVectorPipeline, error) {

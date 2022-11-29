@@ -18,20 +18,30 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
@@ -58,9 +68,13 @@ type VectorReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
+
+var VectorAgentReconciliationSourceChannel = make(chan event.GenericEvent)
+
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
+	log.Info("start Reconcile Vector")
 
 	if req.Namespace == "" {
 		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
@@ -68,20 +82,8 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			log.Error(err, "Failed to list vector instances")
 			return ctrl.Result{}, err
 		}
-		for _, v := range vectors {
-			if v.Name == req.Name {
-				log.Info("start Reconcile Vector")
-				_, err := createOrUpdateVector(ctx, r.Client, r.Clientset, v)
-				if err != nil {
-					log.Error(err, "Failed to reconciler vector")
-					return ctrl.Result{}, err
-				}
-			}
-		}
-		return ctrl.Result{}, nil
+		return reconcileVectors(ctx, r.Client, r.Clientset, false, vectors...)
 	}
-
-	log.Info("start Reconcile Vector")
 
 	vectorCR, err := r.findVectorCustomResourceInstance(ctx, req)
 	if err != nil {
@@ -93,13 +95,14 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	return createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR)
+	return createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR, false)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.Vector{}).
+		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&source.Channel{Source: VectorAgentReconciliationSourceChannel}, &handler.EnqueueRequestForObject{}).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
@@ -126,7 +129,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	vectorCR := &vectorv1alpha1.Vector{}
 	err := r.Get(ctx, req.NamespacedName, vectorCR)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if api_errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err
@@ -135,7 +138,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	return vectorCR, nil
 }
 
-func reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
+func reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
 	if len(vectors) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -151,14 +154,14 @@ func reconcileVectors(ctx context.Context, client client.Client, clientset *kube
 			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
 		}
 
-		if _, err := createOrUpdateVector(ctx, client, clientset, vector); err != nil {
+		if _, err := createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 	return ctrl.Result{}, nil
 }
 
-func createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector) (ctrl.Result, error) {
+func createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
@@ -176,11 +179,52 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	cfgHash := hash.Get(byteConfig)
+
+	if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
+		configCheck := configcheck.New(
+			byteConfig,
+			vaCtrl.Client,
+			vaCtrl.ClientSet,
+			vaCtrl.Vector.Name,
+			vaCtrl.Vector.Namespace,
+			vaCtrl.Vector.Spec.Agent.Image,
+			vaCtrl.Vector.Spec.Agent.Env,
+		)
+		err := configCheck.Run(ctx)
+		if errors.Is(err, configcheck.ValidationError) {
+			if err := vaCtrl.SetFailedStatus(ctx, err); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+	}
 	vaCtrl.Config = byteConfig
 
-	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(ctx); err != nil {
+	if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
+		//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
+		if api_errors.IsConflict(err) {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
+
+	if err := vaCtrl.SetSucceesStatus(ctx); err != nil {
+		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
+		if api_errors.IsConflict(err) {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Start Reconcile Vector Agent
+	if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }

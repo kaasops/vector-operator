@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -80,7 +81,10 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
 		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
-		return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
+		for _, vector := range vectorInstances {
+			ReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// Check Pipeline hash

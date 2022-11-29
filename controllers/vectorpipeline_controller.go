@@ -81,6 +81,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
 		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
+		// Start vector reconcilation
 		for _, vector := range vectorInstances {
 			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
 			return ctrl.Result{}, nil
@@ -111,10 +112,14 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err := config.ReconcileConfig(ctx, r.Client, vectorPipelineCR, vaCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
+		// Start vector reconcilation
+		if *vectorPipelineCR.Status.ConfigCheckResult {
+			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+		}
 	}
 
 	log.Info("finish Reconcile VectorPipeline")
-	return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
+	return ctrl.Result{}, nil
 }
 
 func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, error) {

@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -78,9 +79,12 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	if vectorPipelineCR == nil {
+	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
 		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
-		return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
+		for _, vector := range vectorInstances {
+			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// Check Pipeline hash
@@ -110,7 +114,7 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	log.Info("finish Reconcile VectorPipeline")
-	return reconcileVectors(ctx, r.Client, r.Clientset, vectorInstances...)
+	return reconcileVectors(ctx, r.Client, r.Clientset, true, vectorInstances...)
 }
 
 func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, error) {

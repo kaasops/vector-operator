@@ -388,6 +388,14 @@ func GetPod(ctx context.Context, namespacedName types.NamespacedName, c client.C
 	return result, nil
 }
 
+func FetchPod(ctx context.Context, pod *corev1.Pod, c client.Client) (*corev1.Pod, error) {
+	err := c.Get(ctx, client.ObjectKeyFromObject(pod), pod)
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
 func DeletePod(ctx context.Context, pod *corev1.Pod, c client.Client) error {
 	if err := c.Delete(ctx, pod); err != nil {
 		return err

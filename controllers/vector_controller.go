@@ -69,7 +69,7 @@ type VectorReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
-var ReconciliationSourceChannel = make(chan event.GenericEvent)
+var VectorAgentReconciliationSourceChannel = make(chan event.GenericEvent)
 
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
@@ -102,7 +102,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Watches(&source.Channel{Source: ReconciliationSourceChannel}, &handler.EnqueueRequestForObject{}).
+		Watches(&source.Channel{Source: VectorAgentReconciliationSourceChannel}, &handler.EnqueueRequestForObject{}).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).

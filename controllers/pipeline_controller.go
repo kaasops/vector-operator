@@ -25,7 +25,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/config"
@@ -33,8 +35,7 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 )
 
-// VectorPipelineReconciler reconciles a VectorPipeline object
-type VectorPipelineReconciler struct {
+type PipelineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -42,35 +43,19 @@ type VectorPipelineReconciler struct {
 	Clientset *kubernetes.Clientset
 }
 
-//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines/finalizers,verbs=update
+func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := log.FromContext(ctx).WithValues("Pipeline", req.Name)
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the VectorPipeline object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
-func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx).WithValues("VectorPipeline", req.Name)
-
-	log.Info("start Reconcile VectorPipeline")
-
-	// Get CR VectorPipeline
-	vectorPipelineCR, err := r.findVectorPipelineCustomResourceInstance(ctx, req)
+	log.Info("start Reconcile Pipeline")
+	pipelineCR, err := r.findPipelineCustomResourceInstance(ctx, req)
 	if err != nil {
-		log.Error(err, "Failed to get Vector Pipeline")
+		log.Error(err, "Failed to get Pipeline")
 		return ctrl.Result{}, err
 	}
-
 	vectorInstances, err := listVectorCustomResourceInstances(ctx, r.Client)
 
 	if err != nil {
-		log.Error(err, "Failed to get Vector Instances")
+		log.Error(err, "Failed to get Instances")
 		return ctrl.Result{}, nil
 	}
 
@@ -79,9 +64,8 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	if vectorPipelineCR == nil || vectorPipelineCR.DeletionTimestamp != nil {
-		log.Info("VectorPIpeline CR not found. Ignoring since object must be deleted")
-		// Start vector reconcilation
+	if pipelineCR == nil {
+		log.Info("Pipeline CR not found. Ignoring since object must be deleted")
 		for _, vector := range vectorInstances {
 			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
 			return ctrl.Result{}, nil
@@ -89,12 +73,12 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Check Pipeline hash
-	checkResult, err := pipeline.CheckHash(vectorPipelineCR)
+	checkResult, err := pipeline.CheckHash(pipelineCR)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 	if checkResult {
-		log.Info("VectorPipeline has no changes. Finish Reconcile VectorPipeline")
+		log.Info("Pipeline has no changes. Finish Reconcile Pipeline")
 		return ctrl.Result{}, nil
 	}
 
@@ -109,35 +93,48 @@ func (r *VectorPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
 		}
 
-		if err := config.ReconcileConfig(ctx, r.Client, vectorPipelineCR, vaCtrl); err != nil {
+		if err := config.ReconcileConfig(ctx, r.Client, pipelineCR, vaCtrl); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		// Start vector reconcilation
-		if *vectorPipelineCR.Status.ConfigCheckResult {
+		if *pipelineCR.GetConfigCheckResult() {
 			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
 		}
 	}
 
-	log.Info("finish Reconcile VectorPipeline")
+	log.Info("finish Reconcile Pipeline")
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorPipelineReconciler) findVectorPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.VectorPipeline, error) {
-	// fetch the master instance
-	vectorPipelineCR := &vectorv1alpha1.VectorPipeline{}
-	err := r.Get(ctx, req.NamespacedName, vectorPipelineCR)
-	if err != nil {
-		if api_errors.IsNotFound(err) {
-			return nil, nil
+func (r *PipelineReconciler) findPipelineCustomResourceInstance(ctx context.Context, req ctrl.Request) (pipeline pipeline.Pipeline, err error) {
+	if req.Namespace != "" {
+		vp := &vectorv1alpha1.VectorPipeline{}
+		err := r.Get(ctx, req.NamespacedName, vp)
+		if err != nil {
+			if api_errors.IsNotFound(err) {
+				return nil, nil
+			}
+			return nil, err
 		}
-		return nil, err
+		return vp, nil
+	} else {
+		cvp := &vectorv1alpha1.ClusterVectorPipeline{}
+		err := r.Get(ctx, req.NamespacedName, cvp)
+		if err != nil {
+			if api_errors.IsNotFound(err) {
+				return nil, nil
+			}
+			return nil, err
+		}
+		return cvp, nil
 	}
-	return vectorPipelineCR, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *VectorPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.VectorPipeline{}).
+		Watches(&source.Kind{Type: &vectorv1alpha1.ClusterVectorPipeline{}}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
 }

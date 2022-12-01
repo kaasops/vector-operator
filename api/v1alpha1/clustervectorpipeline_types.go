@@ -25,7 +25,7 @@ import (
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=cvp
+//+kubebuilder:resource:scope=Cluster,shortName=cvp
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 //+kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 

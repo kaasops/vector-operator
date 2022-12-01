@@ -3,4 +3,14 @@ kind: ClusterVectorPipeline
 metadata:
   name: clustervectorpipeline-sample
 spec:
-  # TODO(user): Add fields here
+  sources:
+    test1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment3"
+  sinks:
+    test2:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - test1

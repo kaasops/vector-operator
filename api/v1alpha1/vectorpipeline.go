@@ -42,6 +42,10 @@ func (vp *VectorPipeline) SetConfigCheck(value bool) {
 	vp.Status.ConfigCheckResult = &value
 }
 
+func (vp *VectorPipeline) GetConfigCheckResult() *bool {
+	return vp.Status.ConfigCheckResult
+}
+
 func (vp *VectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }

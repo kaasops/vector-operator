@@ -32,6 +32,7 @@ type Pipeline interface {
 	SetReason(*string)
 	GetLastAppliedPipeline() *uint32
 	SetLastAppliedPipeline(*uint32)
+	GetConfigCheckResult() *bool
 	IsValid() bool
 	IsDeleted() bool
 	UpdateStatus(context.Context, client.Client) error

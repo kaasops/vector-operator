@@ -42,6 +42,10 @@ func (vp *ClusterVectorPipeline) SetConfigCheck(value bool) {
 	vp.Status.ConfigCheckResult = &value
 }
 
+func (vp *ClusterVectorPipeline) GetConfigCheckResult() *bool {
+	return vp.Status.ConfigCheckResult
+}
+
 func (vp *ClusterVectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }

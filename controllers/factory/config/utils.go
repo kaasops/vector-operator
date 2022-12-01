@@ -24,5 +24,8 @@ func addPrefix(Namespace, Name, componentName string) string {
 }
 
 func generateName(Namespace, Name string) string {
-	return Namespace + "-" + Name
+	if Namespace != "" {
+		return Namespace + "-" + Name
+	}
+	return Name
 }

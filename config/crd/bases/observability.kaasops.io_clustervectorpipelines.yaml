@@ -15,7 +15,7 @@ spec:
     shortNames:
     - cvp
     singular: clustervectorpipeline
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .metadata.creationTimestamp

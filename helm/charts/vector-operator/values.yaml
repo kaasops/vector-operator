@@ -61,7 +61,8 @@ annotations: {}
 
 # Args to path to operator
 args:
-#  - "-watch-namespace vector"
+#  - "-watch-namespace=vector" # Namespace to filter the list of watched objects
+#  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
 
 vector:
   enable: false

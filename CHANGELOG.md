@@ -1,4 +1,6 @@
 ### Added
+
+### v0.0.8
 - [[65]](https://github.com/kaasops/vector-operator/pull/65) **Refactor**: merge vp and cvp reconcile funcs
 - [[64]](https://github.com/kaasops/vector-operator/pull/64) **Fix** Do not reconсile vector if vp check fail
 - [[63]](https://github.com/kaasops/vector-operator/pull/63) **Fix** Fix configcheck gc

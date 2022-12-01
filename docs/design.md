@@ -28,6 +28,7 @@ Specification access to [this](https://github.com/kaasops/vector-operator/blob/m
 
 
 # VectorPipeline
+The `VectorPipeline` is a namespace-scoped CRD.
 The `VectorPipeline` CRD defines Sources, Transforms and Sinks rules for Vector.
 All `VectorPipelines`, with validated configuration file, added to Vector configuration file.
 
@@ -39,6 +40,7 @@ All `VectorPipelines`, with validated configuration file, added to Vector config
 Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page
 
 # ClusterVectorPipeline
+The `ClusterVectorPipeline` is a cluster-scoped CRD.
 The `ClusterVectorPipeline` CRD defines Sources, Transforms and Sinks rules for Vector.
 All `ClusterVectorPipelines`, with validated configuration file, added to Vector configuration file.
 

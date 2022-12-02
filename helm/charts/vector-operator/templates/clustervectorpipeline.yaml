@@ -4,7 +4,6 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: ClusterVectorPipeline
 metadata: 
   name: {{ $pipeline.name }}
-  namespace: {{ $namespace }}
 spec:
   sources: 
 {{-  toYaml $pipeline.sources | nindent 4 }}

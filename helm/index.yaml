@@ -3,9 +3,9 @@ entries:
   vector-operator:
   - apiVersion: v2
     appVersion: v0.0.8
-    created: "2022-12-02T15:34:03.411969632+02:00"
+    created: "2022-12-02T15:36:12.752976791+02:00"
     description: A Helm chart to install Vector Operator
-    digest: 74a141b201d5f24a149281a5adf9409ababea78a024d5f15551a0d155848eacb
+    digest: 21c4c214cd0206abb743e82ac757804d644de08d80eb5f2edbb82ff9668cfed3
     home: https://github.com/kaasops/vector-operator
     name: vector-operator
     sources:
@@ -16,7 +16,7 @@ entries:
     version: 0.0.8
   - apiVersion: v2
     appVersion: v0.0.7
-    created: "2022-12-02T15:34:03.411450281+02:00"
+    created: "2022-12-02T15:36:12.752470739+02:00"
     description: A Helm chart to install Vector Operator
     digest: 27915a2bf70da3f66d08cf4a1f6c41ad38937759ad52eaf8b19f5a3e348e2f2e
     home: https://github.com/kaasops/vector-operator
@@ -29,7 +29,7 @@ entries:
     version: 0.0.7
   - apiVersion: v2
     appVersion: v0.0.6
-    created: "2022-12-02T15:34:03.410832668+02:00"
+    created: "2022-12-02T15:36:12.751974518+02:00"
     description: A Helm chart to install Vector Operator
     digest: 26760fbc2018336c12e8726307a624970ee994c4ffa021cc216c13669bd82f09
     home: https://github.com/kaasops/vector-operator
@@ -42,7 +42,7 @@ entries:
     version: 0.0.6
   - apiVersion: v2
     appVersion: v0.0.5
-    created: "2022-12-02T15:34:03.410287319+02:00"
+    created: "2022-12-02T15:36:12.751485522+02:00"
     description: A Helm chart to install Vector Operator
     digest: 1d6034027ae2f08a9dbea4d6ee9a1604117ae44d9daceb3f654b87a99175251f
     home: https://github.com/kaasops/vector-operator
@@ -53,4 +53,4 @@ entries:
     urls:
     - https://kaasops.github.io/vector-operator/helm/packages/vector-operator-0.0.1.tgz
     version: 0.0.1
-generated: "2022-12-02T15:34:03.4097285+02:00"
+generated: "2022-12-02T15:36:12.750776861+02:00"

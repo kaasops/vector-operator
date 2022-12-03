@@ -31,6 +31,9 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+tolerations: {}
+
 resources:
   limits:
     cpu: "1"

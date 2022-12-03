@@ -32,6 +32,8 @@ securityContext:
     drop:
       - ALL
 
+podSecurityContext: {}
+
 tolerations: {}
 
 resources:

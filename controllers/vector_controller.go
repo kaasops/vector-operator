@@ -134,7 +134,6 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 		}
 		return nil, err
 	}
-
 	return vectorCR, nil
 }
 
@@ -147,13 +146,6 @@ func reconcileVectors(ctx context.Context, client client.Client, clientset *kube
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
-
-		// Init Controller for Vector Agent
-		vaCtrl := vectoragent.NewController(vector, client, clientset)
-		if vaCtrl.Vector.Spec.Agent.DataDir == "" {
-			vaCtrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
-		}
-
 		if _, err := createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -201,9 +193,13 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-
 	}
 	vaCtrl.Config = byteConfig
+
+	// Start Reconcile Vector Agent
+	if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
 		//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
@@ -218,11 +214,6 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 		if api_errors.IsConflict(err) {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
-	}
-
-	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
 		return ctrl.Result{}, err
 	}
 

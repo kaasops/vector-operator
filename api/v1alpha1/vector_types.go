@@ -43,7 +43,6 @@ type VectorStatus struct {
 
 // VectorAgent is the Schema for the Vector Agent
 type VectorAgent struct {
-	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
 	// Image - docker image settings for Vector Agent
 	// if no specified operator uses default config version
 	// +optional

@@ -17,11 +17,15 @@ limitations under the License.
 package vectoragent
 
 import (
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 )
 
 func (ctrl *Controller) SetDefault() {
+	if ctrl.Vector.Spec.Agent == nil {
+		ctrl.Vector.Spec.Agent = new(v1alpha1.VectorAgent)
+	}
 	if ctrl.Vector.Spec.Agent.Image == "" {
 		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.24.0-distroless-libc"
 	}

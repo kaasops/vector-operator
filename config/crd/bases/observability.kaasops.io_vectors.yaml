@@ -1063,7 +1063,6 @@ spec:
                       node network namespace
                     type: boolean
                   image:
-                    default: timberio/vector:0.24.0-distroless-libc
                     description: Image - docker image settings for Vector Agent if
                       no specified operator uses default config version
                     type: string

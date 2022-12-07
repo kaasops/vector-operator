@@ -1,12 +1,14 @@
 ### Added
+- [[65](https://github.com/kaasops/vector-operator/pull/69)] **Helm**: Add toleration-control for vector-operator deployment to helm chart
+- [[65](https://github.com/kaasops/vector-operator/pull/69)] **Cleanup**: Add default value for podSecurityContext in chart values
 
 ### v0.0.8
-- [[65]](https://github.com/kaasops/vector-operator/pull/65) **Refactor**: merge vp and cvp reconcile funcs
-- [[64]](https://github.com/kaasops/vector-operator/pull/64) **Fix** Do not reconсile vector if vp check fail
-- [[63]](https://github.com/kaasops/vector-operator/pull/63) **Fix** Fix configcheck gc
+- [[65](https://github.com/kaasops/vector-operator/pull/65)] **Refactor**: merge vp and cvp reconcile funcs
+- [[64](https://github.com/kaasops/vector-operator/pull/64)] **Fix** Do not reconсile vector if vp check fail
+- [[63](https://github.com/kaasops/vector-operator/pull/63)] **Fix** Fix configcheck gc
 
 ### v0.0.7
-- [[61]](https://github.com/kaasops/vector-operator/pull/61) **Feature** Filter cache and disable time reconcile
+- [[61](https://github.com/kaasops/vector-operator/pull/61)] **Feature** Filter cache and disable time reconcile
 
 ### v0.0.6
 - [[60](https://github.com/kaasops/vector-operator/pull/60)] **Fix**: Fix Vector agent DaemosSet for collect journald service logs

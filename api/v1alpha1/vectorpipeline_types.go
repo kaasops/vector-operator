@@ -43,7 +43,7 @@ type VectorPipelineStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=vp
+//+kubebuilder:resource:shortName=vp,categories=all
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 //+kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 

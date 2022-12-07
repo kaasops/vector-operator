@@ -181,6 +181,9 @@ func vectorConfigToByte(config *VectorConfig) ([]byte, error) {
 }
 
 func getSources(pipeline pipeline.Pipeline, filter []string) ([]*Source, error) {
+	if pipeline.GetSpec().Sources == nil {
+		return nil, nil
+	}
 	var sources []*Source
 	sourcesMap, err := decodeRaw(pipeline.GetSpec().Sources.Raw)
 	if err != nil {
@@ -229,6 +232,9 @@ func getTransforms(pipeline pipeline.Pipeline) ([]*Transform, error) {
 }
 
 func getSinks(pipeline pipeline.Pipeline) ([]*Sink, error) {
+	if pipeline.GetSpec().Sinks == nil {
+		return nil, nil
+	}
 	sinksMap, err := decodeRaw(pipeline.GetSpec().Sinks.Raw)
 	if err != nil {
 		return nil, err

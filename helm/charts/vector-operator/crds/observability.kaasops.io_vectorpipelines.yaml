@@ -9,6 +9,8 @@ metadata:
 spec:
   group: observability.kaasops.io
   names:
+    categories:
+    - all
     kind: VectorPipeline
     listKind: VectorPipelineList
     plural: vectorpipelines

@@ -1,4 +1,7 @@
 ### Added
+
+### v0.0.9
+- [[72]](https://github.com/kaasops/vector-operator/pull/72) **Feature** Add vp to all category
 - [[71]](https://github.com/kaasops/vector-operator/pull/71) **Fix** Fix panic on empty sinks and sources
 - [[70]](https://github.com/kaasops/vector-operator/pull/70) **Fix** Fix nil vector panic
 - [[65](https://github.com/kaasops/vector-operator/pull/69)] **Helm**: Add toleration-control for vector-operator deployment to helm chart

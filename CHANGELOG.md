@@ -1,5 +1,8 @@
 ### Added
 
+### v0.0.10
+- [[73]](https://github.com/kaasops/vector-operator/pull/73) **Fix** Add vector tolerations for configCheck pod
+
 ### v0.0.9
 - [[72]](https://github.com/kaasops/vector-operator/pull/72) **Feature** Add vp to all category
 - [[71]](https://github.com/kaasops/vector-operator/pull/71) **Fix** Fix panic on empty sinks and sources

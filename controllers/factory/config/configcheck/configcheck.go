@@ -38,11 +38,12 @@ type ConfigCheck struct {
 	Client    client.Client
 	ClientSet *kubernetes.Clientset
 
-	Name      string
-	Namespace string
-	Image     string
-	Envs      []corev1.EnvVar
-	Hash      string
+	Name        string
+	Namespace   string
+	Image       string
+	Envs        []corev1.EnvVar
+	Hash        string
+	Tolerations []corev1.Toleration
 }
 
 func New(
@@ -51,15 +52,17 @@ func New(
 	cs *kubernetes.Clientset,
 	name, namespace, image string,
 	envs []corev1.EnvVar,
+	tolerations []corev1.Toleration,
 ) *ConfigCheck {
 	return &ConfigCheck{
-		Config:    config,
-		Client:    c,
-		ClientSet: cs,
-		Name:      name,
-		Namespace: namespace,
-		Image:     image,
-		Envs:      envs,
+		Config:      config,
+		Client:      c,
+		ClientSet:   cs,
+		Name:        name,
+		Namespace:   namespace,
+		Image:       image,
+		Envs:        envs,
+		Tolerations: tolerations,
 	}
 }
 

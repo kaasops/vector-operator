@@ -182,6 +182,7 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 			vaCtrl.Vector.Namespace,
 			vaCtrl.Vector.Spec.Agent.Image,
 			vaCtrl.Vector.Spec.Agent.Env,
+			vaCtrl.Vector.Spec.Agent.Tolerations,
 		)
 		err := configCheck.Run(ctx)
 		if errors.Is(err, configcheck.ValidationError) {

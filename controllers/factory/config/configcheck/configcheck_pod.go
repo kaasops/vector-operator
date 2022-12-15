@@ -35,6 +35,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 			ServiceAccountName: "vector-configcheck",
 			Volumes:            cc.generateVectorConfigCheckVolume(),
 			SecurityContext:    &corev1.PodSecurityContext{},
+			Tolerations:        cc.Tolerations,
 			Containers: []corev1.Container{
 				{
 					Name:  "config-check",

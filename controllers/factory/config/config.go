@@ -52,6 +52,7 @@ func ReconcileConfig(ctx context.Context, client client.Client, p pipeline.Pipel
 		vaCtrl.Vector.Namespace,
 		vaCtrl.Vector.Spec.Agent.Image,
 		vaCtrl.Vector.Spec.Agent.Env,
+		vaCtrl.Vector.Spec.Agent.Tolerations,
 	)
 
 	// Start ConfigCheck

@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"errors"
+	"sync"
+	"time"
 
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,10 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/config"
+	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 )
@@ -40,8 +45,14 @@ type PipelineReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset *kubernetes.Clientset
+	Clientset                  *kubernetes.Clientset
+	PipelineCheckWG            *sync.WaitGroup
+	PipelineDeleteEventTimeout time.Duration
 }
+
+var VectorAgentReconciliationSourceChannel = make(chan event.GenericEvent)
+
+const PipelineDeleteEventTimeout time.Duration = 3 * time.Second
 
 func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Pipeline", req.Name)
@@ -67,7 +78,13 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if pipelineCR == nil {
 		log.Info("Pipeline CR not found. Ignoring since object must be deleted")
 		for _, vector := range vectorInstances {
-			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+			r.PipelineCheckWG.Add(1)
+			go func() {
+				VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
+				log.Info("Waiting if other deletions will be done during timeout")
+				time.Sleep(r.PipelineDeleteEventTimeout)
+				r.PipelineCheckWG.Done()
+			}()
 			return ctrl.Result{}, nil
 		}
 	}
@@ -91,15 +108,23 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 
 		vaCtrl.SetDefault()
+		// Get Vector Config file
+		configBuilder := config.NewBuilder(vaCtrl, pipelineCR)
 
-		if err := config.ReconcileConfig(ctx, r.Client, pipelineCR, vaCtrl); err != nil {
+		byteConfig, err := configBuilder.GetByteConfigWithValidate()
+		if err != nil {
+			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err); err != nil {
+				return ctrl.Result{}, err
+			}
+			if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, pipelineCR); err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, err
 		}
 
-		// Start vector reconcilation
-		if *pipelineCR.GetConfigCheckResult() {
-			VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vector}
-		}
+		vaCtrl.Config = byteConfig
+		r.PipelineCheckWG.Add(1)
+		go r.runPipelineCheck(ctx, pipelineCR, vaCtrl)
 	}
 
 	log.Info("finish Reconcile Pipeline")
@@ -135,5 +160,54 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.VectorPipeline{}).
 		Watches(&source.Kind{Type: &vectorv1alpha1.ClusterVectorPipeline{}}, &handler.EnqueueRequestForObject{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
+}
+
+func (r *PipelineReconciler) runPipelineCheck(ctx context.Context, p pipeline.Pipeline, vaCtrl *vectoragent.Controller) {
+	log := log.FromContext(ctx).WithValues("Pipeline", p.GetName())
+	// Init CheckConfig
+	configCheck := configcheck.New(
+		vaCtrl.Config,
+		vaCtrl.Client,
+		vaCtrl.ClientSet,
+		vaCtrl.Vector.Name,
+		vaCtrl.Vector.Namespace,
+		vaCtrl.Vector.Spec.Agent.Image,
+		vaCtrl.Vector.Spec.Agent.Env,
+		vaCtrl.Vector.Spec.Agent.Tolerations,
+	)
+	configCheck.Initiator = configcheck.ConfigCheckInitiatorPipieline
+	defer r.PipelineCheckWG.Done()
+	// Start ConfigCheck
+	err := configCheck.Run(ctx)
+	if errors.Is(err, configcheck.ValidationError) {
+		if err = pipeline.SetFailedStatus(ctx, r.Client, p, err); err != nil {
+			log.Error(err, "Failed to set pipeline status")
+			return
+		}
+		if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, p); err != nil {
+			log.Error(err, "Failed to set pipeline status")
+			return
+		}
+		return
+	}
+	if err != nil {
+		log.Error(err, "Configcheck error")
+		return
+	}
+
+	if err = pipeline.SetSuccessStatus(ctx, r.Client, p); err != nil {
+		log.Error(err, "Failed to set pipeline status")
+		return
+	}
+
+	if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, p); err != nil {
+		log.Error(err, "Failed to set pipeline status")
+		return
+	}
+	// Start vector reconcilation
+	if *p.GetConfigCheckResult() {
+		VectorAgentReconciliationSourceChannel <- event.GenericEvent{Object: vaCtrl.Vector}
+	}
 }

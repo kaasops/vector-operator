@@ -19,14 +19,15 @@ package configcheck
 import (
 	"context"
 	"math/rand"
-	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,6 +41,7 @@ type ConfigCheck struct {
 
 	Name        string
 	Namespace   string
+	Initiator   string
 	Image       string
 	Envs        []corev1.EnvVar
 	Hash        string
@@ -67,9 +69,8 @@ func New(
 }
 
 func (cc *ConfigCheck) Run(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Name)
-
-	log.Info("start ConfigCheck")
+	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
+	log.Info("================= Started ConfigCheck =======================")
 
 	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil {
 		return err
@@ -154,27 +155,49 @@ func randStringRunes() string {
 func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
+
+	watcher, err := cc.ClientSet.CoreV1().Pods(cc.Namespace).Watch(ctx, metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(metav1.ObjectNameField, pod.Name).String(),
+		// LabelSelector: labelsForVectorConfigCheck(),
+	})
+
+	if err != nil {
+		log.Error(err, "cannot create Pod event watcher")
+		return err
+	}
+
+	defer watcher.Stop()
+
 	for {
-		pod, err := k8s.FetchPod(ctx, pod, cc.Client)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
+		select {
+		case e := <-watcher.ResultChan():
+			if e.Object == nil {
+				return nil
+			}
+			pod, ok := e.Object.(*corev1.Pod)
+			if !ok {
 				continue
 			}
-			return err
-		}
-
-		switch pod.Status.Phase {
-		case "Pending":
-			log.Info("wait Validate Vector Config Result")
-			time.Sleep(5 * time.Second)
-		case "Failed":
-			reason, err := k8s.GetPodLogs(ctx, pod, cc.ClientSet)
-			if err != nil {
-				return err
+			switch e.Type {
+			case watch.Modified:
+				if pod.DeletionTimestamp != nil {
+					continue
+				}
+				switch pod.Status.Phase {
+				case corev1.PodSucceeded:
+					log.Info("Config Check completed successfully")
+					return nil
+				case corev1.PodFailed:
+					log.Info("Config Check Failed")
+					reason, err := k8s.GetPodLogs(ctx, pod, cc.ClientSet)
+					if err != nil {
+						return err
+					}
+					return newValidationError(reason)
+				}
 			}
-			return newValidationError(reason)
-		case "Succeeded":
-			log.Info("Config Check completed successfully")
+		case <-ctx.Done():
+			watcher.Stop()
 			return nil
 		}
 	}
@@ -188,25 +211,23 @@ func (cc *ConfigCheck) cleanup(ctx context.Context, pod *corev1.Pod) error {
 		}
 		return err
 	}
-	if pod.Status.Phase == "Succeeded" {
-		for _, v := range pod.Spec.Volumes {
-			if v.Name == "config" {
-				nn := types.NamespacedName{
-					Name:      v.Secret.SecretName,
-					Namespace: pod.Namespace,
-				}
-				secret, err := k8s.GetSecret(ctx, nn, cc.Client)
-				if err != nil {
-					return err
-				}
-				if err := k8s.DeleteSecret(ctx, secret, cc.Client); err != nil {
-					return err
-				}
+	for _, v := range pod.Spec.Volumes {
+		if v.Name == "config" {
+			nn := types.NamespacedName{
+				Name:      v.Secret.SecretName,
+				Namespace: pod.Namespace,
+			}
+			secret, err := k8s.GetSecret(ctx, nn, cc.Client)
+			if err != nil {
+				return err
+			}
+			if err := k8s.DeleteSecret(ctx, secret, cc.Client); err != nil {
+				return err
 			}
 		}
-		if err := k8s.DeletePod(ctx, pod, cc.Client); err != nil {
-			return err
-		}
+	}
+	if err := k8s.DeletePod(ctx, pod, cc.Client); err != nil {
+		return err
 	}
 	return nil
 }

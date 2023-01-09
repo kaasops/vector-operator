@@ -18,11 +18,13 @@ package configcheck
 
 import (
 	"context"
+	"errors"
 	"math/rand"
+	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,6 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+const waitConfigcheckResultTimeout = 180 * time.Second
 
 type ConfigCheck struct {
 	Config []byte
@@ -199,6 +203,9 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 		case <-ctx.Done():
 			watcher.Stop()
 			return nil
+		case <-time.After(waitConfigcheckResultTimeout):
+			watcher.Stop()
+			return errors.New("Timeout waiting configcheck pod result")
 		}
 	}
 }
@@ -206,7 +213,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 func (cc *ConfigCheck) cleanup(ctx context.Context, pod *corev1.Pod) error {
 	pod, err := k8s.FetchPod(ctx, pod, cc.Client)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if api_errors.IsNotFound(err) {
 			return nil
 		}
 		return err

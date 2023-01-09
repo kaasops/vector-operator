@@ -21,7 +21,10 @@ import (
 	"fmt"
 )
 
-var ValidationError = errors.New("config validation error")
+var (
+	ValidationError         = errors.New("config validation error")
+	ConfigcheckTimeoutError = errors.New("timeout waiting configcheck pod result")
+)
 
 func newValidationError(reason string) error {
 	return fmt.Errorf("%w: %s", ValidationError, reason)

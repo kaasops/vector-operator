@@ -6,5 +6,5 @@ metadata:
 spec:
   agent:
     service: true
-    image: "timberio/vector:0.24.0-distroless-libc"
+    image: "timberio/vector:0.26.0-distroless-libc"
 

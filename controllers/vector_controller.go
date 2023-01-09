@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
 	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
@@ -37,7 +39,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -52,7 +54,9 @@ type VectorReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset *kubernetes.Clientset
+	Clientset            *kubernetes.Clientset
+	PipelineCheckWG      *sync.WaitGroup
+	PipelineCheckTimeout time.Duration
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -69,13 +73,14 @@ type VectorReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
-var VectorAgentReconciliationSourceChannel = make(chan event.GenericEvent)
-
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	log.Info("start Reconcile Vector")
-
+	log.Info("Waiting pipeline checks")
+	if waitPipelineChecks(r.PipelineCheckWG, r.PipelineCheckTimeout) {
+		log.Info("Timeout waiting pipeline checks, continue reconcile vector")
+	}
+	log.Info("Start Reconcile Vector")
 	if req.Namespace == "" {
 		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
 		if err != nil {
@@ -109,6 +114,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
 		Owns(&rbacv1.ClusterRoleBinding{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
 }
 
@@ -184,6 +190,7 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 			vaCtrl.Vector.Spec.Agent.Env,
 			vaCtrl.Vector.Spec.Agent.Tolerations,
 		)
+		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 		err := configCheck.Run(ctx)
 		if errors.Is(err, configcheck.ValidationError) {
 			if err := vaCtrl.SetFailedStatus(ctx, err); err != nil {
@@ -219,4 +226,18 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func waitPipelineChecks(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return false
+	case <-time.After(timeout):
+		return true
+	}
 }

@@ -19,6 +19,8 @@ package main
 import (
 	"flag"
 	"os"
+	"sync"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -62,6 +64,10 @@ func main() {
 	var probeAddr string
 	var namespace string
 	var watchLabel string
+	var pipelineCheckWG sync.WaitGroup
+	var PipelineCheckTimeout time.Duration
+	var PipelineDeleteEventTimeout time.Duration
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -69,6 +75,8 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&namespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
+	flag.DurationVar(&PipelineCheckTimeout, "pipeline-check-timeout", 15*time.Second, "wait pipeline checks before force vector reconcile. Default: 15s")
+	flag.DurationVar(&PipelineDeleteEventTimeout, "pipeline-delete-timeout", 5*time.Second, "collect delete events timeout")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -106,17 +114,21 @@ func main() {
 	}
 
 	if err = (&controllers.VectorReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Clientset: clientset,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		Clientset:            clientset,
+		PipelineCheckWG:      &pipelineCheckWG,
+		PipelineCheckTimeout: PipelineCheckTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
 	}
 	if err = (&controllers.PipelineReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Clientset: clientset,
+		Client:                     mgr.GetClient(),
+		Scheme:                     mgr.GetScheme(),
+		Clientset:                  clientset,
+		PipelineCheckWG:            &pipelineCheckWG,
+		PipelineDeleteEventTimeout: PipelineDeleteEventTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)

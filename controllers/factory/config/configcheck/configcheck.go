@@ -18,7 +18,6 @@ package configcheck
 
 import (
 	"context"
-	"errors"
 	"math/rand"
 	"time"
 
@@ -205,7 +204,10 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 			return nil
 		case <-time.After(waitConfigcheckResultTimeout):
 			watcher.Stop()
-			return errors.New("Timeout waiting configcheck pod result")
+			if err = cc.cleanup(ctx, pod); err != nil {
+				log.Error(err, "Failed to clean configcheck pod")
+			}
+			return ConfigcheckTimeoutError
 		}
 	}
 }

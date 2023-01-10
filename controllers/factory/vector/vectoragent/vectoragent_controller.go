@@ -121,11 +121,10 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 	return map[string]string{
-		k8s.ManagedByLabelKey:  "vector-operator",
-		k8s.NameLabelKey:       "vector",
-		k8s.ComponentLabelKey:  "Agent",
-		k8s.InstanceLabelKey:   ctrl.Vector.Name,
-		k8s.VectorExcludeLabel: "true",
+		k8s.ManagedByLabelKey: "vector-operator",
+		k8s.NameLabelKey:      "vector",
+		k8s.ComponentLabelKey: "Agent",
+		k8s.InstanceLabelKey:  ctrl.Vector.Name,
 	}
 }
 

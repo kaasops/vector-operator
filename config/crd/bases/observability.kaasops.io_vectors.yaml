@@ -1041,6 +1041,10 @@ spec:
                       - name
                       type: object
                     type: array
+                  excludeVectorLogs:
+                    default: true
+                    description: Enable or disable excluding vector pods logs
+                    type: boolean
                   host_aliases:
                     description: HostAliases provides mapping between ip and hostnames,
                       that would be propagated to pod, cannot be used with HostNetwork.

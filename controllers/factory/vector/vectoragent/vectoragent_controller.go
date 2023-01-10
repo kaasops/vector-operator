@@ -18,6 +18,7 @@ package vectoragent
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -125,7 +126,7 @@ func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 		k8s.NameLabelKey:       "vector",
 		k8s.ComponentLabelKey:  "Agent",
 		k8s.InstanceLabelKey:   ctrl.Vector.Name,
-		k8s.VectorExcludeLabel: "true",
+		k8s.VectorExcludeLabel: strconv.FormatBool(ctrl.Vector.Spec.Agent.ExcludeVectorLogs),
 	}
 }
 

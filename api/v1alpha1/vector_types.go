@@ -96,6 +96,9 @@ type VectorAgent struct {
 	DataDir string  `json:"dataDir,omitempty"`
 	Api     ApiSpec `json:"api,omitempty"`
 	Service bool    `json:"service,omitempty"`
+	// Enable or disable excluding vector pods logs
+	// +kubebuilder:default=true
+	ExcludeVectorLogs bool `json:"excludeVectorLogs,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/

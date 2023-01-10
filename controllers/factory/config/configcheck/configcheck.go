@@ -132,10 +132,9 @@ func (cc *ConfigCheck) checkVectorConfigCheckPod(ctx context.Context) error {
 
 func labelsForVectorConfigCheck() map[string]string {
 	return map[string]string{
-		k8s.ManagedByLabelKey:  "vector-operator",
-		k8s.NameLabelKey:       "vector-configcheck",
-		k8s.ComponentLabelKey:  "ConfigCheck",
-		k8s.VectorExcludeLabel: "true",
+		k8s.ManagedByLabelKey: "vector-operator",
+		k8s.NameLabelKey:      "vector-configcheck",
+		k8s.ComponentLabelKey: "ConfigCheck",
 	}
 }
 

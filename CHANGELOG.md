@@ -1,7 +1,7 @@
 ### Added
 
 ### v0.0.11
-- [[79]] (https://github.com/kaasops/vector-operator/pull/79) **Fix** Remove vector.dev/exclude label 
+- [[79]](https://github.com/kaasops/vector-operator/pull/79) **Fix** Remove vector.dev/exclude label 
 - [[77]](https://github.com/kaasops/vector-operator/pull/77) **Feature** Concurrent pipeline checks
 
 ### v0.0.10

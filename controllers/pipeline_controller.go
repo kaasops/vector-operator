@@ -171,11 +171,7 @@ func (r *PipelineReconciler) runPipelineCheck(ctx context.Context, p pipeline.Pi
 		vaCtrl.Config,
 		vaCtrl.Client,
 		vaCtrl.ClientSet,
-		vaCtrl.Vector.Name,
-		vaCtrl.Vector.Namespace,
-		vaCtrl.Vector.Spec.Agent.Image,
-		vaCtrl.Vector.Spec.Agent.Env,
-		vaCtrl.Vector.Spec.Agent.Tolerations,
+		vaCtrl.Vector,
 	)
 	configCheck.Initiator = configcheck.ConfigCheckInitiatorPipieline
 	defer r.PipelineCheckWG.Done()

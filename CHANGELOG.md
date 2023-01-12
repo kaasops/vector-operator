@@ -1,6 +1,7 @@
 ### Added
-- [[81]](https://github.com/kaasops/vector-operator/pull/81) **Feature** Add control for ConfigCheck params
 
+### v0.0.12
+- [[81]](https://github.com/kaasops/vector-operator/pull/81) **Feature** Add control for ConfigCheck params
 
 ### v0.0.11
 - [[79]](https://github.com/kaasops/vector-operator/pull/79) **Fix** Remove vector.dev/exclude label 

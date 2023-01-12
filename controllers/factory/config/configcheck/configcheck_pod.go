@@ -40,15 +40,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 				{
 					Name:  "config-check",
 					Image: cc.Image,
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("100m"),
-							corev1.ResourceMemory: resource.MustParse("100Mi"),
-						},
+					Resources: cc.Resources,
 					},
 					Args: []string{"validate", "/etc/vector/*.json"},
 					Env:  cc.generateVectorConfigCheckEnvs(),

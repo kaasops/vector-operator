@@ -184,11 +184,7 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 			byteConfig,
 			vaCtrl.Client,
 			vaCtrl.ClientSet,
-			vaCtrl.Vector.Name,
-			vaCtrl.Vector.Namespace,
-			vaCtrl.Vector.Spec.Agent.Image,
-			vaCtrl.Vector.Spec.Agent.Env,
-			vaCtrl.Vector.Spec.Agent.Tolerations,
+			vaCtrl.Vector,
 		)
 		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 		err := configCheck.Run(ctx)

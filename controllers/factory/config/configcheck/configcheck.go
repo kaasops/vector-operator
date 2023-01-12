@@ -32,6 +32,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 const waitConfigcheckResultTimeout = 180 * time.Second
@@ -49,25 +51,42 @@ type ConfigCheck struct {
 	Envs        []corev1.EnvVar
 	Hash        string
 	Tolerations []corev1.Toleration
+	Resources   corev1.ResourceRequirements
 }
 
 func New(
 	config []byte,
 	c client.Client,
 	cs *kubernetes.Clientset,
-	name, namespace, image string,
-	envs []corev1.EnvVar,
-	tolerations []corev1.Toleration,
+	va *vectorv1alpha1.Vector,
 ) *ConfigCheck {
+	image := va.Spec.Agent.Image
+	if va.Spec.Agent.ConfigCheck.Image != nil {
+		image = *va.Spec.Agent.ConfigCheck.Image
+	}
+
+	env := va.Spec.Agent.Env
+
+	tolerations := va.Spec.Agent.Tolerations
+	if va.Spec.Agent.ConfigCheck.Tolerations != nil {
+		tolerations = *va.Spec.Agent.ConfigCheck.Tolerations
+	}
+
+	resources := va.Spec.Agent.Resources
+	if va.Spec.Agent.ConfigCheck.Resources != nil {
+		resources = *va.Spec.Agent.ConfigCheck.Resources
+	}
+
 	return &ConfigCheck{
 		Config:      config,
 		Client:      c,
 		ClientSet:   cs,
-		Name:        name,
-		Namespace:   namespace,
+		Name:        va.Name,
+		Namespace:   va.Namespace,
 		Image:       image,
-		Envs:        envs,
+		Envs:        env,
 		Tolerations: tolerations,
+		Resources:   resources,
 	}
 }
 

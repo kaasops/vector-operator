@@ -96,6 +96,8 @@ type VectorAgent struct {
 	DataDir string  `json:"dataDir,omitempty"`
 	Api     ApiSpec `json:"api,omitempty"`
 	Service bool    `json:"service,omitempty"`
+
+	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/
@@ -103,6 +105,30 @@ type ApiSpec struct {
 	Address    string `json:"address,omitempty"`
 	Enabled    bool   `json:"enabled,omitempty"`
 	Playground bool   `json:"playground,omitempty"`
+}
+
+// ConfigCheck is the Schema for control params for ConfigCheck pods
+type ConfigCheck struct {
+	// Image - docker image settings for Vector Agent
+	// if no specified operator uses default config version
+	// +optional
+	Image *string `json:"image,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not specified - default setting will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +optional
+	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
+	// Affinity If specified, the pod's scheduling constraints.
+	// +optional
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
+	Tolerations *[]v1.Toleration `json:"tolerations,omitempty"`
+	// SecurityContext holds pod-level security attributes and common container settings.
+	// This defaults to the default PodSecurityContext.
+	// +optional
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
 }
 
 // VectorAggregator is the Schema for the Vector Aggregator

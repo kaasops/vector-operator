@@ -50,9 +50,8 @@ func (ctrl *Controller) SetSucceesStatus(ctx context.Context) error {
 	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
 }
 
-func (ctrl *Controller) SetFailedStatus(ctx context.Context, err error) error {
+func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) error {
 	var status = false
-	var reason = err.Error()
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = &reason
 

@@ -90,25 +90,37 @@ func New(
 	}
 }
 
-func (cc *ConfigCheck) Run(ctx context.Context) error {
+func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =======================")
 
 	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil {
-		return err
+		return "", err
 	}
 
 	cc.Hash = randStringRunes()
 
 	if err := cc.ensureVectorConfigCheckConfig(ctx); err != nil {
-		return err
+		return "", err
 	}
 
-	if err := cc.checkVectorConfigCheckPod(ctx); err != nil {
-		return err
+	vectorConfigCheckPod := cc.createVectorConfigCheckPod()
+
+	err := k8s.CreatePod(ctx, vectorConfigCheckPod, cc.Client)
+	if err != nil {
+		return "", err
 	}
 
-	return nil
+	defer func() {
+		err = cc.cleanup(ctx, vectorConfigCheckPod)
+	}()
+
+	reason, err := cc.getCheckResult(ctx, vectorConfigCheckPod)
+	if err != nil {
+		return "", err
+	}
+
+	return reason, err
 }
 
 func (cc *ConfigCheck) ensureVectorConfigCheckRBAC(ctx context.Context) error {
@@ -130,22 +142,6 @@ func (cc *ConfigCheck) ensureVectorConfigCheckConfig(ctx context.Context) error 
 }
 
 func (cc *ConfigCheck) checkVectorConfigCheckPod(ctx context.Context) error {
-	vectorConfigCheckPod := cc.createVectorConfigCheckPod()
-
-	err := k8s.CreatePod(ctx, vectorConfigCheckPod, cc.Client)
-	if err != nil {
-		return err
-	}
-
-	err = cc.getCheckResult(ctx, vectorConfigCheckPod)
-	if err != nil {
-		return err
-	}
-
-	err = cc.cleanup(ctx, vectorConfigCheckPod)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -173,7 +169,7 @@ func randStringRunes() string {
 	return string(b)
 }
 
-func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err error) {
+func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
 
@@ -184,7 +180,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 
 	if err != nil {
 		log.Error(err, "cannot create Pod event watcher")
-		return err
+		return "", err
 	}
 
 	defer watcher.Stop()
@@ -193,7 +189,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 		select {
 		case e := <-watcher.ResultChan():
 			if e.Object == nil {
-				return nil
+				return "", nil
 			}
 			pod, ok := e.Object.(*corev1.Pod)
 			if !ok {
@@ -207,25 +203,22 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (err
 				switch pod.Status.Phase {
 				case corev1.PodSucceeded:
 					log.Info("Config Check completed successfully")
-					return nil
+					return "", nil
 				case corev1.PodFailed:
 					log.Info("Config Check Failed")
 					reason, err := k8s.GetPodLogs(ctx, pod, cc.ClientSet)
 					if err != nil {
-						return err
+						return "", err
 					}
-					return newValidationError(reason)
+					return reason, nil
 				}
 			}
 		case <-ctx.Done():
 			watcher.Stop()
-			return nil
+			return "", nil
 		case <-time.After(waitConfigcheckResultTimeout):
 			watcher.Stop()
-			if err = cc.cleanup(ctx, pod); err != nil {
-				log.Error(err, "Failed to clean configcheck pod")
-			}
-			return ConfigcheckTimeoutError
+			return "", ConfigcheckTimeoutError
 		}
 	}
 }

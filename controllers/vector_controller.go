@@ -187,9 +187,9 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 			vaCtrl.Vector,
 		)
 		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
-		err := configCheck.Run(ctx)
+		reason, err := configCheck.Run(ctx)
 		if errors.Is(err, configcheck.ValidationError) {
-			if err := vaCtrl.SetFailedStatus(ctx, err); err != nil {
+			if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, err

@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -113,7 +112,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		byteConfig, err := configBuilder.GetByteConfigWithValidate()
 		if err != nil {
-			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err); err != nil {
+			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 				return ctrl.Result{}, err
 			}
 			if err = pipeline.SetLastAppliedPipelineStatus(ctx, r.Client, pipelineCR); err != nil {
@@ -176,9 +175,9 @@ func (r *PipelineReconciler) runPipelineCheck(ctx context.Context, p pipeline.Pi
 	configCheck.Initiator = configcheck.ConfigCheckInitiatorPipieline
 	defer r.PipelineCheckWG.Done()
 	// Start ConfigCheck
-	err := configCheck.Run(ctx)
-	if errors.Is(err, configcheck.ValidationError) {
-		if err = pipeline.SetFailedStatus(ctx, r.Client, p, err); err != nil {
+	reason, err := configCheck.Run(ctx)
+	if reason != "" {
+		if err = pipeline.SetFailedStatus(ctx, r.Client, p, reason); err != nil {
 			log.Error(err, "Failed to set pipeline status")
 			return
 		}
@@ -188,6 +187,7 @@ func (r *PipelineReconciler) runPipelineCheck(ctx context.Context, p pipeline.Pi
 		}
 		return
 	}
+
 	if err != nil {
 		log.Error(err, "Configcheck error")
 		return

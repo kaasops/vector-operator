@@ -1,3 +1,6 @@
+### Added
+- [[85]](https://github.com/kaasops/vector-operator/pull/85) **Feature** Add metrics exporter and ServiceMonitor creation
+
 ### v0.0.13
 - [[83]](https://github.com/kaasops/vector-operator/pull/83) **Fix** Fix configcheck pods cleanup
 

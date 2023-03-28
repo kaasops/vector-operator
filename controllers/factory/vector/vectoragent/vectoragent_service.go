@@ -30,13 +30,15 @@ const (
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 	labels := ctrl.labelsForVectorAgent()
 
-	ports := []corev1.ServicePort{
-		{
-			Name:       "prom-exporter",
+	ports := []corev1.ServicePort{}
+
+	if ctrl.Vector.Spec.Agent.InternalMetrics {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "vectoragent-metrics",
 			Protocol:   corev1.Protocol("TCP"),
 			Port:       MetricsExporterPort,
 			TargetPort: intstr.FromInt(MetricsExporterPort),
-		},
+		})
 	}
 
 	if ctrl.Vector.Spec.Agent.Api.Enabled {

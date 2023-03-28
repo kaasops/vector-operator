@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 
+	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -60,6 +61,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdateClusterRole(ctx, obj, c)
 	case *rbacv1.ClusterRoleBinding:
 		return createOrUpdateClusterRoleBinding(ctx, obj, c)
+	case *monitorv1.ServiceMonitor:
+		return createOrUpdateServiceMonitor(ctx, obj, c)
 	default:
 		return NewNotSupportedError(obj)
 	}
@@ -362,6 +365,46 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c
 			existing.Annotations = desired.Annotations
 			existing.RoleRef = desired.RoleRef
 			existing.Subjects = desired.Subjects
+			return c.Update(ctx, existing)
+		}
+		return nil
+	}
+	return err
+}
+
+//
+
+func createOrUpdateServiceMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*monitorv1.ServiceMonitor)
+
+	// Create ServiceMonitor
+	err := c.Create(ctx, desired)
+	if api_errors.IsAlreadyExists(err) {
+		// If alredy exist - compare with existed
+		existing := &monitorv1.ServiceMonitor{}
+		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
+		if err != nil {
+			return err
+		}
+
+		// init Interface for compare
+		desiredFields := []interface{}{
+			desired.GetAnnotations(),
+			desired.GetLabels(),
+			desired.Spec,
+		}
+		existingFields := []interface{}{
+			existing.GetAnnotations(),
+			existing.GetLabels(),
+			existing.Spec,
+		}
+
+		// Compare
+		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
+			// Update if not equal
+			existing.Labels = desired.Labels
+			existing.Annotations = desired.Annotations
+			existing.Spec = desired.Spec
 			return c.Update(ctx, existing)
 		}
 		return nil

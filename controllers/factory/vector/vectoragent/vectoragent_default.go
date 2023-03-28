@@ -27,7 +27,7 @@ func (ctrl *Controller) SetDefault() {
 		ctrl.Vector.Spec.Agent = new(v1alpha1.VectorAgent)
 	}
 	if ctrl.Vector.Spec.Agent.Image == "" {
-		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.26.0-distroless-libc"
+		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.28.1-distroless-libc"
 	}
 
 	if ctrl.Vector.Spec.Agent.Resources.Requests == nil {
@@ -41,10 +41,6 @@ func (ctrl *Controller) SetDefault() {
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
 			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
 		}
-	}
-
-	if ctrl.Vector.Spec.Agent.Api.Address == "" {
-		ctrl.Vector.Spec.Agent.Api.Address = "0.0.0.0:8686"
 	}
 
 	if ctrl.Vector.Spec.Agent.DataDir == "" {

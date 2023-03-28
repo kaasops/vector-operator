@@ -37,7 +37,7 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			return err
 		}
 
-		if ctrl.Vector.Spec.Agent.Service {
+		if ctrl.Vector.Spec.Agent.InternalMetrics || ctrl.Vector.Spec.Agent.Api.Enabled {
 			if err := ctrl.ensureVectorAgentService(ctx); err != nil {
 				return err
 			}

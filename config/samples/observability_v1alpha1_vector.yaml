@@ -5,6 +5,7 @@ metadata:
   namespace: vector
 spec:
   agent:
-    service: true
-    image: "timberio/vector:0.26.0-distroless-libc"
-
+    image: "timberio/vector:0.28.1-distroless-libc"
+    internalMetrics: true
+    api:
+      enabled: true

@@ -37,8 +37,14 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			return err
 		}
 
-		if ctrl.Vector.Spec.Agent.Service {
+		if ctrl.Vector.Spec.Agent.InternalMetrics || ctrl.Vector.Spec.Agent.Api.Enabled {
 			if err := ctrl.ensureVectorAgentService(ctx); err != nil {
+				return err
+			}
+		}
+
+		if ctrl.Vector.Spec.Agent.InternalMetrics {
+			if err := ctrl.ensureVectorAgentServiceMonitor(ctx); err != nil {
 				return err
 			}
 		}
@@ -117,6 +123,16 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
 
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentDaemonSet, ctrl.Client)
+}
+
+func (ctrl *Controller) ensureVectorAgentServiceMonitor(ctx context.Context) error {
+	log := log.FromContext(ctx).WithValues("vector-agent-servicemonitor", ctrl.Vector.Name)
+
+	log.Info("start Reconcile Vector Agent ServiceMonitor")
+
+	vectorAgentServiceMonitor := ctrl.createVectorAgentServiceMonitor()
+
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentServiceMonitor, ctrl.Client)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {

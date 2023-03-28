@@ -17,17 +17,32 @@ limitations under the License.
 package config
 
 import (
+	"strconv"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
 )
+
+type ApiSpec struct {
+	Address    string `json:"address,omitempty"`
+	Enabled    bool   `json:"enabled,omitempty"`
+	Playground bool   `json:"playground,omitempty"`
+}
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
 	sources := []*Source{}
 	sinks := []*Sink{}
 
+	api := &ApiSpec{
+		Address:    "0.0.0.0:" + strconv.Itoa(vectoragent.ApiPort),
+		Enabled:    vector.Spec.Agent.Api.Enabled,
+		Playground: vector.Spec.Agent.Api.Playground,
+	}
+
 	return &VectorConfig{
 		DataDir: vector.Spec.Agent.DataDir,
-		Api:     &vector.Spec.Agent.Api,
+		Api:     api,
 		Sources: sources,
 		Sinks:   sinks,
 	}

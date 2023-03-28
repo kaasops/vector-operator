@@ -95,16 +95,18 @@ type VectorAgent struct {
 
 	DataDir string  `json:"dataDir,omitempty"`
 	Api     ApiSpec `json:"api,omitempty"`
-	Service bool    `json:"service,omitempty"`
+
+	// Enable internal metrics exporter
+	// +optional
+	InternalMetrics bool `json:"internalMetrics,omitempty"`
 
 	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/
 type ApiSpec struct {
-	Address    string `json:"address,omitempty"`
-	Enabled    bool   `json:"enabled,omitempty"`
-	Playground bool   `json:"playground,omitempty"`
+	Enabled    bool `json:"enabled,omitempty"`
+	Playground bool `json:"playground,omitempty"`
 }
 
 // ConfigCheck is the Schema for control params for ConfigCheck pods

@@ -22,22 +22,41 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	ApiPort             = 8686
+	MetricsExporterPort = 9598
+)
+
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 	labels := ctrl.labelsForVectorAgent()
+
+	ports := []corev1.ServicePort{}
+
+	if ctrl.Vector.Spec.Agent.InternalMetrics {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "vectoragent-metrics",
+			Protocol:   corev1.Protocol("TCP"),
+			Port:       MetricsExporterPort,
+			TargetPort: intstr.FromInt(MetricsExporterPort),
+		})
+	}
+
+	if ctrl.Vector.Spec.Agent.Api.Enabled {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "api",
+			Protocol:   corev1.Protocol("TCP"),
+			Port:       ApiPort,
+			TargetPort: intstr.FromInt(ApiPort),
+		})
+	}
 
 	service := &corev1.Service{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "prom-exporter",
-					Protocol:   corev1.Protocol("TCP"),
-					Port:       9090,
-					TargetPort: intstr.FromInt(9090),
-				},
-			},
+			Ports:    ports,
 			Selector: labels,
 		},
 	}
+
 	return service
 }

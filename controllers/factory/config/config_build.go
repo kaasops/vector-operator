@@ -27,20 +27,35 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+const (
+	KubernetesSourceType      = "kubernetes_logs"
+	BlackholeSinkType         = "blackhole"
+	InternalMetricsSourceType = "internal_metrics"
+	InternalMetricsSinkType   = "prometheus_exporter"
+)
+
 var (
-	KubernetesSourceType = "kubernetes_logs"
-	sourceDefault        = &Source{
+	sourceDefault = &Source{
 		Name: "defaultSource",
 		Type: KubernetesSourceType,
 	}
+	internalMetricSource = &Source{
+		Name: "internalMetricsSource",
+		Type: InternalMetricsSourceType,
+	}
 	sinkDefault = &Sink{
 		Name:   "defaultSink",
-		Type:   "blackhole",
-		Inputs: []string{"defaultSource"},
+		Type:   BlackholeSinkType,
+		Inputs: []string{sourceDefault.Name},
 		Options: map[string]interface{}{
 			"rate":                100,
 			"print_interval_secs": 60,
 		},
+	}
+	internalMetricsExporter = &Sink{
+		Name:   "internalMetricsSink",
+		Type:   InternalMetricsSinkType,
+		Inputs: []string{internalMetricSource.Name},
 	}
 )
 
@@ -117,6 +132,11 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	}
 	if len(sinks) == 0 {
 		sinks = []*Sink{sinkDefault}
+	}
+
+	if b.vaCtrl.Vector.Spec.Agent.InternalMetrics {
+		sources = append(sources, internalMetricSource)
+		sinks = append(sinks, internalMetricsExporter)
 	}
 
 	vectorConfig.Sinks = sinks

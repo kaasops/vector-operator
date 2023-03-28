@@ -1,4 +1,4 @@
-### Added
+### v0.0.14
 - [[85]](https://github.com/kaasops/vector-operator/pull/85) **Feature** Add metrics exporter and ServiceMonitor creation
 
 ### v0.0.13

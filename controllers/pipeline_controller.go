@@ -110,7 +110,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Get Vector Config file
 		configBuilder := config.NewBuilder(vaCtrl, pipelineCR)
 
-		byteConfig, err := configBuilder.GetByteConfigWithValidate()
+		byteConfig, err := configBuilder.GetByteConfig()
 		if err != nil {
 			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 				return ctrl.Result{}, err

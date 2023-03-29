@@ -82,36 +82,6 @@ func (b *Builder) GetByteConfig() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	data, err := vectorConfigToByte(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
-func (b *Builder) GetByteConfigWithValidate() ([]byte, error) {
-	config, err := b.generateVectorConfig()
-	if err != nil {
-		return nil, err
-	}
-	if len(b.Pipelines) != 0 {
-		for _, pipeline := range b.Pipelines {
-			for _, source := range config.Sources {
-				if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind {
-					if source.Type != KubernetesSourceType {
-						return nil, PipelineTypeError
-					}
-					if source.ExtraNamespaceLabelSelector != "" {
-						if source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(pipeline.GetNamespace()) {
-							return nil, PipelineScopeError
-						}
-					}
-				}
-			}
-		}
-	}
 	data, err := vectorConfigToByte(config)
 	if err != nil {
 		return nil, err
@@ -160,6 +130,16 @@ func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, s
 			if source.Type == KubernetesSourceType {
 				if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind && source.ExtraNamespaceLabelSelector == "" {
 					source.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())
+				}
+			}
+			if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind {
+				if source.Type != KubernetesSourceType {
+					return nil, nil, nil, PipelineTypeError
+				}
+				if source.ExtraNamespaceLabelSelector != "" {
+					if source.ExtraNamespaceLabelSelector != k8s.NamespaceNameToLabel(pipeline.GetNamespace()) {
+						return nil, nil, nil, PipelineScopeError
+					}
 				}
 			}
 			sources = append(sources, source)

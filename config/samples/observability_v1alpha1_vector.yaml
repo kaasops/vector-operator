@@ -4,8 +4,9 @@ metadata:
   name: vector-sample
   namespace: vector
 spec:
+  optimizeKubeSourceConfig: true
   agent:
     image: "timberio/vector:0.28.1-distroless-libc"
-    internalMetrics: true
+    internalMetrics: false
     api:
-      enabled: true
+      enabled: false

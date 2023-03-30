@@ -2320,6 +2320,9 @@ spec:
                       type: object
                     type: array
                 type: object
+              optimizeKubeSourceConfig:
+                description: Enable kubernetes source config optimization
+                type: boolean
             type: object
           status:
             description: VectorStatus defines the observed state of Vector

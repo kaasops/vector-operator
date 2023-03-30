@@ -1,23 +1,26 @@
+### v0.0.15
+- [[85](https://github.com/kaasops/vector-operator/pull/89] **Feature** Added experemental config optimization option
+
 ### v0.0.14
-- [[85]](https://github.com/kaasops/vector-operator/pull/85) **Feature** Add metrics exporter and ServiceMonitor creation
+- [[85](https://github.com/kaasops/vector-operator/pull/85)] **Feature** Add metrics exporter and ServiceMonitor creation
 
 ### v0.0.13
-- [[83]](https://github.com/kaasops/vector-operator/pull/83) **Fix** Fix configcheck pods cleanup
+- [[83](https://github.com/kaasops/vector-operator/pull/83)] **Fix** Fix configcheck pods cleanup
 
 ### v0.0.12
-- [[81]](https://github.com/kaasops/vector-operator/pull/81) **Feature** Add control for ConfigCheck params
+- [[81](https://github.com/kaasops/vector-operator/pull/81)] **Feature** Add control for ConfigCheck params
 
 ### v0.0.11
-- [[79]](https://github.com/kaasops/vector-operator/pull/79) **Fix** Remove vector.dev/exclude label 
-- [[77]](https://github.com/kaasops/vector-operator/pull/77) **Feature** Concurrent pipeline checks
+- [[79](https://github.com/kaasops/vector-operator/pull/79)] **Fix** Remove vector.dev/exclude label 
+- [[77](https://github.com/kaasops/vector-operator/pull/77)] **Feature** Concurrent pipeline checks
 
 ### v0.0.10
-- [[73]](https://github.com/kaasops/vector-operator/pull/73) **Fix** Add vector tolerations for configCheck pod
+- [[73](https://github.com/kaasops/vector-operator/pull/73)] **Fix** Add vector tolerations for configCheck pod
 
 ### v0.0.9
-- [[72]](https://github.com/kaasops/vector-operator/pull/72) **Feature** Add vp to all category
-- [[71]](https://github.com/kaasops/vector-operator/pull/71) **Fix** Fix panic on empty sinks and sources
-- [[70]](https://github.com/kaasops/vector-operator/pull/70) **Fix** Fix nil vector panic
+- [[72](https://github.com/kaasops/vector-operator/pull/72)] **Feature** Add vp to all category
+- [[71](https://github.com/kaasops/vector-operator/pull/71)] **Fix** Fix panic on empty sinks and sources
+- [[70](https://github.com/kaasops/vector-operator/pull/70)] **Fix** Fix nil vector panic
 - [[65](https://github.com/kaasops/vector-operator/pull/69)] **Helm**: Add toleration-control for vector-operator deployment to helm chart
 - [[65](https://github.com/kaasops/vector-operator/pull/69)] **Cleanup**: Add default value for podSecurityContext in chart values
 

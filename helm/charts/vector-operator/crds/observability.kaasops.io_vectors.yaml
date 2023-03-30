@@ -918,8 +918,6 @@ spec:
                     description: ApiSpec is the Schema for the Vector Agent GraphQL
                       API - https://vector.dev/docs/reference/api/
                     properties:
-                      address:
-                        type: string
                       enabled:
                         type: boolean
                       playground:
@@ -2063,6 +2061,9 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     type: array
+                  internalMetrics:
+                    description: Enable internal metrics exporter
+                    type: boolean
                   podSecurityPolicyName:
                     description: PodSecurityPolicyName - defines name for podSecurityPolicy
                       in case of empty value, prefixedName will be used.
@@ -2277,8 +2278,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  service:
-                    type: boolean
                   tolerations:
                     description: Tolerations If specified, the pod's tolerations.
                     items:
@@ -2321,6 +2320,9 @@ spec:
                       type: object
                     type: array
                 type: object
+              optimizeKubeSourceConfig:
+                description: Enable kubernetes source config optimization
+                type: boolean
             type: object
           status:
             description: VectorStatus defines the observed state of Vector

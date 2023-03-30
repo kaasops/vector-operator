@@ -311,7 +311,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 	var optimizedSource []*Source
 	var optimizationRequired bool
 	for _, source := range config.Sources {
-		if source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
+		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
 			if source.ExtraFieldSelector != "" {
 				optimizedSource = append(optimizedSource, source)
 				continue

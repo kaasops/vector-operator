@@ -17,8 +17,11 @@ limitations under the License.
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
@@ -28,10 +31,15 @@ import (
 )
 
 const (
-	KubernetesSourceType      = "kubernetes_logs"
-	BlackholeSinkType         = "blackhole"
-	InternalMetricsSourceType = "internal_metrics"
-	InternalMetricsSinkType   = "prometheus_exporter"
+	KubernetesSourceType          = "kubernetes_logs"
+	BlackholeSinkType             = "blackhole"
+	InternalMetricsSourceType     = "internal_metrics"
+	InternalMetricsSinkType       = "prometheus_exporter"
+	OptimizedKubernetesSourceName = "optimizedKubernetesSource"
+	FilterTransformType           = "filter"
+	DefaultSourceName             = "defaultSource"
+	PodSelectorType               = "pod_labels"
+	NamespaceSelectorType         = "ns_labels"
 )
 
 var (
@@ -112,6 +120,12 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	vectorConfig.Sinks = sinks
 	vectorConfig.Sources = sources
 	vectorConfig.Transforms = transforms
+
+	if b.vaCtrl.Vector.Spec.OptimizeKubeSourceConfig {
+		if err := b.optimizeVectorConfig(vectorConfig); err != nil {
+			return nil, err
+		}
+	}
 
 	return vectorConfig, nil
 }
@@ -290,4 +304,70 @@ func cfgToMap(config *VectorConfig) (cfgMap map[string]interface{}, err error) {
 	cfgMap["sinks"] = sinks
 
 	return cfgMap, nil
+}
+
+// Experemental
+func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
+	var optimizedSource []*Source
+	var optimizationRequired bool
+	for _, source := range config.Sources {
+		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
+			if source.ExtraFieldSelector != "" {
+				optimizedSource = append(optimizedSource, source)
+				continue
+			}
+			optimizationRequired = true
+
+			config.Transforms = append(config.Transforms, &Transform{
+				Name:      source.Name,
+				Inputs:    []string{OptimizedKubernetesSourceName},
+				Type:      FilterTransformType,
+				Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
+			})
+			continue
+		}
+		optimizedSource = append(optimizedSource, source)
+	}
+
+	if optimizationRequired {
+		optimizedSource = append(optimizedSource, &Source{
+			Name: OptimizedKubernetesSourceName,
+			Type: KubernetesSourceType,
+		})
+		config.Sources = optimizedSource
+	}
+
+	return nil
+}
+
+func generateVrlFilter(selector string, selectorType string) string {
+	buffer := new(bytes.Buffer)
+
+	labels := strings.Split(selector, ",")
+
+	for _, label := range labels {
+		label = formatVrlSelector(label)
+		switch selectorType {
+		case PodSelectorType:
+			fmt.Fprintf(buffer, ".kubernetes.pod_labels.%s&&", label)
+		case NamespaceSelectorType:
+			fmt.Fprintf(buffer, ".kubernetes.namespace_labels.%s&&", label)
+		}
+	}
+
+	vrlstring := buffer.String()
+	return strings.TrimSuffix(vrlstring, "&&")
+}
+
+func formatVrlSelector(label string) string {
+	l := strings.Split(label, "!=")
+	if len(l) == 2 {
+		return fmt.Sprintf("\"%s\" != \"%s\"", l[0], l[1])
+	}
+
+	l = strings.Split(label, "=")
+	if len(l) != 2 {
+		return label
+	}
+	return fmt.Sprintf("\"%s\" == \"%s\"", l[0], l[1])
 }

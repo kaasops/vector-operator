@@ -30,6 +30,11 @@ type VectorSpec struct {
 	// DisableAggregation bool `json:"disableAggregation,omitempty"`
 	// Vector Agent
 	Agent *VectorAgent `json:"agent,omitempty"`
+
+	// Enable kubernetes source config optimization
+	// +optional
+	OptimizeKubeSourceConfig bool `json:"optimizeKubeSourceConfig,omitempty"`
+
 	// Vector Aggregator
 	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`
 }

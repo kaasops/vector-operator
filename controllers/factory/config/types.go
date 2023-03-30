@@ -28,14 +28,17 @@ type Source struct {
 	Name                        string
 	Type                        string                 `mapper:"type"`
 	ExtraNamespaceLabelSelector string                 `mapstructure:"extra_namespace_label_selector" mapper:"extra_namespace_label_selector,omitempty"`
+	ExtraLabelSelector          string                 `mapstructure:"extra_label_selector" mapper:"extra_label_selector,omitempty"`
+	ExtraFieldSelector          string                 `mapstructure:"extra_field_selector" mapper:"extra_field_selector,omitempty"`
 	Options                     map[string]interface{} `mapstructure:",remain"`
 }
 
 type Transform struct {
-	Name    string
-	Type    string                 `mapper:"type"`
-	Inputs  []string               `mapper:"inputs"`
-	Options map[string]interface{} `mapstructure:",remain"`
+	Name      string
+	Type      string                 `mapper:"type"`
+	Inputs    []string               `mapper:"inputs"`
+	Condition string                 `mapper:"condition,omitempty"`
+	Options   map[string]interface{} `mapstructure:",remain"`
 }
 
 type Sink struct {

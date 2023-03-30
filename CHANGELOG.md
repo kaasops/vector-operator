@@ -1,3 +1,6 @@
+### v0.0.16
+- [[85](https://github.com/kaasops/vector-operator/pull/92] **Fix** Added rbac for ServiceMonitros
+
 ### v0.0.15
 - [[85](https://github.com/kaasops/vector-operator/pull/89] **Feature** Added experemental config optimization option
 

@@ -2046,6 +2046,9 @@ spec:
                     description: Image - docker image settings for Vector Agent if
                       no specified operator uses default config version
                     type: string
+                  imagePullPolicy:
+                    description: ImagePullPolicy of pods
+                    type: string
                   imagePullSecrets:
                     description: ImagePullSecrets An optional list of references to
                       secrets in the same namespace to use for pulling images from

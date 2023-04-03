@@ -1,5 +1,9 @@
+### v0.0.18
+- [[95](https://github.com/kaasops/vector-operator/pull/95] **Fix** Added ImagePullPolicy to Vector Agent
+
 ### v0.0.17
 - [[93](https://github.com/kaasops/vector-operator/pull/93] **Fix** Fix Condition type
+
 ### v0.0.16
 - [[92](https://github.com/kaasops/vector-operator/pull/92] **Fix** Added rbac for ServiceMonitros
 

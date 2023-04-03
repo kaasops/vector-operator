@@ -37,8 +37,13 @@ type Transform struct {
 	Name      string
 	Type      string                 `mapper:"type"`
 	Inputs    []string               `mapper:"inputs"`
-	Condition string                 `mapper:"condition,omitempty"`
+	Condition Condition              `mapper:"condition,omitempty"`
 	Options   map[string]interface{} `mapstructure:",remain"`
+}
+
+type Condition struct {
+	Type   string `mapper:"type,omitempty"`
+	Source string `mapper:"source,omitempty"`
 }
 
 type Sink struct {

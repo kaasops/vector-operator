@@ -59,6 +59,7 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 							VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
 							Resources:       ctrl.Vector.Spec.Agent.Resources,
 							SecurityContext: &corev1.SecurityContext{},
+							ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,
 						},
 					},
 				},

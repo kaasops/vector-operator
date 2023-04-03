@@ -1,8 +1,10 @@
+### v0.0.17
+- [[93](https://github.com/kaasops/vector-operator/pull/93] **Fix** Fix Condition type
 ### v0.0.16
-- [[85](https://github.com/kaasops/vector-operator/pull/92] **Fix** Added rbac for ServiceMonitros
+- [[92](https://github.com/kaasops/vector-operator/pull/92] **Fix** Added rbac for ServiceMonitros
 
 ### v0.0.15
-- [[85](https://github.com/kaasops/vector-operator/pull/89] **Feature** Added experemental config optimization option
+- [[89](https://github.com/kaasops/vector-operator/pull/89] **Feature** Added experemental config optimization option
 
 ### v0.0.14
 - [[85](https://github.com/kaasops/vector-operator/pull/85)] **Feature** Add metrics exporter and ServiceMonitor creation

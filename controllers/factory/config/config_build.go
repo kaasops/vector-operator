@@ -320,13 +320,10 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 			optimizationRequired = true
 
 			config.Transforms = append(config.Transforms, &Transform{
-				Name:   source.Name,
-				Inputs: []string{OptimizedKubernetesSourceName},
-				Type:   FilterTransformType,
-				Condition: Condition{
-					Type:   OptimizationConditionType,
-					Source: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
-				},
+				Name:      source.Name,
+				Inputs:    []string{OptimizedKubernetesSourceName},
+				Type:      FilterTransformType,
+				Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
 			})
 			continue
 		}

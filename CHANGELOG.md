@@ -1,3 +1,6 @@
+### v0.0.19
+- [[97](https://github.com/kaasops/vector-operator/pull/97] **Fix** Check if ServiceMonitor CRD exists 
+
 ### v0.0.18
 - [[95](https://github.com/kaasops/vector-operator/pull/95] **Fix** Added ImagePullPolicy to Vector Agent
 

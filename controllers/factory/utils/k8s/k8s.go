@@ -31,6 +31,7 @@ import (
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -491,4 +492,23 @@ func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error
 
 func NamespaceNameToLabel(namespace string) string {
 	return "kubernetes.io/metadata.name=" + namespace
+}
+
+// ResourceExists returns true if the given resource kind exists
+// in the given api groupversion
+func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
+	_, apiLists, err := dc.ServerGroupsAndResources()
+	if err != nil {
+		return false, err
+	}
+	for _, apiList := range apiLists {
+		if apiList.GroupVersion == apiGroupVersion {
+			for _, r := range apiList.APIResources {
+				if r.Kind == kind {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }

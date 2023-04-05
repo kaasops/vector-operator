@@ -7,6 +7,6 @@ spec:
   optimizeKubeSourceConfig: true
   agent:
     image: "timberio/vector:0.28.1-distroless-libc"
-    internalMetrics: false
+    internalMetrics: true
     api:
       enabled: false

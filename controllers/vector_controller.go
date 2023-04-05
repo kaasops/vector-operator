@@ -26,6 +26,7 @@ import (
 	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,11 +36,11 @@ import (
 
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -58,6 +59,7 @@ type VectorReconciler struct {
 	Clientset            *kubernetes.Clientset
 	PipelineCheckWG      *sync.WaitGroup
 	PipelineCheckTimeout time.Duration
+	DiscoveryClient      *discovery.DiscoveryClient
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -106,7 +108,11 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	monitoringCRD, err := k8s.ResourceExists(r.DiscoveryClient, monitorv1.SchemeGroupVersion.String(), monitorv1.ServiceMonitorsKind)
+	if err != nil {
+		return err
+	}
+	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(&source.Channel{Source: VectorAgentReconciliationSourceChannel}, &handler.EnqueueRequestForObject{}).
 		Owns(&appsv1.DaemonSet{}).
@@ -114,10 +120,16 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
-		Owns(&rbacv1.ClusterRoleBinding{}).
-		Owns(&monitorv1.ServiceMonitor{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
-		Complete(r)
+		Owns(&rbacv1.ClusterRoleBinding{})
+
+	if monitoringCRD {
+		builder.Owns(&monitorv1.ServiceMonitor{})
+	}
+
+	if err = builder.Complete(r); err != nil {
+		return err
+	}
+	return nil
 }
 
 func listVectorCustomResourceInstances(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {

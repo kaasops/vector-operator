@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
+	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,6 +29,11 @@ import (
 func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) error {
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
 	log.Info("start Reconcile Vector Agent")
+
+	monitoringCRD, err := k8s.ResourceExists(ctrl.ClientSet.Discovery(), monitorv1.SchemeGroupVersion.String(), monitorv1.ServiceMonitorsKind)
+	if err != nil {
+		return err
+	}
 
 	if err := ctrl.ensureVectorAgentConfig(ctx); err != nil {
 		return err
@@ -43,7 +49,7 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			}
 		}
 
-		if ctrl.Vector.Spec.Agent.InternalMetrics {
+		if ctrl.Vector.Spec.Agent.InternalMetrics && monitoringCRD {
 			if err := ctrl.ensureVectorAgentServiceMonitor(ctx); err != nil {
 				return err
 			}

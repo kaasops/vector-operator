@@ -49,6 +49,10 @@ type PipelineReconciler struct {
 	PipelineDeleteEventTimeout time.Duration
 }
 
+//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines;clustervectorpipelines,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines/status;clustervectorpipelines/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines/finalizers;clustervectorpipelines/finalizers,verbs=update
+
 var VectorAgentReconciliationSourceChannel = make(chan event.GenericEvent)
 
 const PipelineDeleteEventTimeout time.Duration = 3 * time.Second

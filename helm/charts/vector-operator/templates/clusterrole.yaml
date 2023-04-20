@@ -92,6 +92,7 @@ rules:
   - clustervectorpipelines/status
   - vectorpipelines/status
   - vectors/status
+  - vectors/finalizers
   verbs:
   - get
   - patch

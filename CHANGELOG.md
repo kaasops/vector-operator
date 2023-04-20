@@ -1,3 +1,6 @@
+### v0.0.20
+- [[100](https://github.com/kaasops/vector-operator/pull/100] **Fix** Create csv and fix rbac auto generation
+
 ### v0.0.19
 - [[97](https://github.com/kaasops/vector-operator/pull/97] **Fix** Check if ServiceMonitor CRD exists 
 

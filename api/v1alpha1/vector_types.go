@@ -73,9 +73,12 @@ type VectorAgent struct {
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
 	// +optional
-	// Tolerations If specified, the pod's tolerations.
+	SecurityContext *v1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	// SecurityContext holds security configuration that will be applied to a container.
+	// Some fields are present in both SecurityContext and PodSecurityContext.
+	// When both are set, the values in SecurityContext take precedence.
 	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	ContainerSecurityContext *v1.SecurityContext `json:"containerSecurityContext,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -106,6 +109,14 @@ type VectorAgent struct {
 	// Enable internal metrics exporter
 	// +optional
 	InternalMetrics bool `json:"internalMetrics,omitempty"`
+
+	// List of volumes that can be mounted by containers belonging to the pod.
+	// +optional
+	Volumes []v1.Volume `json:"volumes,omitempty"`
+
+	// Pod volumes to mount into the container's filesystem.
+	// +optional
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
 }

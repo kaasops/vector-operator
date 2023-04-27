@@ -34,7 +34,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      serviceAccountName: {{ include "chart.serviceAccountName" . }} 
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -49,5 +49,3 @@ spec:
         name: vector-operator
         resources:
 {{ toYaml .Values.resources | indent 12 }}
-         
-    

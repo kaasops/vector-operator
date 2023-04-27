@@ -1,8 +1,9 @@
 # Specification
 
-- [Vector](#vector-spec)
-- [VectorPipeline](#vectorpipelinespec-clustervectorpipelinespec)
-- [ClusterVectorPipeline](#vectorpipelinespec-clustervectorpipelinespec)
+- [Specification](#specification)
+- [Vector Spec](#vector-spec)
+  - [Api Spec](#api-spec)
+- [VectorPipelineSpec (ClusterVectorPipelineSpec)](#vectorpipelinespec-clustervectorpipelinespec)
 
 
 
@@ -46,6 +47,10 @@
         <td>SecurityContext holds pod-level security attributes and common container settings. By default - not set</td>
     </tr>
     <tr>
+        <td>containerSecurityContext</td>
+        <td>securityContext holds security configuration that will be applied to a container.</td>
+    </tr>
+    <tr>
         <td>schedulerName</td>
         <td>SchedulerName - defines kubernetes scheduler name. By default - not set</td>
     </tr>
@@ -60,6 +65,14 @@
     <tr>
         <td>podSecurityPolicyName</td>
         <td>PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.</td>
+    </tr>
+    <tr>
+        <td>volumes</td>
+        <td>List of volumes that can be mounted by containers belonging to the pod.</td>
+    </tr>
+    <tr>
+        <td>volumeMounts</td>
+        <td>Pod volumes to mount into the container's filesystem.</td>
     </tr>
     <tr>
         <td>priorityClassName</td>

@@ -44,7 +44,52 @@ func (ctrl *Controller) SetDefault() {
 	}
 
 	if ctrl.Vector.Spec.Agent.DataDir == "" {
-		ctrl.Vector.Spec.Agent.DataDir = "/vector-data-dir"
+		ctrl.Vector.Spec.Agent.DataDir = "/var/lib/vector"
 	}
 
+	if ctrl.Vector.Spec.Agent.Volumes == nil {
+		ctrl.Vector.Spec.Agent.Volumes = []corev1.Volume{
+			{
+				Name: "var-log",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/log/",
+					},
+				},
+			},
+			{
+				Name: "journal",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/log/journal",
+					},
+				},
+			},
+			{
+				Name: "var-lib",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/lib/",
+					},
+				},
+			},
+		}
+	}
+
+	if ctrl.Vector.Spec.Agent.VolumeMounts == nil {
+		ctrl.Vector.Spec.Agent.VolumeMounts = []corev1.VolumeMount{
+			{
+				Name:      "var-log",
+				MountPath: "/var/log/",
+			},
+			{
+				Name:      "journal",
+				MountPath: "/run/log/journal",
+			},
+			{
+				Name:      "var-lib",
+				MountPath: "/var/lib/",
+			},
+		}
+	}
 }

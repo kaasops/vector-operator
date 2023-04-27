@@ -58,7 +58,7 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 							},
 							VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
 							Resources:       ctrl.Vector.Spec.Agent.Resources,
-							SecurityContext: &corev1.SecurityContext{},
+							SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
 							ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,
 						},
 					},
@@ -71,7 +71,9 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 }
 
 func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
-	volume := []corev1.Volume{
+	volume := ctrl.Vector.Spec.Agent.Volumes
+
+	volume = append(volume, []corev1.Volume{
 		{
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
@@ -84,31 +86,7 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/vector",
-				},
-			},
-		},
-		{
-			Name: "var-log",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/log/",
-				},
-			},
-		},
-		{
-			Name: "journal",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/log/journal",
-				},
-			},
-		},
-		{
-			Name: "var-lib",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/",
+					Path: ctrl.Vector.Spec.Agent.DataDir,
 				},
 			},
 		},
@@ -128,13 +106,15 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 				},
 			},
 		},
-	}
+	}...)
 
 	return volume
 }
 
 func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
-	volumeMount := []corev1.VolumeMount{
+	volumeMount := ctrl.Vector.Spec.Agent.VolumeMounts
+
+	volumeMount = append(volumeMount, []corev1.VolumeMount{
 		{
 			Name:      "config",
 			MountPath: "/etc/vector/",
@@ -144,18 +124,6 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 			MountPath: "/vector-data-dir",
 		},
 		{
-			Name:      "var-log",
-			MountPath: "/var/log/",
-		},
-		{
-			Name:      "journal",
-			MountPath: "/run/log/journal",
-		},
-		{
-			Name:      "var-lib",
-			MountPath: "/var/lib/",
-		},
-		{
 			Name:      "procfs",
 			MountPath: "/host/proc",
 		},
@@ -163,7 +131,7 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 			Name:      "sysfs",
 			MountPath: "/host/sys",
 		},
-	}
+	}...)
 
 	return volumeMount
 }

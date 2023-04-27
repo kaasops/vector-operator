@@ -41,7 +41,7 @@ func New(vector *vectorv1alpha1.Vector) *VectorConfig {
 	}
 
 	return &VectorConfig{
-		DataDir: vector.Spec.Agent.DataDir,
+		DataDir: "/vector-data-dir",
 		Api:     api,
 		Sources: sources,
 		Sinks:   sinks,

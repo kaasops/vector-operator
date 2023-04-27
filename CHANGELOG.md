@@ -1,3 +1,6 @@
+### v0.0.21
+- [[102](https://github.com/kaasops/vector-operator/pull/102] **Fix** add containerSecurityContext, volumes, volumeMounts to Vector resource
+
 ### v0.0.20
 - [[100](https://github.com/kaasops/vector-operator/pull/100] **Fix** Create csv and fix rbac auto generation
 

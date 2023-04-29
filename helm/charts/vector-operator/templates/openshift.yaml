@@ -1,0 +1,84 @@
+{{- if and .Values.openshift.enable .Values.vector.enable -}}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ template "chart.fullname" . }}-ocp-scc-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+rules:
+  - verbs:
+      - use
+    apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - {{ template "chart.fullname" . }}-ocp-scc
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: {{ template "chart.fullname" . }}-ocp-scc
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+allowHostPorts: false
+priority: null
+requiredDropCapabilities:
+  - CHOWN
+  - DAC_OVERRIDE
+  - FSETID
+  - FOWNER
+  - SETGID
+  - SETUID
+  - SETPCAP
+  - NET_BIND_SERVICE
+  - KILL
+allowPrivilegedContainer: false
+runAsUser:
+  type: RunAsAny
+users: []
+allowHostDirVolumePlugin: true
+seccompProfiles:
+  - runtime/default
+allowHostIPC: false
+forbiddenSysctls:
+  - '*'
+seLinuxContext:
+  type: RunAsAny
+readOnlyRootFilesystem: true
+fsGroup:
+  type: RunAsAny
+groups: []
+defaultAddCapabilities: null
+supplementalGroups:
+  type: RunAsAny
+volumes:
+  - configMap
+  - emptyDir
+  - hostPath
+  - projected
+  - secret
+allowHostPID: false
+allowHostNetwork: false
+allowPrivilegeEscalation: false
+allowedCapabilities: null
+defaultAllowPrivilegeEscalation: false
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ template "chart.fullname" . }}-ocp-scc-bindig
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.vector.name }}-agent
+  - kind: ServiceAccount
+    name: {{ .Values.vector.name }}-configcheck
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ template "chart.fullname" . }}-ocp-scc-role
+{{- end -}}

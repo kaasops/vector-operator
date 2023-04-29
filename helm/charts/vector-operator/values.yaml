@@ -21,16 +21,16 @@ strategy: {}
 
 imagePullSecrets: []
 
-securityContext:
-  allowPrivilegeEscalation: false
-  runAsGroup: 1000
-  runAsNonRoot: true
-  readOnlyRootFilesystem: true
-  seccompProfile:
-    type: RuntimeDefault
-  capabilities:
-    drop:
-      - ALL
+securityContext: {}
+  # allowPrivilegeEscalation: false
+  # runAsGroup: 1000
+  # runAsNonRoot: true
+  # readOnlyRootFilesystem: true
+  # seccompProfile:
+  #   type: RuntimeDefault
+  # capabilities:
+  #   drop:
+  #     - ALL
 
 podSecurityContext: {}
 
@@ -79,6 +79,12 @@ vector:
   #   - name: "testenv"
   #     value: "testvalues"
 
+secrets: {}
+# - name: elastic-creds
+#   data:
+#     username: "logstash"
+#     password: "password"
+
 clustervectorpipeline: {}
 #  - name: ""
 #    sources: {}
@@ -88,3 +94,6 @@ clustervectorpipeline: {}
 #    sources: {}
 #    transforms: {}
 #    sinks: {}
+
+openshift:
+  enabled: false

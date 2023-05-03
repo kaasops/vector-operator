@@ -1,23 +1,25 @@
+### v0.0.22
+
 ### v0.0.21
-- [[102](https://github.com/kaasops/vector-operator/pull/102] **Fix** add containerSecurityContext, volumes, volumeMounts to Vector resource
+- [[104](https://github.com/kaasops/vector-operator/pull/104)] **Feature** Prepare helm for Openshift
 
 ### v0.0.20
-- [[100](https://github.com/kaasops/vector-operator/pull/100] **Fix** Create csv and fix rbac auto generation
+- [[100](https://github.com/kaasops/vector-operator/pull/100)] **Fix** Create csv and fix rbac auto generation
 
 ### v0.0.19
-- [[97](https://github.com/kaasops/vector-operator/pull/97] **Fix** Check if ServiceMonitor CRD exists 
+- [[97](https://github.com/kaasops/vector-operator/pull/97)] **Fix** Check if ServiceMonitor CRD exists 
 
 ### v0.0.18
-- [[95](https://github.com/kaasops/vector-operator/pull/95] **Fix** Added ImagePullPolicy to Vector Agent
+- [[95](https://github.com/kaasops/vector-operator/pull/95)] **Fix** Added ImagePullPolicy to Vector Agent
 
 ### v0.0.17
-- [[93](https://github.com/kaasops/vector-operator/pull/93] **Fix** Fix Condition type
+- [[93](https://github.com/kaasops/vector-operator/pull/93)] **Fix** Fix Condition type
 
 ### v0.0.16
-- [[92](https://github.com/kaasops/vector-operator/pull/92] **Fix** Added rbac for ServiceMonitros
+- [[92](https://github.com/kaasops/vector-operator/pull/92)] **Fix** Added rbac for ServiceMonitros
 
 ### v0.0.15
-- [[89](https://github.com/kaasops/vector-operator/pull/89] **Feature** Added experemental config optimization option
+- [[89](https://github.com/kaasops/vector-operator/pull/89)] **Feature** Added experemental config optimization option
 
 ### v0.0.14
 - [[85](https://github.com/kaasops/vector-operator/pull/85)] **Feature** Add metrics exporter and ServiceMonitor creation

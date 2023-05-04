@@ -10,7 +10,7 @@
     <img src="docs/images/telegram-logo.png" width="25" alt="telegram link">
   </a>
 </p>
-telegra
+
 # Vector Operator
 
 ## Description

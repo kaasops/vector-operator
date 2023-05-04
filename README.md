@@ -6,7 +6,7 @@
     <img src="https://goreportcard.com/badge/github.com/kaasops/vector-operator" alt="Go Report Card">
   </a>
   <tr>
-  <a href="https://t.me/kube_vector">
+  <a href="https://t.me/+Y0PzGa1d5DFiYThi">
     <img src="docs/images/telegram-logo.png" width="25" alt="telegram link">
   </a>
 </p>

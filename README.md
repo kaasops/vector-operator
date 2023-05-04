@@ -16,6 +16,8 @@
 ## Description
 The operator deploys and configures a vector agent daemonset on every node to collect container and application logs from the node file system.
 
+Connect us in Telegram - https://t.me/+Y0PzGa1d5DFiYThi
+
 ## Features
 
 - [x] Building vector config from namespaced custom resources (kind: VectorPipeline)

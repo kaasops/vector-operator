@@ -1,10 +1,16 @@
+<p align="center"><img src="docs/images/logo.png" width="260"></p>
+<p align="center">
+
 <p align="center">
   <a href="https://goreportcard.com/report/github.com/kaasops/vector-operator">
     <img src="https://goreportcard.com/badge/github.com/kaasops/vector-operator" alt="Go Report Card">
   </a>
+  <tr>
+  <a href="https://t.me/kube_vector">
+    <img src="docs/images/telegram-logo.png" width="25" alt="telegram link">
+  </a>
 </p>
-
-
+telegra
 # Vector Operator
 
 ## Description

@@ -19,15 +19,22 @@ package vectoragent
 import (
 	"context"
 
+	"github.com/kaasops/vector-operator/controllers/factory/utils/compression"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
+	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 	labels := ctrl.labelsForVectorAgent()
-	config := map[string][]byte{
-		"agent.json": ctrl.Config,
-	}
+	var data []byte = ctrl.Config
 
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		data = compression.Compress(ctrl.Config, log)
+	}
+	config := map[string][]byte{
+		"agent.json": data,
+	}
 	secret := &corev1.Secret{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Data:       config,

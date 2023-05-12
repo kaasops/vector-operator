@@ -6,7 +6,8 @@ metadata:
 spec:
   optimizeKubeSourceConfig: true
   agent:
-    image: "timberio/vector:0.28.1-distroless-libc"
-    internalMetrics: true
+    image: "timberio/vector:0.28.1-debian"
+    internalMetrics: false
     api:
       enabled: false
+    compressConfigFile: true

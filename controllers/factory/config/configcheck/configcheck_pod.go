@@ -23,6 +23,11 @@ import (
 
 func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 	labels := labelsForVectorConfigCheck()
+	var initContainers []corev1.Container
+
+	if cc.CompressedConfig {
+		initContainers = append(initContainers, *cc.ConfigReloaderInitContainer())
+	}
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -35,6 +40,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 			Volumes:            cc.generateVectorConfigCheckVolume(),
 			SecurityContext:    &corev1.PodSecurityContext{},
 			Tolerations:        cc.Tolerations,
+			InitContainers:     initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:      "config-check",
@@ -60,14 +66,21 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 }
 
 func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
+	configVolumeSource := corev1.VolumeSource{
+		Secret: &corev1.SecretVolumeSource{
+			SecretName: cc.getNameVectorConfigCheck(),
+		},
+	}
+	if cc.CompressedConfig {
+		configVolumeSource = corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}
+
+	}
 	volume := []corev1.Volume{
 		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cc.getNameVectorConfigCheck(),
-				},
-			},
+			Name:         "config",
+			VolumeSource: configVolumeSource,
 		},
 		{
 			Name: "data",
@@ -109,6 +122,17 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 		},
 	}
 
+	if cc.CompressedConfig {
+		volume = append(volume, corev1.Volume{
+			Name: "app-config-compress",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cc.getNameVectorConfigCheck(),
+				},
+			},
+		})
+	}
+
 	return volume
 }
 
@@ -138,6 +162,15 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMo
 			Name:      "sysfs",
 			MountPath: "/host/sys",
 		},
+	}
+
+	if cc.CompressedConfig {
+		volumeMount = append(volumeMount, []corev1.VolumeMount{
+			{
+				Name:      "app-config-compress",
+				MountPath: "/tmp/archive",
+			},
+		}...)
 	}
 
 	return volumeMount
@@ -185,4 +218,28 @@ func (cc *ConfigCheck) generateVectorConfigCheckEnvs() []corev1.EnvVar {
 	}...)
 
 	return envs
+}
+
+func (cc *ConfigCheck) ConfigReloaderInitContainer() *corev1.Container {
+	return &corev1.Container{
+		Name:            "init-config-reloader",
+		Image:           cc.ConfigReloaderImage,
+		ImagePullPolicy: cc.ImagePullPolicy,
+		Resources:       cc.ConfigReloaderResources,
+		Args: []string{
+			"--init-mode=true",
+			"--volume-dir-archive=/tmp/archive",
+			"--dir-for-unarchive=/etc/vector",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/etc/vector",
+			},
+			{
+				Name:      "app-config-compress",
+				MountPath: "/tmp/archive",
+			},
+		},
+	}
 }

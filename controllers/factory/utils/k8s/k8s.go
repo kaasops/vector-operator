@@ -456,6 +456,15 @@ func GetSecret(ctx context.Context, namespacedName types.NamespacedName, c clien
 	return result, nil
 }
 
+func ListSecret(ctx context.Context, c client.Client, listOpts client.ListOptions) ([]corev1.Secret, error) {
+	secretList := corev1.SecretList{}
+	err := c.List(ctx, &secretList, &listOpts)
+	if err != nil {
+		return nil, err
+	}
+	return secretList.Items, nil
+}
+
 func DeleteSecret(ctx context.Context, secret *corev1.Secret, c client.Client) error {
 	if err := c.Delete(ctx, secret); err != nil {
 		return err

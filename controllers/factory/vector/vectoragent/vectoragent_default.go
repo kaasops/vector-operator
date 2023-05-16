@@ -92,4 +92,19 @@ func (ctrl *Controller) SetDefault() {
 			},
 		}
 	}
+	if ctrl.Vector.Spec.Agent.CompressConfigFile && ctrl.Vector.Spec.Agent.ConfigReloaderImage == "" {
+		ctrl.Vector.Spec.Agent.ConfigReloaderImage = "docker.io/kaasops/config-reloader:v0.1.4"
+	}
+	if ctrl.Vector.Spec.Agent.CompressConfigFile && ctrl.Vector.Spec.Agent.ConfigReloaderResources.Requests == nil {
+		ctrl.Vector.Spec.Agent.ConfigReloaderResources.Requests = corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("200Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("100m"),
+		}
+	}
+	if ctrl.Vector.Spec.Agent.CompressConfigFile && ctrl.Vector.Spec.Agent.ConfigReloaderResources.Limits == nil {
+		ctrl.Vector.Spec.Agent.ConfigReloaderResources.Limits = corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		}
+	}
 }

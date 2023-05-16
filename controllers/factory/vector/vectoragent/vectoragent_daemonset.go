@@ -24,6 +24,17 @@ import (
 
 func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 	labels := ctrl.labelsForVectorAgent()
+	var initContainers []corev1.Container
+	var containers []corev1.Container
+	containers = append(containers, *ctrl.VectorAgentContainer())
+
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		initContainers = append(initContainers, *ctrl.ConfigReloaderInitContainer())
+	}
+
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		containers = append(containers, *ctrl.ConfigReloaderSidecarContainer())
+	}
 
 	daemonset := &appsv1.DaemonSet{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
@@ -43,25 +54,8 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 					PriorityClassName:  ctrl.Vector.Spec.Agent.PodSecurityPolicyName,
 					HostNetwork:        ctrl.Vector.Spec.Agent.HostNetwork,
 					HostAliases:        ctrl.Vector.Spec.Agent.HostAliases,
-					Containers: []corev1.Container{
-						{
-							Name:  ctrl.getNameVectorAgent(),
-							Image: ctrl.Vector.Spec.Agent.Image,
-							Args:  []string{"--config-dir", "/etc/vector/", "--watch-config"},
-							Env:   ctrl.generateVectorAgentEnvs(),
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "prom-exporter",
-									ContainerPort: 9090,
-									Protocol:      "TCP",
-								},
-							},
-							VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
-							Resources:       ctrl.Vector.Spec.Agent.Resources,
-							SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
-							ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,
-						},
-					},
+					InitContainers:     initContainers,
+					Containers:         containers,
 				},
 			},
 		},
@@ -72,15 +66,21 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 
 func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 	volume := ctrl.Vector.Spec.Agent.Volumes
+	configVolumeSource := corev1.VolumeSource{
+		Secret: &corev1.SecretVolumeSource{
+			SecretName: ctrl.getNameVectorAgent(),
+		},
+	}
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		configVolumeSource = corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}
 
+	}
 	volume = append(volume, []corev1.Volume{
 		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: ctrl.getNameVectorAgent(),
-				},
-			},
+			Name:         "config",
+			VolumeSource: configVolumeSource,
 		},
 		{
 			Name: "data",
@@ -108,6 +108,17 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 		},
 	}...)
 
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		volume = append(volume, corev1.Volume{
+			Name: "app-config-compress",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ctrl.getNameVectorAgent(),
+				},
+			},
+		})
+	}
+
 	return volume
 }
 
@@ -117,7 +128,7 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 	volumeMount = append(volumeMount, []corev1.VolumeMount{
 		{
 			Name:      "config",
-			MountPath: "/etc/vector/",
+			MountPath: "/etc/vector",
 		},
 		{
 			Name:      "data",
@@ -132,6 +143,15 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 			MountPath: "/host/sys",
 		},
 	}...)
+
+	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+		volumeMount = append(volumeMount, []corev1.VolumeMount{
+			{
+				Name:      "app-config-compress",
+				MountPath: "/tmp/archive",
+			},
+		}...)
+	}
 
 	return volumeMount
 }
@@ -178,4 +198,75 @@ func (ctrl *Controller) generateVectorAgentEnvs() []corev1.EnvVar {
 	}...)
 
 	return envs
+}
+
+func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
+	return &corev1.Container{
+		Name:  ctrl.getNameVectorAgent(),
+		Image: ctrl.Vector.Spec.Agent.Image,
+		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
+		// Command: []string{"/bin/sleep", "1000000000000000"},
+		Env: ctrl.generateVectorAgentEnvs(),
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "prom-exporter",
+				ContainerPort: 9090,
+				Protocol:      "TCP",
+			},
+		},
+		VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
+		Resources:       ctrl.Vector.Spec.Agent.Resources,
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
+		ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,
+	}
+}
+
+func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {
+	return &corev1.Container{
+		Name:            "init-config-reloader",
+		Image:           ctrl.Vector.Spec.Agent.ConfigReloaderImage,
+		ImagePullPolicy: corev1.PullPolicy(ctrl.Vector.Spec.Agent.ImagePullPolicy),
+		Resources:       ctrl.Vector.Spec.Agent.ConfigReloaderResources,
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
+		Args: []string{
+			"--init-mode=true",
+			"--volume-dir-archive=/tmp/archive",
+			"--dir-for-unarchive=/etc/vector",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/etc/vector",
+			},
+			{
+				Name:      "app-config-compress",
+				MountPath: "/tmp/archive",
+			},
+		},
+	}
+}
+
+func (ctrl *Controller) ConfigReloaderSidecarContainer() *corev1.Container {
+	return &corev1.Container{
+		Name:            "config-reloader",
+		Image:           ctrl.Vector.Spec.Agent.ConfigReloaderImage,
+		ImagePullPolicy: corev1.PullPolicy(ctrl.Vector.Spec.Agent.ImagePullPolicy),
+		Resources:       ctrl.Vector.Spec.Agent.ConfigReloaderResources,
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
+		Args: []string{
+			"--init-mode=false",
+			"--volume-dir-archive=/tmp/archive",
+			"--dir-for-unarchive=/etc/vector",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/etc/vector",
+			},
+			{
+				Name:      "app-config-compress",
+				MountPath: "/tmp/archive",
+			},
+		},
+	}
 }

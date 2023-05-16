@@ -36,7 +36,7 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-const waitConfigcheckResultTimeout = 180 * time.Second
+const waitConfigcheckResultTimeout = 300 * time.Second
 
 type ConfigCheck struct {
 	Config []byte

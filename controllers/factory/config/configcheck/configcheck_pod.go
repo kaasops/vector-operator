@@ -38,16 +38,17 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 		Spec: corev1.PodSpec{
 			ServiceAccountName: "vector-configcheck",
 			Volumes:            cc.generateVectorConfigCheckVolume(),
-			SecurityContext:    &corev1.PodSecurityContext{},
+			SecurityContext:    cc.SecurityContext,
 			Tolerations:        cc.Tolerations,
 			InitContainers:     initContainers,
 			Containers: []corev1.Container{
 				{
-					Name:      "config-check",
-					Image:     cc.Image,
-					Resources: cc.Resources,
-					Args:      []string{"validate", "/etc/vector/*.json"},
-					Env:       cc.generateVectorConfigCheckEnvs(),
+					Name:            "config-check",
+					Image:           cc.Image,
+					Resources:       cc.Resources,
+					Args:            []string{"validate", "/etc/vector/*.json"},
+					Env:             cc.generateVectorConfigCheckEnvs(),
+					SecurityContext: cc.ContainerSecurityContext,
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          "prom-exporter",
@@ -226,6 +227,7 @@ func (cc *ConfigCheck) ConfigReloaderInitContainer() *corev1.Container {
 		Image:           cc.ConfigReloaderImage,
 		ImagePullPolicy: cc.ImagePullPolicy,
 		Resources:       cc.ConfigReloaderResources,
+		SecurityContext: cc.ContainerSecurityContext,
 		Args: []string{
 			"--init-mode=true",
 			"--volume-dir-archive=/tmp/archive",

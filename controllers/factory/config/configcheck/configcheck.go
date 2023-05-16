@@ -44,18 +44,20 @@ type ConfigCheck struct {
 	Client    client.Client
 	ClientSet *kubernetes.Clientset
 
-	Name                    string
-	Namespace               string
-	Initiator               string
-	Image                   string
-	ImagePullPolicy         corev1.PullPolicy
-	Envs                    []corev1.EnvVar
-	Hash                    string
-	Tolerations             []corev1.Toleration
-	Resources               corev1.ResourceRequirements
-	CompressedConfig        bool
-	ConfigReloaderImage     string
-	ConfigReloaderResources corev1.ResourceRequirements
+	Name                     string
+	Namespace                string
+	Initiator                string
+	Image                    string
+	ImagePullPolicy          corev1.PullPolicy
+	Envs                     []corev1.EnvVar
+	Hash                     string
+	Tolerations              []corev1.Toleration
+	Resources                corev1.ResourceRequirements
+	SecurityContext          *corev1.PodSecurityContext
+	ContainerSecurityContext *corev1.SecurityContext
+	CompressedConfig         bool
+	ConfigReloaderImage      string
+	ConfigReloaderResources  corev1.ResourceRequirements
 }
 
 func New(
@@ -82,19 +84,21 @@ func New(
 	}
 
 	return &ConfigCheck{
-		Config:                  config,
-		Client:                  c,
-		ClientSet:               cs,
-		Name:                    va.Name,
-		Namespace:               va.Namespace,
-		Image:                   image,
-		ImagePullPolicy:         va.Spec.Agent.ImagePullPolicy,
-		Envs:                    env,
-		Tolerations:             tolerations,
-		Resources:               resources,
-		CompressedConfig:        va.Spec.Agent.CompressConfigFile,
-		ConfigReloaderImage:     va.Spec.Agent.ConfigReloaderImage,
-		ConfigReloaderResources: va.Spec.Agent.ConfigReloaderResources,
+		Config:                   config,
+		Client:                   c,
+		ClientSet:                cs,
+		Name:                     va.Name,
+		Namespace:                va.Namespace,
+		Image:                    image,
+		ImagePullPolicy:          va.Spec.Agent.ImagePullPolicy,
+		Envs:                     env,
+		Tolerations:              tolerations,
+		Resources:                resources,
+		SecurityContext:          va.Spec.Agent.SecurityContext,
+		ContainerSecurityContext: va.Spec.Agent.ContainerSecurityContext,
+		CompressedConfig:         va.Spec.Agent.CompressConfigFile,
+		ConfigReloaderImage:      va.Spec.Agent.ConfigReloaderImage,
+		ConfigReloaderResources:  va.Spec.Agent.ConfigReloaderResources,
 	}
 }
 

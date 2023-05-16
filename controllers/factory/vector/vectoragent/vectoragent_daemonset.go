@@ -227,6 +227,7 @@ func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {
 		Image:           ctrl.Vector.Spec.Agent.ConfigReloaderImage,
 		ImagePullPolicy: corev1.PullPolicy(ctrl.Vector.Spec.Agent.ImagePullPolicy),
 		Resources:       ctrl.Vector.Spec.Agent.ConfigReloaderResources,
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
 		Args: []string{
 			"--init-mode=true",
 			"--volume-dir-archive=/tmp/archive",
@@ -251,6 +252,7 @@ func (ctrl *Controller) ConfigReloaderSidecarContainer() *corev1.Container {
 		Image:           ctrl.Vector.Spec.Agent.ConfigReloaderImage,
 		ImagePullPolicy: corev1.PullPolicy(ctrl.Vector.Spec.Agent.ImagePullPolicy),
 		Resources:       ctrl.Vector.Spec.Agent.ConfigReloaderResources,
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
 		Args: []string{
 			"--init-mode=false",
 			"--volume-dir-archive=/tmp/archive",

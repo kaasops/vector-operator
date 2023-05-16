@@ -1,3 +1,6 @@
+### v0.0.23
+- [[105]](https://github.com/kaasops/vector-operator/pull/105) **Feature** Added config file gz compression for large configs
+
 ### v0.0.22
 
 ### v0.0.21

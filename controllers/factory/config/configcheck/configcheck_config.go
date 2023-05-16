@@ -17,15 +17,25 @@ limitations under the License.
 package configcheck
 
 import (
+	"context"
+
+	"github.com/kaasops/vector-operator/controllers/factory/utils/compression"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (cc *ConfigCheck) createVectorConfigCheckConfig() (*corev1.Secret, error) {
+func (cc *ConfigCheck) createVectorConfigCheckConfig(ctx context.Context) (*corev1.Secret, error) {
+	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	labels := labelsForVectorConfigCheck()
+	var data []byte = cc.Config
+
+	if cc.CompressedConfig {
+		data = compression.Compress(cc.Config, log)
+	}
 
 	config := map[string][]byte{
-		"agent.json": cc.Config,
+		"agent.json": data,
 	}
 
 	secret := &corev1.Secret{

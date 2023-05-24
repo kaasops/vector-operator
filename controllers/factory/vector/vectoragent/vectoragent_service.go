@@ -23,40 +23,24 @@ import (
 )
 
 const (
-	ApiPort             = 8686
-	MetricsExporterPort = 9598
+	ApiPort = 8686
 )
 
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 	labels := ctrl.labelsForVectorAgent()
 
-	ports := []corev1.ServicePort{}
-
-	if ctrl.Vector.Spec.Agent.InternalMetrics {
-		ports = append(ports, corev1.ServicePort{
-			Name:       "vectoragent-metrics",
-			Protocol:   corev1.Protocol("TCP"),
-			Port:       MetricsExporterPort,
-			TargetPort: intstr.FromInt(MetricsExporterPort),
-		})
-	}
-
-	if ctrl.Vector.Spec.Agent.Api.Enabled {
-		ports = append(ports, corev1.ServicePort{
-			Name:       "api",
-			Protocol:   corev1.Protocol("TCP"),
-			Port:       ApiPort,
-			TargetPort: intstr.FromInt(ApiPort),
-		})
-	}
-
-	service := &corev1.Service{
+	return &corev1.Service{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
 		Spec: corev1.ServiceSpec{
-			Ports:    ports,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "api",
+					Protocol:   corev1.Protocol("TCP"),
+					Port:       ApiPort,
+					TargetPort: intstr.FromInt(ApiPort),
+				},
+			},
 			Selector: labels,
 		},
 	}
-
-	return service
 }

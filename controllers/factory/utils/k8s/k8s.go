@@ -62,8 +62,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdateClusterRole(ctx, obj, c)
 	case *rbacv1.ClusterRoleBinding:
 		return createOrUpdateClusterRoleBinding(ctx, obj, c)
-	case *monitorv1.ServiceMonitor:
-		return createOrUpdateServiceMonitor(ctx, obj, c)
+	case *monitorv1.PodMonitor:
+		return createOrUpdatePodMonitor(ctx, obj, c)
 	default:
 		return NewNotSupportedError(obj)
 	}
@@ -375,14 +375,14 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c
 
 //
 
-func createOrUpdateServiceMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*monitorv1.ServiceMonitor)
+func createOrUpdatePodMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*monitorv1.PodMonitor)
 
-	// Create ServiceMonitor
+	// Create PodMonitor
 	err := c.Create(ctx, desired)
 	if api_errors.IsAlreadyExists(err) {
 		// If alredy exist - compare with existed
-		existing := &monitorv1.ServiceMonitor{}
+		existing := &monitorv1.PodMonitor{}
 		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err

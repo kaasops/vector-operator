@@ -113,10 +113,10 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 		sinks = append(sinks, internalMetricsExporter)
 	}
 
-	if !b.vaCtrl.Vector.Spec.Agent.InternalMetrics && len(sources) == 0 {
+	if len(sources) == 0 {
 		sources = []*Source{sourceDefault}
 	}
-	if !b.vaCtrl.Vector.Spec.Agent.InternalMetrics && len(sinks) == 0 {
+	if len(sinks) == 0 {
 		sinks = []*Sink{sinkDefault}
 	}
 

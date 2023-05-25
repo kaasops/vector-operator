@@ -10,4 +10,4 @@ spec:
     internalMetrics: false
     api:
       enabled: false
-    compressConfigFile: true
+    compressConfigFile: false

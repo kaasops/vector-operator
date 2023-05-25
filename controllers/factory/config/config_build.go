@@ -34,7 +34,9 @@ const (
 	KubernetesSourceType          = "kubernetes_logs"
 	BlackholeSinkType             = "blackhole"
 	InternalMetricsSourceType     = "internal_metrics"
+	InternalMetricsSourceName     = "internalMetricsSource"
 	InternalMetricsSinkType       = "prometheus_exporter"
+	InternalMetricsSinkName       = "internalMetricsSink"
 	OptimizedKubernetesSourceName = "optimizedKubernetesSource"
 	FilterTransformType           = "filter"
 	DefaultSourceName             = "defaultSource"
@@ -49,7 +51,7 @@ var (
 		Type: KubernetesSourceType,
 	}
 	internalMetricSource = &Source{
-		Name: "internalMetricsSource",
+		Name: InternalMetricsSourceName,
 		Type: InternalMetricsSourceType,
 	}
 	sinkDefault = &Sink{
@@ -62,7 +64,7 @@ var (
 		},
 	}
 	internalMetricsExporter = &Sink{
-		Name:   "internalMetricsSink",
+		Name:   InternalMetricsSinkName,
 		Type:   InternalMetricsSinkType,
 		Inputs: []string{internalMetricSource.Name},
 	}
@@ -106,16 +108,16 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 		return nil, err
 	}
 
-	if len(sources) == 0 {
-		sources = []*Source{sourceDefault}
-	}
-	if len(sinks) == 0 {
-		sinks = []*Sink{sinkDefault}
-	}
-
-	if b.vaCtrl.Vector.Spec.Agent.InternalMetrics {
+	if b.vaCtrl.Vector.Spec.Agent.InternalMetrics && !isExporterSinkExists(sinks) {
 		sources = append(sources, internalMetricSource)
 		sinks = append(sinks, internalMetricsExporter)
+	}
+
+	if !b.vaCtrl.Vector.Spec.Agent.InternalMetrics && len(sources) == 0 {
+		sources = []*Source{sourceDefault}
+	}
+	if !b.vaCtrl.Vector.Spec.Agent.InternalMetrics && len(sinks) == 0 {
+		sinks = []*Sink{sinkDefault}
 	}
 
 	vectorConfig.Sinks = sinks
@@ -132,7 +134,6 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 }
 
 func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
-
 	for _, pipeline := range b.Pipelines {
 		pipelineSources, err := getSources(pipeline, nil)
 		if err != nil {
@@ -149,6 +150,9 @@ func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, s
 			}
 			if pipeline.Type() != vectorv1alpha1.ClusterPipelineKind {
 				if source.Type != KubernetesSourceType {
+					return nil, nil, nil, PipelineTypeError
+				}
+				if source.Type == InternalMetricsSourceType {
 					return nil, nil, nil, PipelineTypeError
 				}
 				if source.ExtraNamespaceLabelSelector != "" {
@@ -339,6 +343,15 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 	}
 
 	return nil
+}
+
+func isExporterSinkExists(sinks []*Sink) bool {
+	for _, sink := range sinks {
+		if sink.Type == InternalMetricsSinkType {
+			return true
+		}
+	}
+	return false
 }
 
 func generateVrlFilter(selector string, selectorType string) string {

@@ -9,6 +9,7 @@ lint:
 
 # Package chart into zip file
 package:
+	cp ../config/crd/bases/*.yaml charts/vector-operator/crds/
 	helm package charts/* -d packages
 
 # Create index file (use only for initial setup)

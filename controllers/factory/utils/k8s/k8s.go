@@ -62,8 +62,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdateClusterRole(ctx, obj, c)
 	case *rbacv1.ClusterRoleBinding:
 		return createOrUpdateClusterRoleBinding(ctx, obj, c)
-	case *monitorv1.ServiceMonitor:
-		return createOrUpdateServiceMonitor(ctx, obj, c)
+	case *monitorv1.PodMonitor:
+		return createOrUpdatePodMonitor(ctx, obj, c)
 	default:
 		return NewNotSupportedError(obj)
 	}
@@ -375,14 +375,14 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c
 
 //
 
-func createOrUpdateServiceMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*monitorv1.ServiceMonitor)
+func createOrUpdatePodMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
+	desired := obj.(*monitorv1.PodMonitor)
 
-	// Create ServiceMonitor
+	// Create PodMonitor
 	err := c.Create(ctx, desired)
 	if api_errors.IsAlreadyExists(err) {
 		// If alredy exist - compare with existed
-		existing := &monitorv1.ServiceMonitor{}
+		existing := &monitorv1.PodMonitor{}
 		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
 		if err != nil {
 			return err
@@ -506,18 +506,19 @@ func NamespaceNameToLabel(namespace string) string {
 // ResourceExists returns true if the given resource kind exists
 // in the given api groupversion
 func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
-	_, apiLists, err := dc.ServerGroupsAndResources()
+	apiList, err := dc.ServerResourcesForGroupVersion(apiGroupVersion)
 	if err != nil {
+		if api_errors.IsNotFound(err) {
+			return false, nil
+		}
 		return false, err
 	}
-	for _, apiList := range apiLists {
-		if apiList.GroupVersion == apiGroupVersion {
-			for _, r := range apiList.APIResources {
-				if r.Kind == kind {
-					return true, nil
-				}
-			}
+
+	for _, r := range apiList.APIResources {
+		if r.Kind == kind {
+			return true, nil
 		}
 	}
+
 	return false, nil
 }

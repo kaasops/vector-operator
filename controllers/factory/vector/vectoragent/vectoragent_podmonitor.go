@@ -6,16 +6,16 @@ import (
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
-func (ctrl *Controller) createVectorAgentServiceMonitor() *monitorv1.ServiceMonitor {
+func (ctrl *Controller) createVectorAgentPodMonitor() *monitorv1.PodMonitor {
 	labels := ctrl.labelsForVectorAgent()
 
-	servicemonitor := &monitorv1.ServiceMonitor{
+	podmonitor := &monitorv1.PodMonitor{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
-		Spec: monitorv1.ServiceMonitorSpec{
-			Endpoints: []monitorv1.Endpoint{
+		Spec: monitorv1.PodMonitorSpec{
+			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{
 				{
 					Path: "/metrics",
-					Port: "vectoragent-metrics",
+					Port: "9598",
 				},
 			},
 			Selector: metav1.LabelSelector{
@@ -24,5 +24,5 @@ func (ctrl *Controller) createVectorAgentServiceMonitor() *monitorv1.ServiceMoni
 		},
 	}
 
-	return servicemonitor
+	return podmonitor
 }

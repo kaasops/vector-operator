@@ -30,7 +30,7 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
 	log.Info("start Reconcile Vector Agent")
 
-	monitoringCRD, err := k8s.ResourceExists(ctrl.ClientSet.Discovery(), monitorv1.SchemeGroupVersion.String(), monitorv1.ServiceMonitorsKind)
+	monitoringCRD, err := k8s.ResourceExists(ctrl.ClientSet.Discovery(), monitorv1.SchemeGroupVersion.String(), monitorv1.PodMonitorsKind)
 	if err != nil {
 		return err
 	}
@@ -43,14 +43,14 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			return err
 		}
 
-		if ctrl.Vector.Spec.Agent.InternalMetrics || ctrl.Vector.Spec.Agent.Api.Enabled {
+		if ctrl.Vector.Spec.Agent.Api.Enabled {
 			if err := ctrl.ensureVectorAgentService(ctx); err != nil {
 				return err
 			}
 		}
 
 		if ctrl.Vector.Spec.Agent.InternalMetrics && monitoringCRD {
-			if err := ctrl.ensureVectorAgentServiceMonitor(ctx); err != nil {
+			if err := ctrl.ensureVectorAgentPodMonitor(ctx); err != nil {
 				return err
 			}
 		}
@@ -131,14 +131,14 @@ func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentDaemonSet, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentServiceMonitor(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-agent-servicemonitor", ctrl.Vector.Name)
+func (ctrl *Controller) ensureVectorAgentPodMonitor(ctx context.Context) error {
+	log := log.FromContext(ctx).WithValues("vector-agent-podmonitor", ctrl.Vector.Name)
 
-	log.Info("start Reconcile Vector Agent ServiceMonitor")
+	log.Info("start Reconcile Vector Agent PodMonitor")
 
-	vectorAgentServiceMonitor := ctrl.createVectorAgentServiceMonitor()
+	vectorAgentPodMonitor := ctrl.createVectorAgentPodMonitor()
 
-	return k8s.CreateOrUpdateResource(ctx, vectorAgentServiceMonitor, ctrl.Client)
+	return k8s.CreateOrUpdateResource(ctx, vectorAgentPodMonitor, ctrl.Client)
 }
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {

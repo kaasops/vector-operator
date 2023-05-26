@@ -105,7 +105,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	monitoringCRD, err := k8s.ResourceExists(r.DiscoveryClient, monitorv1.SchemeGroupVersion.String(), monitorv1.ServiceMonitorsKind)
+	monitoringCRD, err := k8s.ResourceExists(r.DiscoveryClient, monitorv1.SchemeGroupVersion.String(), monitorv1.PodMonitorsKind)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.ClusterRoleBinding{})
 
 	if monitoringCRD {
-		builder.Owns(&monitorv1.ServiceMonitor{})
+		builder.Owns(&monitorv1.PodMonitor{})
 	}
 
 	if err = builder.Complete(r); err != nil {

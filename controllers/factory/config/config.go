@@ -31,8 +31,8 @@ type ApiSpec struct {
 }
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
-	sources := []*Source{}
-	sinks := []*Sink{}
+	sources := make(map[string]*Source)
+	sinks := make(map[string]*Sink)
 
 	api := &ApiSpec{
 		Address:    "0.0.0.0:" + strconv.Itoa(vectoragent.ApiPort),

@@ -17,11 +17,11 @@ limitations under the License.
 package config
 
 type VectorConfig struct {
-	DataDir    string       `mapstructure:"data_dir"`
-	Api        *ApiSpec     `mapstructure:"api"`
-	Sources    []*Source    `mapstructure:"sources"`
-	Transforms []*Transform `mapstructure:"transforms"`
-	Sinks      []*Sink      `mapstructure:"sinks"`
+	DataDir    string                `mapstructure:"data_dir"`
+	Api        *ApiSpec              `mapstructure:"api"`
+	Sources    map[string]*Source    `mapstructure:"sources"`
+	Transforms map[string]*Transform `mapstructure:"transforms"`
+	Sinks      map[string]*Sink      `mapstructure:"sinks"`
 }
 
 type Source struct {

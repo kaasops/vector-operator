@@ -25,6 +25,7 @@ import (
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
@@ -244,6 +245,11 @@ func getTransforms(pipeline pipeline.Pipeline) (map[string]*Transform, error) {
 		for i, inputName := range transform.Inputs {
 			transform.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 		}
+		optbyte, err := json.Marshal(transform.Options)
+		if err != nil {
+			return nil, err
+		}
+		transform.OptionsHash = fmt.Sprint(hash.Get(optbyte))
 		transforms[transform.Name] = transform
 	}
 	return transforms, nil
@@ -267,6 +273,11 @@ func getSinks(pipeline pipeline.Pipeline) (map[string]*Sink, error) {
 		for i, inputName := range sink.Inputs {
 			sink.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 		}
+		optbyte, err := json.Marshal(sink.Options)
+		if err != nil {
+			return nil, err
+		}
+		sink.OptionsHash = fmt.Sprint(hash.Get(optbyte))
 		sinks[sink.Name] = sink
 	}
 	return sinks, nil

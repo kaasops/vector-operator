@@ -44,6 +44,7 @@ const (
 	PodSelectorType               = "pod_labels"
 	NamespaceSelectorType         = "ns_labels"
 	OptimizationConditionType     = "vrl"
+	ESMetricsSinkType             = "elasticsearch"
 )
 
 var (
@@ -351,6 +352,51 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		}
 		config.Sources = optimizedSource
 	}
+
+	uniqSinkOpts := make(map[string]*Sink)
+	transformsToOptimize := make(map[string][]string)
+	optimizedSink := make(map[string]*Sink)
+	// optimizedTransform := make(map[string]*Transform)
+
+	for k, sink := range config.Sinks {
+		// Change to ES
+		if sink.Type != "console" {
+			optimizedSink[k] = sink
+			continue
+		}
+		v, ok := uniqSinkOpts[sink.OptionsHash]
+		if ok {
+			// Merge inputs
+			v.Inputs = append(v.Inputs, sink.Inputs...)
+			// Iterate over inputs and add to transform optimize map if input exists  in transforms
+			for _, i := range sink.Inputs {
+				_, ok = config.Transforms[i]
+				if ok {
+					transformsToOptimize[sink.OptionsHash] = append(transformsToOptimize[sink.OptionsHash], i)
+				}
+
+			}
+			continue
+		}
+		// If sink is uniq, add to hashmap
+
+		uniqSinkOpts[sink.OptionsHash] = sink
+
+		// Add inputs of uniq sink to transform optomize map if intput exists in transforms
+		for _, i := range sink.Inputs {
+			_, ok = config.Transforms[i]
+			if ok {
+				transformsToOptimize[sink.OptionsHash] = append(transformsToOptimize[sink.OptionsHash], i)
+			}
+		}
+		sink.Name = sink.OptionsHash
+		optimizedSink[sink.OptionsHash] = uniqSinkOpts[sink.OptionsHash]
+	}
+
+	if len(optimizedSink) > 0 {
+		config.Sinks = optimizedSink
+	}
+	fmt.Println("djckdlcjlsdkcj")
 
 	return nil
 }

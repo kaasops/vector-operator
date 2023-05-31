@@ -27,6 +27,12 @@ spec:
         type: "vrl"
         source: ".status != 200"
   sinks:
+    test221:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - test11      
     test222:
       type: "console"
       encoding:

@@ -353,44 +353,34 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
-	uniqSinkOpts := make(map[string]*Sink)
-	transformsToOptimize := make(map[string][]string)
+	sinkOptions := make(map[string]*Sink)
 	optimizedSink := make(map[string]*Sink)
-	// optimizedTransform := make(map[string]*Transform)
 
 	for k, sink := range config.Sinks {
-		// Change to ES
+		// TODO: Change to ES after poc
 		if sink.Type != "console" {
-			optimizedSink[k] = sink
+			mergedSink := *sink
+			optimizedSink[k] = &mergedSink
 			continue
 		}
-		v, ok := uniqSinkOpts[sink.OptionsHash]
+		v, ok := sinkOptions[sink.OptionsHash]
 		if ok {
-			// Merge inputs
+			// If sink spec already exists set merged flag and merge inputs
 			v.Inputs = append(v.Inputs, sink.Inputs...)
-			// Iterate over inputs and add to transform optimize map if input exists  in transforms
-			for _, i := range sink.Inputs {
-				_, ok = config.Transforms[i]
-				if ok {
-					transformsToOptimize[sink.OptionsHash] = append(transformsToOptimize[sink.OptionsHash], i)
-				}
-
-			}
+			v.Merged = true
 			continue
 		}
-		// If sink is uniq, add to hashmap
+		// If sink is uniq, create copy  and add to map
+		mergedSink := *sink
+		sinkOptions[sink.OptionsHash] = &mergedSink
+	}
 
-		uniqSinkOpts[sink.OptionsHash] = sink
-
-		// Add inputs of uniq sink to transform optomize map if intput exists in transforms
-		for _, i := range sink.Inputs {
-			_, ok = config.Transforms[i]
-			if ok {
-				transformsToOptimize[sink.OptionsHash] = append(transformsToOptimize[sink.OptionsHash], i)
-			}
+	// If sink has merged flag, rename to config hash and add to result optimized map
+	for _, v := range sinkOptions {
+		if v.Merged {
+			v.Name = v.OptionsHash
 		}
-		sink.Name = sink.OptionsHash
-		optimizedSink[sink.OptionsHash] = uniqSinkOpts[sink.OptionsHash]
+		optimizedSink[v.Name] = v
 	}
 
 	if len(optimizedSink) > 0 {

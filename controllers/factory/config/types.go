@@ -40,6 +40,7 @@ type Transform struct {
 	Condition   interface{}            `mapper:"condition,omitempty"`
 	Options     map[string]interface{} `mapstructure:",remain"`
 	OptionsHash string
+	Merged      bool
 }
 
 type Sink struct {
@@ -48,6 +49,7 @@ type Sink struct {
 	Inputs      []string               `mapper:"inputs"`
 	Options     map[string]interface{} `mapstructure:",remain"`
 	OptionsHash string
+	Merged      bool
 }
 
 type ConfigComponent interface {

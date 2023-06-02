@@ -353,10 +353,21 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
+	optimizedSink := mergeSync(config.Sinks)
+
+	if len(optimizedSink) > 0 {
+		config.Sinks = optimizedSink
+	}
+	fmt.Println("djckdlcjlsdkcj")
+
+	return nil
+}
+
+func mergeSync(sinks map[string]*Sink) map[string]*Sink {
 	sinkOptions := make(map[string]*Sink)
 	optimizedSink := make(map[string]*Sink)
 
-	for k, sink := range config.Sinks {
+	for k, sink := range sinks {
 		// TODO: Change to ES after poc
 		if sink.Type != "console" {
 			mergedSink := *sink
@@ -382,13 +393,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		}
 		optimizedSink[v.Name] = v
 	}
-
-	if len(optimizedSink) > 0 {
-		config.Sinks = optimizedSink
-	}
-	fmt.Println("djckdlcjlsdkcj")
-
-	return nil
+	return optimizedSink
 }
 
 func isExporterSinkExists(sinks map[string]*Sink) bool {
@@ -398,6 +403,17 @@ func isExporterSinkExists(sinks map[string]*Sink) bool {
 		}
 	}
 	return false
+}
+
+func isLeafTransform(tranform string, transforms map[string]*Transform) bool {
+	for _, v := range transforms {
+		for _, i := range v.Inputs {
+			if tranform == i {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func generateVrlFilter(selector string, selectorType string) string {

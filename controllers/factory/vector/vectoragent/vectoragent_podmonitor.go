@@ -15,7 +15,7 @@ func (ctrl *Controller) createVectorAgentPodMonitor() *monitorv1.PodMonitor {
 			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{
 				{
 					Path: "/metrics",
-					Port: "9598",
+					Port: "prom-exporter",
 				},
 			},
 			Selector: metav1.LabelSelector{

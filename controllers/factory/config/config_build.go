@@ -358,7 +358,6 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 	if len(optimizedSink) > 0 {
 		config.Sinks = optimizedSink
 	}
-	fmt.Println("djckdlcjlsdkcj")
 
 	return nil
 }
@@ -369,7 +368,7 @@ func mergeSync(sinks map[string]*Sink) map[string]*Sink {
 
 	for k, sink := range sinks {
 		// TODO: Change to ES after poc
-		if sink.Type != "console" {
+		if sink.Type != "elasticsearch" {
 			mergedSink := *sink
 			optimizedSink[k] = &mergedSink
 			continue

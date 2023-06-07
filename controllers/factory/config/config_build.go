@@ -251,7 +251,7 @@ func getTransforms(pipeline pipeline.Pipeline) ([]*Transform, error) {
 		if err != nil {
 			return nil, err
 		}
-		transform.OptionsHash = hash.Get(optbyte)
+		transform.OptionsHash = fmt.Sprint(hash.Get(optbyte))
 		transforms = append(transforms, transform)
 	}
 	return transforms, nil
@@ -279,7 +279,7 @@ func getSinks(pipeline pipeline.Pipeline) ([]*Sink, error) {
 		if err != nil {
 			return nil, err
 		}
-		sink.OptionsHash = hash.Get(optbyte)
+		sink.OptionsHash = fmt.Sprint(hash.Get(optbyte))
 		sinks = append(sinks, sink)
 	}
 	return sinks, nil
@@ -364,7 +364,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 }
 
 func mergeSync(sinks []*Sink) []*Sink {
-	sinkOptions := make(map[uint32]*Sink)
+	uniqOpts := make(map[string]*Sink)
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
@@ -373,7 +373,7 @@ func mergeSync(sinks []*Sink) []*Sink {
 			optimizedSink = append(optimizedSink, sink)
 			continue
 		}
-		v, ok := sinkOptions[sink.OptionsHash]
+		v, ok := uniqOpts[sink.OptionsHash]
 		if ok {
 			// If sink spec already exists rename and merge inputs
 			v.Name = fmt.Sprint(v.OptionsHash)
@@ -381,7 +381,7 @@ func mergeSync(sinks []*Sink) []*Sink {
 			sort.Strings(v.Inputs)
 			continue
 		}
-		sinkOptions[sink.OptionsHash] = sink
+		uniqOpts[sink.OptionsHash] = sink
 		optimizedSink = append(optimizedSink, sink)
 	}
 	return optimizedSink

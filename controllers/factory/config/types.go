@@ -39,7 +39,7 @@ type Transform struct {
 	Inputs      []string               `mapper:"inputs"`
 	Condition   interface{}            `mapper:"condition,omitempty"`
 	Options     map[string]interface{} `mapstructure:",remain"`
-	OptionsHash uint32
+	OptionsHash string
 }
 
 type Sink struct {
@@ -47,7 +47,7 @@ type Sink struct {
 	Type        string                 `mapper:"type"`
 	Inputs      []string               `mapper:"inputs"`
 	Options     map[string]interface{} `mapstructure:",remain"`
-	OptionsHash uint32
+	OptionsHash string
 }
 
 type ConfigComponent interface {

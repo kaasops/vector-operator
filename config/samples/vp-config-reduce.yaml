@@ -1,0 +1,106 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vp1
+spec:
+  sources:
+    source1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment"
+    source2:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment1"
+  transforms:
+    transform1:
+      type: "filter"
+      inputs:
+        - source1
+        - source2
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+    transform2:
+      type: "filter"
+      inputs:
+        - transform1
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+  sinks:
+    sink1:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - transform1      
+    snik2:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - transform2
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vp2
+spec:
+  sources:
+    source1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment"
+  transforms:
+    transform1:
+      type: "filter"
+      inputs:
+        - source1
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+  sinks:
+    sink1:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - transform1
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vp3
+spec:
+  sources:
+    source1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment"
+  transforms:
+    transform1:
+      type: "filter"
+      inputs:
+        - source1
+      condition:
+        type: "vrl"
+        source: ".status != 200"
+  sinks:
+    sink1:
+      type: "blackhole"
+      inputs:
+        - transform1
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vp4
+spec:
+  sources:
+    source1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment2"
+  sinks:
+    sink1:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - source1

@@ -34,11 +34,13 @@ type Source struct {
 }
 
 type Transform struct {
-	Name      string
-	Type      string                 `mapper:"type"`
-	Inputs    []string               `mapper:"inputs"`
-	Condition interface{}            `mapper:"condition,omitempty"`
-	Options   map[string]interface{} `mapstructure:",remain"`
+	Name        string
+	Type        string                 `mapper:"type"`
+	Inputs      []string               `mapper:"inputs"`
+	Condition   interface{}            `mapper:"condition,omitempty"`
+	Options     map[string]interface{} `mapstructure:",remain"`
+	OptionsHash uint32
+	Merged      bool
 }
 
 type Sink struct {

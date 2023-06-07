@@ -42,10 +42,12 @@ type Transform struct {
 }
 
 type Sink struct {
-	Name    string
-	Type    string                 `mapper:"type"`
-	Inputs  []string               `mapper:"inputs"`
-	Options map[string]interface{} `mapstructure:",remain"`
+	Name        string
+	Type        string                 `mapper:"type"`
+	Inputs      []string               `mapper:"inputs"`
+	Options     map[string]interface{} `mapstructure:",remain"`
+	OptionsHash uint32
+	Merged      bool
 }
 
 type ConfigComponent interface {

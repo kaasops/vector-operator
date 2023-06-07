@@ -25,6 +25,7 @@ import (
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
@@ -268,6 +269,11 @@ func getSinks(pipeline pipeline.Pipeline) ([]*Sink, error) {
 		for i, inputName := range sink.Inputs {
 			sink.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 		}
+		optbyte, err := json.Marshal(sink.Options)
+		if err != nil {
+			return nil, err
+		}
+		sink.OptionsHash = hash.Get(optbyte)
 		sinks = append(sinks, sink)
 	}
 	return sinks, nil
@@ -342,7 +348,47 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
+	optimizedSink := mergeSync(config.Sinks)
+
+	if len(optimizedSink) > 0 {
+		config.Sinks = optimizedSink
+	}
+
 	return nil
+}
+
+func mergeSync(sinks []*Sink) []*Sink {
+	sinkOptions := make(map[uint32]*Sink)
+	var optimizedSink []*Sink
+
+	for _, sink := range sinks {
+		// TODO: Change to ES after poc
+		if sink.Type != "console" {
+			mergedSink := *sink
+			optimizedSink = append(optimizedSink, &mergedSink)
+			continue
+		}
+		v, ok := sinkOptions[sink.OptionsHash]
+		if ok {
+			// If sink spec already exists set merged flag and merge inputs
+			v.Inputs = append(v.Inputs, sink.Inputs...)
+			v.Merged = true
+			continue
+		}
+		// If sink is uniq, create copy  and add to map
+		mergedSink := *sink
+		sinkOptions[sink.OptionsHash] = &mergedSink
+	}
+
+	// If sink has merged flag, rename to config hash and add to result optimized map
+	for _, v := range sinkOptions {
+		if v.Merged {
+			name := fmt.Sprint(v.OptionsHash)
+			v.Name = name
+		}
+		optimizedSink = append(optimizedSink, v)
+	}
+	return optimizedSink
 }
 
 func isExporterSinkExists(sinks []*Sink) bool {

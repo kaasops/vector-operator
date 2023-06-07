@@ -221,7 +221,9 @@ func getSources(pipeline pipeline.Pipeline, filter []string) ([]*Source, error) 
 			return nil, err
 		}
 		source.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
-		source.UseApiServerCache = true
+		if source.Type == KubernetesSourceType {
+			source.UseApiServerCache = true
+		}
 		sources = append(sources, source)
 	}
 	return sources, nil

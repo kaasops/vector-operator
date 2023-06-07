@@ -377,7 +377,8 @@ func mergeSync(sinks []*Sink) []*Sink {
 		}
 		v, ok := sinkOptions[sink.OptionsHash]
 		if ok {
-			// If sink spec already exists set merged flag and merge inputs
+			// If sink spec already exists rename and merge inputs
+			v.Name = fmt.Sprint(v.OptionsHash)
 			v.Inputs = append(v.Inputs, sink.Inputs...)
 			continue
 		}

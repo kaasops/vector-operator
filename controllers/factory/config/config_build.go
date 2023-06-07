@@ -221,9 +221,6 @@ func getSources(pipeline pipeline.Pipeline, filter []string) ([]*Source, error) 
 			return nil, err
 		}
 		source.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
-		if source.Type == KubernetesSourceType {
-			source.UseApiServerCache = true
-		}
 		sources = append(sources, source)
 	}
 	return sources, nil
@@ -328,34 +325,34 @@ func cfgToMap(config *VectorConfig) (cfgMap map[string]interface{}, err error) {
 
 // Experemental
 func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
-	// var optimizedSource []*Source
-	// var optimizationRequired bool
-	// for _, source := range config.Sources {
-	// 	if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
-	// 		if source.ExtraFieldSelector != "" {
-	// 			optimizedSource = append(optimizedSource, source)
-	// 			continue
-	// 		}
-	// 		optimizationRequired = true
+	var optimizedSource []*Source
+	var optimizationRequired bool
+	for _, source := range config.Sources {
+		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
+			if source.ExtraFieldSelector != "" {
+				optimizedSource = append(optimizedSource, source)
+				continue
+			}
+			optimizationRequired = true
 
-	// 		config.Transforms = append(config.Transforms, &Transform{
-	// 			Name:      source.Name,
-	// 			Inputs:    []string{OptimizedKubernetesSourceName},
-	// 			Type:      FilterTransformType,
-	// 			Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
-	// 		})
-	// 		continue
-	// 	}
-	// 	optimizedSource = append(optimizedSource, source)
-	// }
+			config.Transforms = append(config.Transforms, &Transform{
+				Name:      source.Name,
+				Inputs:    []string{OptimizedKubernetesSourceName},
+				Type:      FilterTransformType,
+				Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
+			})
+			continue
+		}
+		optimizedSource = append(optimizedSource, source)
+	}
 
-	// if optimizationRequired {
-	// 	optimizedSource = append(optimizedSource, &Source{
-	// 		Name: OptimizedKubernetesSourceName,
-	// 		Type: KubernetesSourceType,
-	// 	})
-	// 	config.Sources = optimizedSource
-	// }
+	if optimizationRequired {
+		optimizedSource = append(optimizedSource, &Source{
+			Name: OptimizedKubernetesSourceName,
+			Type: KubernetesSourceType,
+		})
+		config.Sources = optimizedSource
+	}
 
 	optimizedSink := mergeSync(config.Sinks)
 

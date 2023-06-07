@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -367,8 +368,8 @@ func mergeSync(sinks []*Sink) []*Sink {
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
-		// if sink.Type != "console" {
-		if sink.Type != "elasticsearch" {
+		if sink.Type != "console" {
+			// if sink.Type != "elasticsearch" {
 
 			optimizedSink = append(optimizedSink, sink)
 			continue
@@ -378,6 +379,8 @@ func mergeSync(sinks []*Sink) []*Sink {
 			// If sink spec already exists rename and merge inputs
 			v.Name = fmt.Sprint(v.OptionsHash)
 			v.Inputs = append(v.Inputs, sink.Inputs...)
+			sorted := sort.StringSlice(v.Inputs)
+			v.Inputs = sorted
 			continue
 		}
 		sinkOptions[sink.OptionsHash] = sink

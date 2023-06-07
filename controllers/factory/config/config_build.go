@@ -363,7 +363,7 @@ func mergeSync(sinks []*Sink) []*Sink {
 
 	for _, sink := range sinks {
 		// TODO: Change to ES after poc
-		if sink.Type != "console" {
+		if sink.Type != "elasticsearch" {
 			mergedSink := *sink
 			optimizedSink = append(optimizedSink, &mergedSink)
 			continue

@@ -355,7 +355,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 	// 	config.Sources = optimizedSource
 	// }
 
-	optimizedSink, _ := mergeSync(config.Sinks)
+	optimizedSink := mergeSync(config.Sinks)
 
 	if len(optimizedSink) > 0 {
 		config.Sinks = optimizedSink
@@ -364,9 +364,8 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 	return nil
 }
 
-func mergeSync(sinks []*Sink) ([]*Sink, map[string][]string) {
+func mergeSync(sinks []*Sink) []*Sink {
 	uniqOpts := make(map[string]*Sink)
-	transforms := make(map[string][]string)
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
@@ -381,14 +380,12 @@ func mergeSync(sinks []*Sink) ([]*Sink, map[string][]string) {
 			v.Name = fmt.Sprint(v.OptionsHash)
 			v.Inputs = append(v.Inputs, sink.Inputs...)
 			sort.Strings(v.Inputs)
-			transforms[v.Name] = append(transforms[v.Name], sink.Inputs...)
 			continue
 		}
 		uniqOpts[sink.OptionsHash] = sink
-		transforms[v.Name] = append(transforms[v.Name], sink.Inputs...)
 		optimizedSink = append(optimizedSink, sink)
 	}
-	return optimizedSink, transforms
+	return optimizedSink
 }
 
 func isExporterSinkExists(sinks []*Sink) bool {

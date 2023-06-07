@@ -30,7 +30,6 @@ type Source struct {
 	ExtraNamespaceLabelSelector string                 `mapstructure:"extra_namespace_label_selector" mapper:"extra_namespace_label_selector,omitempty"`
 	ExtraLabelSelector          string                 `mapstructure:"extra_label_selector" mapper:"extra_label_selector,omitempty"`
 	ExtraFieldSelector          string                 `mapstructure:"extra_field_selector" mapper:"extra_field_selector,omitempty"`
-	UseApiServerCache           bool                   `mapstructure:"use_apiserver_cache" mapper:"use_apiserver_cache,omitempty"`
 	Options                     map[string]interface{} `mapstructure:",remain"`
 }
 

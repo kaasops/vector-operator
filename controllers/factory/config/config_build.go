@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -354,11 +353,11 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
-	optimizedSink := mergeSync(config.Sinks)
+	// optimizedSink := mergeSync(config.Sinks)
 
-	if len(optimizedSink) > 0 {
-		config.Sinks = optimizedSink
-	}
+	// if len(optimizedSink) > 0 {
+	// 	config.Sinks = optimizedSink
+	// }
 
 	return nil
 }
@@ -372,33 +371,22 @@ func mergeSync(sinks []*Sink) []*Sink {
 		// sink.Type != "elasticsearch"
 		// sink.Type != "console"
 		if sink.Type != "elasticsearch" {
-			mergedSink := *sink
-			optimizedSink = append(optimizedSink, &mergedSink)
+
+			optimizedSink = append(optimizedSink, sink)
 			continue
 		}
 		v, ok := sinkOptions[sink.OptionsHash]
 		if ok {
 			// If sink spec already exists set merged flag and merge inputs
 			v.Inputs = append(v.Inputs, sink.Inputs...)
-			v.Merged = true
 			continue
 		}
-		// If sink is uniq, create copy  and add to map
-		mergedSink := *sink
-		sinkOptions[sink.OptionsHash] = &mergedSink
+		sinkOptions[sink.OptionsHash] = sink
+		optimizedSink = append(optimizedSink, sink)
 	}
-
-	// If sink has merged flag, rename to config hash and add to result optimized map
-	for _, v := range sinkOptions {
-		if v.Merged {
-			name := fmt.Sprint(v.OptionsHash)
-			v.Name = name
-		}
-		optimizedSink = append(optimizedSink, v)
-	}
-	sort.Slice(optimizedSink, func(i, j int) bool {
-		return optimizedSink[i].Name < optimizedSink[j].Name
-	})
+	// sort.Slice(optimizedSink, func(i, j int) bool {
+	// 	return optimizedSink[i].Name < optimizedSink[j].Name
+	// })
 	return optimizedSink
 }
 

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -246,6 +247,11 @@ func getTransforms(pipeline pipeline.Pipeline) ([]*Transform, error) {
 		for i, inputName := range transform.Inputs {
 			transform.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 		}
+		optbyte, err := json.Marshal(transform.Options)
+		if err != nil {
+			return nil, err
+		}
+		transform.OptionsHash = hash.Get(optbyte)
 		transforms = append(transforms, transform)
 	}
 	return transforms, nil
@@ -363,7 +369,9 @@ func mergeSync(sinks []*Sink) []*Sink {
 
 	for _, sink := range sinks {
 		// TODO: Change to ES after poc
-		if sink.Type != "elasticsearch" {
+		// sink.Type != "elasticsearch"
+		// sink.Type != "console"
+		if sink.Type != "console" {
 			mergedSink := *sink
 			optimizedSink = append(optimizedSink, &mergedSink)
 			continue
@@ -388,6 +396,9 @@ func mergeSync(sinks []*Sink) []*Sink {
 		}
 		optimizedSink = append(optimizedSink, v)
 	}
+	sort.Slice(optimizedSink, func(i, j int) bool {
+		return optimizedSink[i].Name < optimizedSink[j].Name
+	})
 	return optimizedSink
 }
 

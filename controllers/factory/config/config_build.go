@@ -353,11 +353,11 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
-	// optimizedSink := mergeSync(config.Sinks)
+	optimizedSink := mergeSync(config.Sinks)
 
-	// if len(optimizedSink) > 0 {
-	// 	config.Sinks = optimizedSink
-	// }
+	if len(optimizedSink) > 0 {
+		config.Sinks = optimizedSink
+	}
 
 	return nil
 }
@@ -384,9 +384,6 @@ func mergeSync(sinks []*Sink) []*Sink {
 		sinkOptions[sink.OptionsHash] = sink
 		optimizedSink = append(optimizedSink, sink)
 	}
-	// sort.Slice(optimizedSink, func(i, j int) bool {
-	// 	return optimizedSink[i].Name < optimizedSink[j].Name
-	// })
 	return optimizedSink
 }
 

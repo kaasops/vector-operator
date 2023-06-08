@@ -364,21 +364,22 @@ func mergeSync(sinks []*Sink) []*Sink {
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
-		if sink.Type != "console" {
-			// if sink.Type != "elasticsearch" {
-			optimizedSink = append(optimizedSink, sink)
+		sink_copy := *sink
+		if sink_copy.Type != "console" {
+			// if sink_copy.Type != "elasticsearch" {
+			optimizedSink = append(optimizedSink, &sink_copy)
 			continue
 		}
-		v, ok := uniqOpts[sink.OptionsHash]
+		v, ok := uniqOpts[sink_copy.OptionsHash]
 		if ok {
 			// If sink spec already exists rename and merge inputs
 			v.Name = v.OptionsHash
-			v.Inputs = append(v.Inputs, sink.Inputs...)
+			v.Inputs = append(v.Inputs, sink_copy.Inputs...)
 			sort.Strings(v.Inputs)
 			continue
 		}
-		uniqOpts[sink.OptionsHash] = sink
-		optimizedSink = append(optimizedSink, sink)
+		uniqOpts[sink_copy.OptionsHash] = &sink_copy
+		optimizedSink = append(optimizedSink, &sink_copy)
 	}
 	return optimizedSink
 }

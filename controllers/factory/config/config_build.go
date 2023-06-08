@@ -447,6 +447,9 @@ func isMergable(t_map map[string]*Transform, transforms []string) (string, bool)
 		}
 		hash = v.OptionsHash
 	}
+	if hash == "" {
+		return "", false
+	}
 	return hash, true
 }
 

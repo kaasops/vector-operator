@@ -19,13 +19,13 @@ spec:
       condition:
         type: "vrl"
         source: ".status != 200"
-    transform2:
-      type: "filter"
-      inputs:
-        - transform1
-      condition:
-        type: "vrl"
-        source: ".status != 200"
+    # transform2:
+    #   type: "filter"
+    #   inputs:
+    #     - transform1
+    #   condition:
+    #     type: "vrl"
+    #     source: ".status != 200"
   sinks:
     sink1:
       type: "console"
@@ -33,12 +33,12 @@ spec:
         codec: "json"
       inputs:
         - transform1      
-    snik2:
-      type: "console"
-      encoding:
-        codec: "json"
-      inputs:
-        - transform2
+    # snik2:
+    #   type: "console"
+    #   encoding:
+    #     codec: "json"
+    #   inputs:
+    #     - transform2
 ---
 apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorPipeline
@@ -88,19 +88,19 @@ spec:
       inputs:
         - transform1
 ---
-apiVersion: observability.kaasops.io/v1alpha1
-kind: VectorPipeline
-metadata:
-  name: vp4
-spec:
-  sources:
-    source1:
-      type: "kubernetes_logs"
-      extra_label_selector: "app!=testdeployment2"
-  sinks:
-    sink1:
-      type: "console"
-      encoding:
-        codec: "json"
-      inputs:
-        - source1
+# apiVersion: observability.kaasops.io/v1alpha1
+# kind: VectorPipeline
+# metadata:
+#   name: vp4
+# spec:
+#   sources:
+#     source1:
+#       type: "kubernetes_logs"
+#       extra_label_selector: "app!=testdeployment2"
+#   sinks:
+#     sink1:
+#       type: "console"
+#       encoding:
+#         codec: "json"
+#       inputs:
+#         - source1

@@ -354,11 +354,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
-	optimizedSink := mergeSync(config.Sinks)
-
-	if len(optimizedSink) > 0 {
-		config.Sinks = optimizedSink
-	}
+	merge(config)
 
 	return nil
 }
@@ -368,15 +364,15 @@ func mergeSync(sinks []*Sink) []*Sink {
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
-		// if sink.Type != "console" {
-		if sink.Type != "elasticsearch" {
+		if sink.Type != "console" {
+			// if sink.Type != "elasticsearch" {
 			optimizedSink = append(optimizedSink, sink)
 			continue
 		}
 		v, ok := uniqOpts[sink.OptionsHash]
 		if ok {
 			// If sink spec already exists rename and merge inputs
-			v.Name = fmt.Sprint(v.OptionsHash)
+			v.Name = v.OptionsHash
 			v.Inputs = append(v.Inputs, sink.Inputs...)
 			sort.Strings(v.Inputs)
 			continue
@@ -385,6 +381,71 @@ func mergeSync(sinks []*Sink) []*Sink {
 		optimizedSink = append(optimizedSink, sink)
 	}
 	return optimizedSink
+}
+
+func merge(config *VectorConfig) {
+	optimizedSink := mergeSync(config.Sinks)
+
+	if len(optimizedSink) > 0 {
+		config.Sinks = optimizedSink
+	}
+
+	t_map := transformsToMap(config.Transforms)
+	var optimizedTransforms []*Transform
+	for _, sink := range config.Sinks {
+		hash, ok := isMergable(t_map, sink.Inputs)
+		if !ok {
+			continue
+		}
+		for _, i := range sink.Inputs {
+			t := t_map[i]
+			t_v, ok := t_map[hash]
+			if ok {
+				t_v.Inputs = append(t_v.Inputs, t.Inputs...)
+				t_v.Name = hash
+				delete(t_map, i)
+				continue
+			}
+			t.Name = hash
+			t_map[hash] = t
+			delete(t_map, i)
+		}
+		sink.Inputs = nil
+		sink.Inputs = append(sink.Inputs, hash)
+	}
+	for _, v := range t_map {
+		optimizedTransforms = append(optimizedTransforms, v)
+	}
+
+	if len(optimizedTransforms) > 0 {
+		config.Transforms = optimizedTransforms
+	}
+}
+
+func isMergable(t_map map[string]*Transform, transforms []string) (string, bool) {
+	var hash string
+	for _, t := range transforms {
+		v, ok := t_map[t]
+		if !ok {
+			return "", false
+		}
+		if hash != "" {
+			if v.OptionsHash != hash {
+				return "", false
+			}
+		}
+		hash = v.OptionsHash
+	}
+	return hash, true
+}
+
+func transformsToMap(transforms []*Transform) map[string]*Transform {
+	result := make(map[string]*Transform)
+	for _, t := range transforms {
+		t_copy := *t
+		result[t_copy.Name] = &t_copy
+	}
+	return result
 }
 
 func isExporterSinkExists(sinks []*Sink) bool {

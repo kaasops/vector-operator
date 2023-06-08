@@ -386,6 +386,10 @@ func mergeSync(sinks []*Sink) []*Sink {
 func merge(config *VectorConfig) {
 	optimizedSink := mergeSync(config.Sinks)
 
+	sort.Slice(optimizedSink, func(i, j int) bool {
+		return optimizedSink[i].Name > optimizedSink[j].Name
+	})
+
 	if len(optimizedSink) > 0 {
 		config.Sinks = optimizedSink
 	}
@@ -402,6 +406,7 @@ func merge(config *VectorConfig) {
 			t_v, ok := t_map[hash]
 			if ok {
 				t_v.Inputs = append(t_v.Inputs, t.Inputs...)
+				sort.Strings(t_v.Inputs)
 				t_v.Name = hash
 				delete(t_map, i)
 				continue
@@ -416,6 +421,10 @@ func merge(config *VectorConfig) {
 	for _, v := range t_map {
 		optimizedTransforms = append(optimizedTransforms, v)
 	}
+
+	sort.Slice(optimizedTransforms, func(i, j int) bool {
+		return optimizedTransforms[i].Name > optimizedTransforms[j].Name
+	})
 
 	if len(optimizedTransforms) > 0 {
 		config.Transforms = optimizedTransforms

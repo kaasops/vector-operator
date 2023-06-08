@@ -33,13 +33,14 @@ import (
 )
 
 const (
-	KubernetesSourceType          = "kubernetes_logs"
-	BlackholeSinkType             = "blackhole"
-	InternalMetricsSourceType     = "internal_metrics"
-	InternalMetricsSourceName     = "internalMetricsSource"
-	InternalMetricsSinkType       = "prometheus_exporter"
-	InternalMetricsSinkName       = "internalMetricsSink"
-	ElasticsearchSinkType         = "elasticsearch" //elasticsearch, console
+	KubernetesSourceType      = "kubernetes_logs"
+	BlackholeSinkType         = "blackhole"
+	InternalMetricsSourceType = "internal_metrics"
+	InternalMetricsSourceName = "internalMetricsSource"
+	InternalMetricsSinkType   = "prometheus_exporter"
+	InternalMetricsSinkName   = "internalMetricsSink"
+	ElasticsearchSinkType     = "elasticsearch"
+	// ElasticsearchSinkType         = "console"
 	OptimizedKubernetesSourceName = "optimizedKubernetesSource"
 	FilterTransformType           = "filter"
 	DefaultSourceName             = "defaultSource"
@@ -398,7 +399,7 @@ func merge(config *VectorConfig) {
 	t_map := transformsToMap(config.Transforms)
 	var optimizedTransforms []*Transform
 	for _, sink := range config.Sinks {
-		hash, ok := isMergable(t_map, sink)
+		hash, ok := isMergable(t_map, sink.Inputs)
 		if !ok {
 			continue
 		}
@@ -432,12 +433,9 @@ func merge(config *VectorConfig) {
 	}
 }
 
-func isMergable(t_map map[string]*Transform, sink *Sink) (string, bool) {
+func isMergable(t_map map[string]*Transform, transforms []string) (string, bool) {
 	var hash string
-	for _, t := range sink.Inputs {
-		if sink.Type != ElasticsearchSinkType {
-			return "", false
-		}
+	for _, t := range transforms {
 		v, ok := t_map[t]
 		if !ok {
 			return "", false

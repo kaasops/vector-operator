@@ -39,6 +39,7 @@ const (
 	InternalMetricsSourceName     = "internalMetricsSource"
 	InternalMetricsSinkType       = "prometheus_exporter"
 	InternalMetricsSinkName       = "internalMetricsSink"
+	ElasticsearchSinkType         = "elasticsearch" //elasticsearch, console
 	OptimizedKubernetesSourceName = "optimizedKubernetesSource"
 	FilterTransformType           = "filter"
 	DefaultSourceName             = "defaultSource"
@@ -365,8 +366,7 @@ func mergeSync(sinks []*Sink) []*Sink {
 
 	for _, sink := range sinks {
 		sink_copy := *sink
-		if sink_copy.Type != "console" {
-			// if sink_copy.Type != "elasticsearch" {
+		if sink_copy.Type != ElasticsearchSinkType {
 			optimizedSink = append(optimizedSink, &sink_copy)
 			continue
 		}
@@ -398,7 +398,7 @@ func merge(config *VectorConfig) {
 	t_map := transformsToMap(config.Transforms)
 	var optimizedTransforms []*Transform
 	for _, sink := range config.Sinks {
-		hash, ok := isMergable(t_map, sink.Inputs)
+		hash, ok := isMergable(t_map, sink)
 		if !ok {
 			continue
 		}
@@ -432,9 +432,12 @@ func merge(config *VectorConfig) {
 	}
 }
 
-func isMergable(t_map map[string]*Transform, transforms []string) (string, bool) {
+func isMergable(t_map map[string]*Transform, sink *Sink) (string, bool) {
 	var hash string
-	for _, t := range transforms {
+	for _, t := range sink.Inputs {
+		if sink.Type != ElasticsearchSinkType {
+			return "", false
+		}
 		v, ok := t_map[t]
 		if !ok {
 			return "", false

@@ -107,9 +107,9 @@ func main() {
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         false,
-		// LeaderElection:         enableLeaderElection,
-		// LeaderElectionID:       "79cbe7f3.kaasops.io",
+		// LeaderElection:         false,
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "79cbe7f3.kaasops.io",
 	}
 	customMgrOptions, err := setupCustomCache(&mgrOptions, namespace, watchLabel)
 
@@ -136,16 +136,16 @@ func main() {
 		os.Exit(1)
 	}
 	// Uncomment
-	// if err = (&controllers.PipelineReconciler{
-	// 	Client:                     mgr.GetClient(),
-	// 	Scheme:                     mgr.GetScheme(),
-	// 	Clientset:                  clientset,
-	// 	PipelineCheckWG:            &pipelineCheckWG,
-	// 	PipelineDeleteEventTimeout: PipelineDeleteEventTimeout,
-	// }).SetupWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
-	// 	os.Exit(1)
-	// }
+	if err = (&controllers.PipelineReconciler{
+		Client:                     mgr.GetClient(),
+		Scheme:                     mgr.GetScheme(),
+		Clientset:                  clientset,
+		PipelineCheckWG:            &pipelineCheckWG,
+		PipelineDeleteEventTimeout: PipelineDeleteEventTimeout,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
+		os.Exit(1)
+	}
 	/////////////
 	//+kubebuilder:scaffold:builder
 

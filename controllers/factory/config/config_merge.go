@@ -46,15 +46,19 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 func merge(config *VectorConfig) {
 	optimizedSink := mergeSync(config.Sinks)
 
+	if len(optimizedSink) == 0 {
+		return
+	}
+
 	sort.Slice(optimizedSink, func(i, j int) bool {
 		return optimizedSink[i].Name > optimizedSink[j].Name
 	})
 
-	if len(optimizedSink) > 0 {
-		config.Sinks = optimizedSink
-	}
+	config.Sinks = optimizedSink
 
 	t_map := transformsToMap(config.Transforms)
+	t_opts := make(map[string]*Transform)
+
 	var optimizedTransforms []*Transform
 	for _, sink := range config.Sinks {
 		hash, ok := isMergable(t_map, sink.Inputs)
@@ -63,16 +67,18 @@ func merge(config *VectorConfig) {
 		}
 		for _, i := range sink.Inputs {
 			t := t_map[i]
-			t_v, ok := t_map[hash]
+			t_v, ok := t_opts[hash]
 			if ok {
 				t_v.Inputs = append(t_v.Inputs, t.Inputs...)
 				sort.Strings(t_v.Inputs)
 				t_v.Name = hash
+				t_map[hash] = t_v
 				delete(t_map, i)
 				continue
 			}
 			t.Name = hash
 			t_map[hash] = t
+			t_opts[hash] = t
 			delete(t_map, i)
 		}
 		sink.Inputs = nil
@@ -114,6 +120,9 @@ func mergeSync(sinks []*Sink) []*Sink {
 
 func isMergable(t_map map[string]*Transform, transforms []string) (string, bool) {
 	var hash string
+	if len(transforms) < 2 {
+		return "", false
+	}
 	for _, t := range transforms {
 		v, ok := t_map[t]
 		if !ok {

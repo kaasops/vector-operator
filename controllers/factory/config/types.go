@@ -31,7 +31,6 @@ type Source struct {
 	ExtraLabelSelector          string                 `mapstructure:"extra_label_selector" mapper:"extra_label_selector,omitempty"`
 	ExtraFieldSelector          string                 `mapstructure:"extra_field_selector" mapper:"extra_field_selector,omitempty"`
 	Options                     map[string]interface{} `mapstructure:",remain"`
-	OptionsHash                 string
 }
 
 type Transform struct {

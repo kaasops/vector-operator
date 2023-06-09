@@ -91,6 +91,10 @@ func mergeSync(sinks []*Sink) []*Sink {
 	var optimizedSink []*Sink
 
 	for _, sink := range sinks {
+		if sink.Type != ElasticsearchSinkType {
+			optimizedSink = append(optimizedSink, sink)
+			continue
+		}
 		sink_copy := *sink
 		v, ok := uniqOpts[sink_copy.OptionsHash]
 		if ok {

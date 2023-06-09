@@ -38,13 +38,13 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		config.Sources = optimizedSource
 	}
 
-	merge(config)
+	config.merge()
 
 	return nil
 }
 
-func merge(config *VectorConfig) {
-	optimizedSink := mergeSync(config.Sinks)
+func (c *VectorConfig) merge() {
+	optimizedSink := mergeSync(c.Sinks)
 
 	if len(optimizedSink) == 0 {
 		return
@@ -54,37 +54,23 @@ func merge(config *VectorConfig) {
 		return optimizedSink[i].Name > optimizedSink[j].Name
 	})
 
-	config.Sinks = optimizedSink
-
-	t_map := transformsToMap(config.Transforms)
-	t_opts := make(map[string]*Transform)
+	transforms := transformsToMap(c.Transforms)
 
 	var optimizedTransforms []*Transform
-	for _, sink := range config.Sinks {
-		hash, ok := isMergable(t_map, sink.Inputs)
-		if !ok {
+
+	for _, sink := range optimizedSink {
+		if len(sink.Inputs) < 2 {
 			continue
 		}
-		for _, i := range sink.Inputs {
-			t := t_map[i]
-			t_v, ok := t_opts[hash]
-			if ok {
-				t_v.Inputs = append(t_v.Inputs, t.Inputs...)
-				sort.Strings(t_v.Inputs)
-				t_v.Name = hash
-				t_map[hash] = t_v
-				delete(t_map, i)
-				continue
-			}
-			t.Name = hash
-			t_map[hash] = t
-			t_opts[hash] = t
-			delete(t_map, i)
+		toAdd, toDelete, mergedInputs := c.mergeSinkInputs(sink.Inputs, sink.Name)
+		sink.Inputs = mergedInputs
+		optimizedTransforms = append(optimizedTransforms, toAdd...)
+		for _, d := range toDelete {
+			delete(transforms, d)
 		}
-		sink.Inputs = nil
-		sink.Inputs = append(sink.Inputs, hash)
 	}
-	for _, v := range t_map {
+
+	for _, v := range transforms {
 		optimizedTransforms = append(optimizedTransforms, v)
 	}
 
@@ -92,8 +78,10 @@ func merge(config *VectorConfig) {
 		return optimizedTransforms[i].Name > optimizedTransforms[j].Name
 	})
 
+	c.Sinks = optimizedSink
+
 	if len(optimizedTransforms) > 0 {
-		config.Transforms = optimizedTransforms
+		c.Transforms = optimizedTransforms
 	}
 }
 
@@ -118,27 +106,42 @@ func mergeSync(sinks []*Sink) []*Sink {
 	return optimizedSink
 }
 
-func isMergable(t_map map[string]*Transform, transforms []string) (string, bool) {
-	var hash string
-	if len(transforms) < 2 {
-		return "", false
-	}
-	for _, t := range transforms {
-		v, ok := t_map[t]
+func (c *VectorConfig) mergeSinkInputs(inputs []string, prefix string) (toAdd []*Transform, toDelete []string, mergedInputs []string) {
+	t_map := transformsToMap(c.Transforms)
+	t_opt := make(map[string]*Transform)
+	for _, i := range inputs {
+		t, ok := t_map[i]
+		// Not in transform list, add without modification
 		if !ok {
-			return "", false
+			mergedInputs = append(mergedInputs, t.Name)
+			continue
 		}
-		if hash != "" {
-			if v.OptionsHash != hash {
-				return "", false
-			}
+
+		// If options hash is empty transform is not mergable
+		if t.OptionsHash == "" {
+			mergedInputs = append(mergedInputs, t.Name)
+			continue
 		}
-		hash = v.OptionsHash
+
+		t_merged, ok := t_opt[t.OptionsHash]
+		name := t.OptionsHash + "-" + prefix
+		if ok {
+			t_merged.Name = name
+			t_merged.Inputs = append(t_merged.Inputs, t.Inputs...)
+			sort.Strings(t_merged.Inputs)
+			t_merged.Merged = true
+			toDelete = append(toDelete, t.Name)
+			continue
+		}
+		t_opt[t.OptionsHash] = t
 	}
-	if hash == "" {
-		return "", false
+	for _, v := range t_opt {
+		if v.Merged {
+			toAdd = append(toAdd, v)
+		}
+		mergedInputs = append(mergedInputs, v.Name)
 	}
-	return hash, true
+	return toAdd, toDelete, mergedInputs
 }
 
 func transformsToMap(transforms []*Transform) map[string]*Transform {

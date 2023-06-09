@@ -63,6 +63,7 @@ func (c *VectorConfig) merge() {
 			continue
 		}
 		toAdd, toDelete, mergedInputs := c.mergeSinkInputs(sink.Inputs, sink.Name)
+		sort.Strings(mergedInputs)
 		sink.Inputs = mergedInputs
 		optimizedTransforms = append(optimizedTransforms, toAdd...)
 		for _, d := range toDelete {

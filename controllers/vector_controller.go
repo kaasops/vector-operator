@@ -18,14 +18,12 @@ package controllers
 
 import (
 	"context"
-	"errors"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 
@@ -188,49 +186,57 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cfgHash := hash.Get(byteConfig)
 
-	if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
-		configCheck := configcheck.New(
-			byteConfig,
-			vaCtrl.Client,
-			vaCtrl.ClientSet,
-			vaCtrl.Vector,
-		)
-		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
-		reason, err := configCheck.Run(ctx)
-		if errors.Is(err, configcheck.ValidationError) {
-			if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, err
-		}
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	vaCtrl.Config = byteConfig
-
-	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
+	// RemoveMe
+	err = os.WriteFile(".vscode/vector-config.json", byteConfig, 0644)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
+	////////
 
-	if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
-		//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, err
-	}
+	// cfgHash := hash.Get(byteConfig)
 
-	if err := vaCtrl.SetSucceesStatus(ctx); err != nil {
-		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, err
-	}
+	// if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
+	// 	configCheck := configcheck.New(
+	// 		byteConfig,
+	// 		vaCtrl.Client,
+	// 		vaCtrl.ClientSet,
+	// 		vaCtrl.Vector,
+	// 	)
+	// 	configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
+	// 	reason, err := configCheck.Run(ctx)
+	// 	if errors.Is(err, configcheck.ValidationError) {
+	// 		if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
+	// 			return ctrl.Result{}, err
+	// 		}
+	// 		return ctrl.Result{}, err
+	// 	}
+	// 	if err != nil {
+	// 		return ctrl.Result{}, err
+	// 	}
+	// }
+	// vaCtrl.Config = byteConfig
+
+	// // Start Reconcile Vector Agent
+	// if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
+	// 	return ctrl.Result{}, err
+	// }
+
+	// if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
+	// 	//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
+	// 	if api_errors.IsConflict(err) {
+	// 		return ctrl.Result{}, err
+	// 	}
+	// 	return ctrl.Result{}, err
+	// }
+
+	// if err := vaCtrl.SetSucceesStatus(ctx); err != nil {
+	// 	// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
+	// 	if api_errors.IsConflict(err) {
+	// 		return ctrl.Result{}, err
+	// 	}
+	// 	return ctrl.Result{}, err
+	// }
 
 	return ctrl.Result{}, nil
 }

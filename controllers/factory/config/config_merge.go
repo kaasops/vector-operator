@@ -9,34 +9,34 @@ import (
 
 // Experemental
 func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
-	var optimizedSource []*Source
-	var optimizationRequired bool
-	for _, source := range config.Sources {
-		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
-			if source.ExtraFieldSelector != "" {
-				optimizedSource = append(optimizedSource, source)
-				continue
-			}
-			optimizationRequired = true
+	// var optimizedSource []*Source
+	// var optimizationRequired bool
+	// for _, source := range config.Sources {
+	// 	if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
+	// 		if source.ExtraFieldSelector != "" {
+	// 			optimizedSource = append(optimizedSource, source)
+	// 			continue
+	// 		}
+	// 		optimizationRequired = true
 
-			config.Transforms = append(config.Transforms, &Transform{
-				Name:      source.Name,
-				Inputs:    []string{OptimizedKubernetesSourceName},
-				Type:      FilterTransformType,
-				Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
-			})
-			continue
-		}
-		optimizedSource = append(optimizedSource, source)
-	}
+	// 		config.Transforms = append(config.Transforms, &Transform{
+	// 			Name:      source.Name,
+	// 			Inputs:    []string{OptimizedKubernetesSourceName},
+	// 			Type:      FilterTransformType,
+	// 			Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
+	// 		})
+	// 		continue
+	// 	}
+	// 	optimizedSource = append(optimizedSource, source)
+	// }
 
-	if optimizationRequired {
-		optimizedSource = append(optimizedSource, &Source{
-			Name: OptimizedKubernetesSourceName,
-			Type: KubernetesSourceType,
-		})
-		config.Sources = optimizedSource
-	}
+	// if optimizationRequired {
+	// 	optimizedSource = append(optimizedSource, &Source{
+	// 		Name: OptimizedKubernetesSourceName,
+	// 		Type: KubernetesSourceType,
+	// 	})
+	// 	config.Sources = optimizedSource
+	// }
 
 	config.merge()
 
@@ -118,7 +118,7 @@ func (c *VectorConfig) mergeSinkInputs(inputs []string, prefix string) (toAdd []
 		t, ok := t_map[i]
 		// Not in transform list, add without modification
 		if !ok {
-			mergedInputs = append(mergedInputs, t.Name)
+			mergedInputs = append(mergedInputs, i)
 			continue
 		}
 

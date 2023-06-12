@@ -1,0 +1,34 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: internal-metrics
+spec:
+  sources:
+    source:
+      type: internal_metrics
+  transforms:
+    internal_metrics_remove_tags:
+      inputs:
+      - source
+      source: |2-
+            del(.tags.file)
+            del(.tags.pod_name)
+            del(.tags.pod_namespace)
+      type: remap
+    internal_metrics_cardinality:
+      inputs:
+      - internal_metrics_remove_tags
+      mode: exact
+      type: tag_cardinality_limit
+      value_limit: 50
+    drop_transform_metrics:
+      condition: .name != "component_received_events_count" && .tags.component_kind
+        != "transform"
+      inputs:
+      - internal_metrics_cardinality
+      type: filter
+  sinks:
+    sink:
+      inputs:
+      - internal_metrics_remove_tags
+      type: prometheus_exporter

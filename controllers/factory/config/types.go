@@ -37,7 +37,7 @@ type Transform struct {
 	Name        string
 	Type        string                 `mapper:"type"`
 	Inputs      []string               `mapper:"inputs"`
-	Condition   interface{}            `mapper:"condition,omitempty"`
+	Route       map[string]string      `mapper:"route,omitempty"`
 	Options     map[string]interface{} `mapstructure:",remain"`
 	OptionsHash string
 	Merged      bool

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"time"
 
@@ -190,10 +191,10 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 	}
 
 	// RemoveMe
-	// err = os.WriteFile(".vscode/vector-config.json", byteConfig, 0644)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	err = os.WriteFile(".vscode/vector-config.json", byteConfig, 0644)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	////////
 
 	cfgHash := hash.Get(byteConfig)

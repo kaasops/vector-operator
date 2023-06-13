@@ -58,7 +58,7 @@ func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
 		}
 	}
 
-	config.merge()
+	// config.merge()
 
 	return nil
 }

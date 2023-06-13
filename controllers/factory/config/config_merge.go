@@ -9,34 +9,54 @@ import (
 
 // Experemental
 func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
-	// var optimizedSource []*Source
-	// var optimizationRequired bool
-	// for _, source := range config.Sources {
-	// 	if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
-	// 		if source.ExtraFieldSelector != "" {
-	// 			optimizedSource = append(optimizedSource, source)
-	// 			continue
-	// 		}
-	// 		optimizationRequired = true
+	var optimizedSource []*Source
+	routes := make(map[string]string)
+	for _, source := range config.Sources {
+		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
+			if source.ExtraFieldSelector != "" {
+				optimizedSource = append(optimizedSource, source)
+				continue
+			}
+			routes[source.Name] = generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType)
+			continue
+		}
+		optimizedSource = append(optimizedSource, source)
+	}
 
-	// 		config.Transforms = append(config.Transforms, &Transform{
-	// 			Name:      source.Name,
-	// 			Inputs:    []string{OptimizedKubernetesSourceName},
-	// 			Type:      FilterTransformType,
-	// 			Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
-	// 		})
-	// 		continue
-	// 	}
-	// 	optimizedSource = append(optimizedSource, source)
-	// }
+	if len(routes) > 0 {
+		optimizedSource = append(optimizedSource, &Source{
+			Name: OptimizedKubernetesSourceName,
+			Type: KubernetesSourceType,
+		})
+		config.Sources = optimizedSource
+		transform := &Transform{
+			Name:   "merged",
+			Type:   "route",
+			Inputs: []string{OptimizedKubernetesSourceName},
+			Route:  routes,
+		}
+		config.Transforms = append(config.Transforms, transform)
+	}
 
-	// if optimizationRequired {
-	// 	optimizedSource = append(optimizedSource, &Source{
-	// 		Name: OptimizedKubernetesSourceName,
-	// 		Type: KubernetesSourceType,
-	// 	})
-	// 	config.Sources = optimizedSource
-	// }
+	for _, t := range config.Transforms {
+		for n, i := range t.Inputs {
+			_, ok := routes[i]
+			if ok {
+				t.Inputs[n] = "merged." + i
+
+			}
+		}
+	}
+
+	for _, t := range config.Sinks {
+		for n, i := range t.Inputs {
+			_, ok := routes[i]
+			if ok {
+				t.Inputs[n] = "merged." + i
+
+			}
+		}
+	}
 
 	config.merge()
 
@@ -96,17 +116,17 @@ func mergeSync(sinks []*Sink) []*Sink {
 			optimizedSink = append(optimizedSink, sink)
 			continue
 		}
-		sink_copy := *sink
-		v, ok := uniqOpts[sink_copy.OptionsHash]
+		sink := *sink
+		v, ok := uniqOpts[sink.OptionsHash]
 		if ok {
 			// If sink spec already exists rename and merge inputs
 			v.Name = v.OptionsHash
-			v.Inputs = append(v.Inputs, sink_copy.Inputs...)
+			v.Inputs = append(v.Inputs, sink.Inputs...)
 			sort.Strings(v.Inputs)
 			continue
 		}
-		uniqOpts[sink_copy.OptionsHash] = &sink_copy
-		optimizedSink = append(optimizedSink, &sink_copy)
+		uniqOpts[sink.OptionsHash] = &sink
+		optimizedSink = append(optimizedSink, &sink)
 	}
 	return optimizedSink
 }
@@ -152,8 +172,7 @@ func (c *VectorConfig) mergeSinkInputs(inputs []string, prefix string) (toAdd []
 func transformsToMap(transforms []*Transform) map[string]*Transform {
 	result := make(map[string]*Transform)
 	for _, t := range transforms {
-		t_copy := *t
-		result[t_copy.Name] = &t_copy
+		result[t.Name] = t
 	}
 	return result
 }

@@ -10,7 +10,7 @@ apiVersion: observability.kaasops.io/v1alpha1
 kind: ClusterVectorPipeline
 metadata:
   labels:
-    app.kubernetes.io/instance: ams-infra-vector
+    app.kubernetes.io/instance: vector
   name: k9s-audit
   namespace: vector
 spec:
@@ -28,7 +28,6 @@ spec:
 
         .@timestamp = .stageTimestamp
 
-        .cluster = "ams-infra"
       type: remap
   sinks:
     k8s-audit-sink:

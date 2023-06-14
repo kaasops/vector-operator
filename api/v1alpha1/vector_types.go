@@ -31,9 +31,9 @@ type VectorSpec struct {
 	// Vector Agent
 	Agent *VectorAgent `json:"agent,omitempty"`
 
-	// Enable kubernetes source config optimization
+	// Merge kubernetes sources and move selectors processing to transforms.
 	// +optional
-	OptimizeKubeSourceConfig bool `json:"optimizeKubeSourceConfig,omitempty"`
+	MergeKubernetesSources bool `json:"mergeKubernetesSources,omitempty"`
 
 	// Vector Aggregator
 	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`

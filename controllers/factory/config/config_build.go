@@ -31,18 +31,19 @@ import (
 )
 
 const (
-	KubernetesSourceType          = "kubernetes_logs"
-	BlackholeSinkType             = "blackhole"
-	InternalMetricsSourceType     = "internal_metrics"
-	InternalMetricsSourceName     = "internalMetricsSource"
-	InternalMetricsSinkType       = "prometheus_exporter"
-	InternalMetricsSinkName       = "internalMetricsSink"
-	OptimizedKubernetesSourceName = "optimizedKubernetesSource"
-	FilterTransformType           = "filter"
-	DefaultSourceName             = "defaultSource"
-	PodSelectorType               = "pod_labels"
-	NamespaceSelectorType         = "ns_labels"
-	OptimizationConditionType     = "vrl"
+	KubernetesSourceType       = "kubernetes_logs"
+	BlackholeSinkType          = "blackhole"
+	InternalMetricsSourceType  = "internal_metrics"
+	InternalMetricsSourceName  = "internalMetricsSource"
+	InternalMetricsSinkType    = "prometheus_exporter"
+	InternalMetricsSinkName    = "internalMetricsSink"
+	MergedKubernetesSourceName = "mergedKubernetesSource"
+	MergedSourceTransformName  = "merged"
+	RouteTransformType         = "route"
+	DefaultSourceName          = "defaultSource"
+	PodSelectorType            = "pod_labels"
+	NamespaceSelectorType      = "ns_labels"
+	OptimizationConditionType  = "vrl"
 )
 
 var (
@@ -124,8 +125,8 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	vectorConfig.Sources = sources
 	vectorConfig.Transforms = transforms
 
-	if b.vaCtrl.Vector.Spec.OptimizeKubeSourceConfig {
-		if err := b.optimizeVectorConfig(vectorConfig); err != nil {
+	if b.vaCtrl.Vector.Spec.MergeKubernetesSources {
+		if err := b.mergeKubernetesSources(vectorConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -311,40 +312,6 @@ func cfgToMap(config *VectorConfig) (cfgMap map[string]interface{}, err error) {
 	return cfgMap, nil
 }
 
-// Experemental
-func (b *Builder) optimizeVectorConfig(config *VectorConfig) error {
-	var optimizedSource []*Source
-	var optimizationRequired bool
-	for _, source := range config.Sources {
-		if source.ExtraNamespaceLabelSelector != "" && source.Type == KubernetesSourceType && source.ExtraLabelSelector != "" {
-			if source.ExtraFieldSelector != "" {
-				optimizedSource = append(optimizedSource, source)
-				continue
-			}
-			optimizationRequired = true
-
-			config.Transforms = append(config.Transforms, &Transform{
-				Name:      source.Name,
-				Inputs:    []string{OptimizedKubernetesSourceName},
-				Type:      FilterTransformType,
-				Condition: generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType),
-			})
-			continue
-		}
-		optimizedSource = append(optimizedSource, source)
-	}
-
-	if optimizationRequired {
-		optimizedSource = append(optimizedSource, &Source{
-			Name: OptimizedKubernetesSourceName,
-			Type: KubernetesSourceType,
-		})
-		config.Sources = optimizedSource
-	}
-
-	return nil
-}
-
 func isExporterSinkExists(sinks []*Sink) bool {
 	for _, sink := range sinks {
 		if sink.Type == InternalMetricsSinkType {
@@ -352,6 +319,58 @@ func isExporterSinkExists(sinks []*Sink) bool {
 		}
 	}
 	return false
+}
+
+// Merges a large number of kubernetes sources to reduce k8s api pressure during vector start.
+func (b *Builder) mergeKubernetesSources(config *VectorConfig) error {
+	var mergedSource []*Source
+	routes := make(map[string]string)
+	for _, source := range config.Sources {
+		if source.Type == KubernetesSourceType {
+			if source.ExtraFieldSelector == "" && source.ExtraNamespaceLabelSelector != "" && source.ExtraLabelSelector != "" {
+				routes[source.Name] = generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType)
+				continue
+			}
+		}
+		mergedSource = append(mergedSource, source)
+	}
+
+	if len(routes) > 0 {
+		mergedSource = append(mergedSource, &Source{
+			Name: MergedKubernetesSourceName,
+			Type: KubernetesSourceType,
+		})
+		transform := &Transform{
+			Name:   MergedSourceTransformName,
+			Type:   RouteTransformType,
+			Inputs: []string{MergedKubernetesSourceName},
+			Route:  routes,
+		}
+
+		for _, t := range config.Transforms {
+			for n, i := range t.Inputs {
+				_, ok := routes[i]
+				if ok {
+					t.Inputs[n] = MergedSourceTransformName + "." + i
+
+				}
+			}
+		}
+
+		for _, t := range config.Sinks {
+			for n, i := range t.Inputs {
+				_, ok := routes[i]
+				if ok {
+					t.Inputs[n] = MergedSourceTransformName + "." + i
+
+				}
+			}
+		}
+		config.Sources = mergedSource
+		config.Transforms = append(config.Transforms, transform)
+	}
+
+	return nil
 }
 
 func generateVrlFilter(selector string, selectorType string) string {

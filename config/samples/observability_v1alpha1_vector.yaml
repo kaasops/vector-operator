@@ -4,7 +4,7 @@ metadata:
   name: vector-sample
   namespace: vector
 spec:
-  optimizeKubeSourceConfig: true
+  mergeKubernetesSources: true
   agent:
     image: "timberio/vector:0.28.1-debian"
     internalMetrics: false

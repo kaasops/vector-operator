@@ -1,3 +1,6 @@
+### v0.0.25
+- [[112]](https://github.com/kaasops/vector-operator/pull/112) **Feature** change merge k8s sources logic to routes
+
 ### v0.0.24
 - [[109]](https://github.com/kaasops/vector-operator/pull/109) **Fix** fix broken apiservice error
 

@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.vector.name }}
   namespace: {{ .Release.Namespace }}
 spec:
-  optimizeKubeSourceConfig: {{ .Values.vector.optimizeKubeSourceConfig}}
+  mergeKubernetesSources: {{ .Values.vector.mergeKubernetesSources}}
 {{- with .Values.vector.agent }}
   agent:
 {{ toYaml . | indent 4 }}

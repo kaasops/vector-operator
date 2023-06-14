@@ -18,6 +18,7 @@ package configcheck
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
 
@@ -139,6 +140,9 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 
 	reason, err := cc.getCheckResult(ctx, vectorConfigCheckPod)
 	if err != nil {
+		if errors.Is(err, ValidationError) {
+			return reason, err
+		}
 		return "", err
 	}
 
@@ -220,7 +224,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 					if err != nil {
 						return "", err
 					}
-					return reason, nil
+					return reason, ValidationError
 				}
 			}
 		case <-ctx.Done():

@@ -4140,8 +4140,9 @@ spec:
                       type: object
                     type: array
                 type: object
-              optimizeKubeSourceConfig:
-                description: Enable kubernetes source config optimization
+              mergeKubernetesSources:
+                description: Merge kubernetes sources and move selectors processing
+                  to transforms.
                 type: boolean
             type: object
           status:

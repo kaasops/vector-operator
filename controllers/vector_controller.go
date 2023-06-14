@@ -171,6 +171,8 @@ func reconcileVectors(ctx context.Context, client client.Client, clientset *kube
 }
 
 func createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
+	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("Vector", v.Name)
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
@@ -199,15 +201,17 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 		)
 		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 		reason, err := configCheck.Run(ctx)
-		if errors.Is(err, configcheck.ValidationError) {
-			if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
-				return ctrl.Result{}, err
+		if err != nil {
+			if errors.Is(err, configcheck.ValidationError) {
+				if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
+					return ctrl.Result{}, err
+				}
+				log.Error(err, "Invalid config")
+				return ctrl.Result{}, nil
 			}
 			return ctrl.Result{}, err
 		}
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+
 	}
 	vaCtrl.Config = byteConfig
 

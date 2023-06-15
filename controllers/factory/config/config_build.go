@@ -327,7 +327,7 @@ func (b *Builder) mergeKubernetesSources(config *VectorConfig) error {
 	routes := make(map[string]string)
 	for _, source := range config.Sources {
 		if source.Type == KubernetesSourceType {
-			if source.ExtraFieldSelector == "" && source.ExtraNamespaceLabelSelector != "" && source.ExtraLabelSelector != "" {
+			if source.ExtraFieldSelector == "" && source.ExtraNamespaceLabelSelector != "" && source.ExtraLabelSelector != "" && source.Options == nil {
 				routes[source.Name] = generateVrlFilter(source.ExtraLabelSelector, PodSelectorType) + "&&" + generateVrlFilter(source.ExtraNamespaceLabelSelector, NamespaceSelectorType)
 				continue
 			}

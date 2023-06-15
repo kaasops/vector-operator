@@ -1,4 +1,7 @@
-### v0.0.25
+## v0.0.26
+- [[116]](https://github.com/kaasops/vector-operator/pull/116) **Fix** don not merge source if custom options exists
+
+## v0.0.25
 - [[112]](https://github.com/kaasops/vector-operator/pull/112) **Feature** change merge k8s sources logic to routes
 
 ### v0.0.24

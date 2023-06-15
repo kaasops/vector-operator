@@ -1,3 +1,6 @@
+## v0.0.27
+- **HotFix** fix prom exporter port
+
 ## v0.0.26
 - [[116]](https://github.com/kaasops/vector-operator/pull/116) **Fix** don not merge source if custom options exists
 

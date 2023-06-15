@@ -210,7 +210,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "prom-exporter",
-				ContainerPort: 9090,
+				ContainerPort: 9598,
 				Protocol:      "TCP",
 			},
 		},

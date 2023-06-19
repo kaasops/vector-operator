@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   mergeKubernetesSources: {{ .Values.vector.mergeKubernetesSources}}
+  mergeSinks: {{ .Values.vector.mergeSinks}}
 {{- with .Values.vector.agent }}
   agent:
 {{ toYaml . | indent 4 }}

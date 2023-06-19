@@ -49,14 +49,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 					Args:            []string{"validate", "/etc/vector/*.json"},
 					Env:             cc.generateVectorConfigCheckEnvs(),
 					SecurityContext: cc.ContainerSecurityContext,
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          "prom-exporter",
-							ContainerPort: 9090,
-							Protocol:      "TCP",
-						},
-					},
-					VolumeMounts: cc.generateVectorConfigCheckVolumeMounts(),
+					VolumeMounts:    cc.generateVectorConfigCheckVolumeMounts(),
 				},
 			},
 			RestartPolicy: "Never",

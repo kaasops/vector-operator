@@ -4144,6 +4144,9 @@ spec:
                 description: Merge kubernetes sources and move selectors processing
                   to transforms.
                 type: boolean
+              mergeSinks:
+                description: Merge kubernetes sink with equal options.
+                type: boolean
             type: object
           status:
             description: VectorStatus defines the observed state of Vector

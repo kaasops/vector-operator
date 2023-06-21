@@ -1,3 +1,6 @@
+## v0.0.28
+- [[118]](https://github.com/kaasops/vector-operator/pull/118) **Feature** Merge sinks with equal options
+
 ## v0.0.27
 - **HotFix** fix prom exporter port
 

@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
+	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
@@ -127,6 +129,12 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 
 	if b.vaCtrl.Vector.Spec.MergeKubernetesSources {
 		if err := b.mergeKubernetesSources(vectorConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	if b.vaCtrl.Vector.Spec.MergeSinks {
+		if err := b.mergeSyncs(vectorConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -269,6 +277,11 @@ func getSinks(pipeline pipeline.Pipeline) ([]*Sink, error) {
 		for i, inputName := range sink.Inputs {
 			sink.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 		}
+		optbyte, err := json.Marshal(sink.Options)
+		if err != nil {
+			return nil, err
+		}
+		sink.OptionsHash = fmt.Sprint(hash.Get(optbyte))
 		sinks = append(sinks, sink)
 	}
 	return sinks, nil
@@ -370,6 +383,31 @@ func (b *Builder) mergeKubernetesSources(config *VectorConfig) error {
 		config.Transforms = append(config.Transforms, transform)
 	}
 
+	return nil
+}
+
+func (b *Builder) mergeSyncs(config *VectorConfig) error {
+	uniqOpts := make(map[string]*Sink)
+	var mergedSinks []*Sink
+
+	for _, sink := range config.Sinks {
+		v, ok := uniqOpts[sink.OptionsHash]
+		if ok {
+			if sink.Type == v.Type {
+				// If sink spec already exists rename and merge inputs
+				v.Name = v.OptionsHash
+				v.Inputs = append(v.Inputs, sink.Inputs...)
+				sort.Strings(v.Inputs)
+				continue
+			}
+		}
+		uniqOpts[sink.OptionsHash] = sink
+		mergedSinks = append(mergedSinks, sink)
+	}
+
+	if len(mergedSinks) > 0 {
+		config.Sinks = mergedSinks
+	}
 	return nil
 }
 

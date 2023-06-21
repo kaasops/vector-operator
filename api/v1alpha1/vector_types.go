@@ -34,6 +34,9 @@ type VectorSpec struct {
 	// Merge kubernetes sources and move selectors processing to transforms.
 	// +optional
 	MergeKubernetesSources bool `json:"mergeKubernetesSources,omitempty"`
+	// Merge kubernetes sink with equal options.
+	// +optional
+	MergeSinks bool `json:"mergeSinks,omitempty"`
 
 	// Vector Aggregator
 	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`

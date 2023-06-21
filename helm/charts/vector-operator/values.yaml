@@ -73,6 +73,7 @@ vector:
   enable: false
   name: "vector"
   mergeKubernetesSources: false
+  mergeSinks: false
   # agent:
   #   image: timberio/vector:0.24.0-distroless-libc
   #   env:

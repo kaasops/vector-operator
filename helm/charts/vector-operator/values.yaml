@@ -21,6 +21,8 @@ strategy: {}
 
 imagePullSecrets: []
 
+nodeSelector: {}
+
 securityContext: {}
   # allowPrivilegeEscalation: false
   # runAsGroup: 1000

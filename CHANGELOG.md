@@ -1,3 +1,6 @@
+## v0.0.29
+- [[121]](https://github.com/kaasops/vector-operator/pull/121) **Feature** Add nodeSelector for operator deployment to helm chart
+
 ## v0.0.28
 - [[118]](https://github.com/kaasops/vector-operator/pull/118) **Feature** Merge sinks with equal options
 

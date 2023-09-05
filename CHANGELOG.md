@@ -1,3 +1,6 @@
+## v0.0.30
+- [[124]](https://github.com/kaasops/vector-operator/pull/124) **Fix** fix dockerfile to build arm64
+
 ## v0.0.29
 - [[121]](https://github.com/kaasops/vector-operator/pull/121) **Feature** Add nodeSelector for operator deployment to helm chart
 

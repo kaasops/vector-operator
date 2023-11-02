@@ -59,6 +59,7 @@ type VectorReconciler struct {
 	Clientset            *kubernetes.Clientset
 	PipelineCheckWG      *sync.WaitGroup
 	PipelineCheckTimeout time.Duration
+	ConfigCheckTimeout   time.Duration
 	DiscoveryClient      *discovery.DiscoveryClient
 }
 
@@ -87,7 +88,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			log.Error(err, "Failed to list vector instances")
 			return ctrl.Result{}, err
 		}
-		return reconcileVectors(ctx, r.Client, r.Clientset, false, vectors...)
+		return r.reconcileVectors(ctx, r.Client, r.Clientset, false, vectors...)
 	}
 
 	vectorCR, err := r.findVectorCustomResourceInstance(ctx, req)
@@ -100,7 +101,7 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	return createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR, false)
+	return r.createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR, false)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -154,7 +155,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	return vectorCR, nil
 }
 
-func reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
+func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
 	if len(vectors) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -163,14 +164,14 @@ func reconcileVectors(ctx context.Context, client client.Client, clientset *kube
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
-		if _, err := createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
+		if _, err := r.createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 	return ctrl.Result{}, nil
 }
 
-func createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
+func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", v.Name)
 	// Init Controller for Vector Agent
@@ -198,6 +199,7 @@ func createOrUpdateVector(ctx context.Context, client client.Client, clientset *
 			vaCtrl.Client,
 			vaCtrl.ClientSet,
 			vaCtrl.Vector,
+			r.ConfigCheckTimeout,
 		)
 		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 		reason, err := configCheck.Run(ctx)

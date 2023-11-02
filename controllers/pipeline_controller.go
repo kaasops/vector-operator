@@ -47,6 +47,7 @@ type PipelineReconciler struct {
 	Clientset                  *kubernetes.Clientset
 	PipelineCheckWG            *sync.WaitGroup
 	PipelineDeleteEventTimeout time.Duration
+	ConfigCheckTimeout         time.Duration
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectorpipelines;clustervectorpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -175,6 +176,7 @@ func (r *PipelineReconciler) runPipelineCheck(ctx context.Context, p pipeline.Pi
 		vaCtrl.Client,
 		vaCtrl.ClientSet,
 		vaCtrl.Vector,
+		r.ConfigCheckTimeout,
 	)
 	configCheck.Initiator = configcheck.ConfigCheckInitiatorPipieline
 	defer r.PipelineCheckWG.Done()

@@ -81,7 +81,7 @@ func main() {
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	flag.DurationVar(&PipelineCheckTimeout, "pipeline-check-timeout", 15*time.Second, "wait pipeline checks before force vector reconcile. Default: 15s")
 	flag.DurationVar(&PipelineDeleteEventTimeout, "pipeline-delete-timeout", 5*time.Second, "collect delete events timeout")
-	flag.DurationVar(&ConfigCheckTimeout, "configcheck-timeout", 300*time.Second, "collect delete events timeout")
+	flag.DurationVar(&ConfigCheckTimeout, "configcheck-timeout", 300*time.Second, "configcheck timeout")
 	opts := zap.Options{
 		Development: true,
 	}

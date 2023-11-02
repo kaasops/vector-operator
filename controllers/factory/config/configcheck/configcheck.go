@@ -37,8 +37,6 @@ import (
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-const waitConfigcheckResultTimeout = 300 * time.Second
-
 type ConfigCheck struct {
 	Config []byte
 
@@ -59,6 +57,7 @@ type ConfigCheck struct {
 	CompressedConfig         bool
 	ConfigReloaderImage      string
 	ConfigReloaderResources  corev1.ResourceRequirements
+	ConfigCheckTimeout       time.Duration
 }
 
 func New(
@@ -66,6 +65,7 @@ func New(
 	c client.Client,
 	cs *kubernetes.Clientset,
 	va *vectorv1alpha1.Vector,
+	timeout time.Duration,
 ) *ConfigCheck {
 	image := va.Spec.Agent.Image
 	if va.Spec.Agent.ConfigCheck.Image != nil {
@@ -100,6 +100,7 @@ func New(
 		CompressedConfig:         va.Spec.Agent.CompressConfigFile,
 		ConfigReloaderImage:      va.Spec.Agent.ConfigReloaderImage,
 		ConfigReloaderResources:  va.Spec.Agent.ConfigReloaderResources,
+		ConfigCheckTimeout:       timeout,
 	}
 }
 
@@ -230,7 +231,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 		case <-ctx.Done():
 			watcher.Stop()
 			return "", nil
-		case <-time.After(waitConfigcheckResultTimeout):
+		case <-time.After(cc.ConfigCheckTimeout):
 			watcher.Stop()
 			return "", ConfigcheckTimeoutError
 		}

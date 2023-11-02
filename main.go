@@ -70,6 +70,7 @@ func main() {
 	var pipelineCheckWG sync.WaitGroup
 	var PipelineCheckTimeout time.Duration
 	var PipelineDeleteEventTimeout time.Duration
+	var ConfigCheckTimeout time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -80,6 +81,7 @@ func main() {
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	flag.DurationVar(&PipelineCheckTimeout, "pipeline-check-timeout", 15*time.Second, "wait pipeline checks before force vector reconcile. Default: 15s")
 	flag.DurationVar(&PipelineDeleteEventTimeout, "pipeline-delete-timeout", 5*time.Second, "collect delete events timeout")
+	flag.DurationVar(&ConfigCheckTimeout, "configcheck-timeout", 300*time.Second, "collect delete events timeout")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -129,6 +131,7 @@ func main() {
 		Clientset:            clientset,
 		PipelineCheckWG:      &pipelineCheckWG,
 		PipelineCheckTimeout: PipelineCheckTimeout,
+		ConfigCheckTimeout:   ConfigCheckTimeout,
 		DiscoveryClient:      dc,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
@@ -140,6 +143,7 @@ func main() {
 		Clientset:                  clientset,
 		PipelineCheckWG:            &pipelineCheckWG,
 		PipelineDeleteEventTimeout: PipelineDeleteEventTimeout,
+		ConfigCheckTimeout:         ConfigCheckTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)

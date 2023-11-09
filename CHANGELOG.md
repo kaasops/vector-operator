@@ -1,3 +1,6 @@
+## v0.0.31
+- [[127]](https://github.com/kaasops/vector-operator/pull/127) **Fix** Add imagePullSecrets from Vector Agent to ConfigCheck
+
 ## v0.0.30
 - [[124]](https://github.com/kaasops/vector-operator/pull/124) **Fix** fix dockerfile to build arm64
 

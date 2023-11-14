@@ -20,6 +20,7 @@ import (
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func (ctrl *Controller) SetDefault() {
@@ -76,6 +77,43 @@ func (ctrl *Controller) SetDefault() {
 		}
 	}
 
+	if ctrl.Vector.Spec.Agent.ReadinessProbe == nil && ctrl.Vector.Spec.Agent.Api.Enabled && ctrl.Vector.Spec.Agent.Api.Healthcheck {
+		ctrl.Vector.Spec.Agent.ReadinessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/health",
+					Port: intstr.IntOrString{
+						Type:   intstr.Type(0),
+						IntVal: 8686,
+					},
+				},
+			},
+			PeriodSeconds:       20,
+			InitialDelaySeconds: 15,
+			TimeoutSeconds:      3,
+			SuccessThreshold:    0,
+			FailureThreshold:    0,
+		}
+	}
+	if ctrl.Vector.Spec.Agent.LivenessProbe == nil && ctrl.Vector.Spec.Agent.Api.Enabled && ctrl.Vector.Spec.Agent.Api.Healthcheck {
+		ctrl.Vector.Spec.Agent.LivenessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/health",
+					Port: intstr.IntOrString{
+						Type:   intstr.Type(0),
+						IntVal: 8686,
+					},
+				},
+			},
+			PeriodSeconds:       20,
+			InitialDelaySeconds: 15,
+			TimeoutSeconds:      3,
+			SuccessThreshold:    0,
+			FailureThreshold:    0,
+		}
+	}
+
 	if ctrl.Vector.Spec.Agent.VolumeMounts == nil {
 		ctrl.Vector.Spec.Agent.VolumeMounts = []corev1.VolumeMount{
 			{
@@ -107,4 +145,5 @@ func (ctrl *Controller) SetDefault() {
 			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
 		}
 	}
+
 }

@@ -117,6 +117,14 @@ type VectorAgent struct {
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 
+	// Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails.
+	// +optional
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+
+	// Periodic probe of container liveness. Container will be restarted if the probe fails.
+	// +optional
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+
 	// Pod volumes to mount into the container's filesystem.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
@@ -132,6 +140,10 @@ type VectorAgent struct {
 type ApiSpec struct {
 	Enabled    bool `json:"enabled,omitempty"`
 	Playground bool `json:"playground,omitempty"`
+	// Enable ReadinessProbe and LivenessProbe via api /health endpoint.
+	// If probe enabled via VectorAgent, this setting will be ignored for that probe.
+	// +optional
+	Healthcheck bool `json:"healthcheck,omitempty"`
 }
 
 // ConfigCheck is the Schema for control params for ConfigCheck pods

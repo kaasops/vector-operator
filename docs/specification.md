@@ -67,6 +67,14 @@
         <td>PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.</td>
     </tr>
     <tr>
+        <td>readinessProbe</td>
+        <td>Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. By default - not set</td>
+    </tr>
+    <tr>
+        <td>livenessProbe</td>
+        <td>Periodic probe of container liveness. Container will be restarted if the probe fails. By default - not set</td>
+    </tr>
+    <tr>
         <td>volumes</td>
         <td>List of volumes that can be mounted by containers belonging to the pod.</td>
     </tr>
@@ -91,7 +99,7 @@
 ## Api Spec
 <table>
 <tr>
-      <td rowspan="4"><a href="https://vector.dev/docs/reference/api/">api</a></td>
+      <td rowspan="5"><a href="https://vector.dev/docs/reference/api/">api</a></td>
     </tr>
     <tr>
         <td>address</td>
@@ -104,6 +112,10 @@
     <tr>
         <td>playground</td>
         <td>Whether the GraphQL Playground is enabled for the API. The Playground is accessible via the /playground endpoint of the address set using the bind parameter. By default - <code>false</code></td>
+    </tr>
+    <tr>
+        <td>healthcheck</td>
+        <td>Enable ReadinessProbe and LivenessProbe via API <code>/health</code> endpoint. If probes enabled via VectorAgent, this setting will be ignored for that probe. By default - <code>false</code></td>
     </tr>
 </table>
 

@@ -95,6 +95,7 @@ func createOrUpdateDeployment(ctx context.Context, obj runtime.Object, c client.
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -133,6 +134,7 @@ func createOrUpdateStatefulSet(ctx context.Context, obj runtime.Object, c client
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -171,6 +173,7 @@ func createOrUpdateDaemonSet(ctx context.Context, obj runtime.Object, c client.C
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -209,6 +212,7 @@ func createOrUpdateSecret(ctx context.Context, obj runtime.Object, c client.Clie
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -247,6 +251,7 @@ func createOrUpdateService(ctx context.Context, obj runtime.Object, c client.Cli
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -283,6 +288,7 @@ func createOrUpdateServiceAccount(ctx context.Context, obj runtime.Object, c cli
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -320,6 +326,7 @@ func createOrUpdateClusterRole(ctx context.Context, obj runtime.Object, c client
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -360,6 +367,7 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels
@@ -401,6 +409,7 @@ func createOrUpdatePodMonitor(ctx context.Context, obj runtime.Object, c client.
 		}
 
 		// Compare
+		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
 		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
 			// Update if not equal
 			existing.Labels = desired.Labels

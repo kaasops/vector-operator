@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'pre-v*'
 jobs:
   build-and-push-docker-image:
     name: Build and push Docker image

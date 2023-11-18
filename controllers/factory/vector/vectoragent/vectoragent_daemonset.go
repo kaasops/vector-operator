@@ -215,6 +215,8 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 			},
 		},
 		VolumeMounts:    ctrl.generateVectorAgentVolumeMounts(),
+		ReadinessProbe:  ctrl.Vector.Spec.Agent.ReadinessProbe,
+		LivenessProbe:   ctrl.Vector.Spec.Agent.LivenessProbe,
 		Resources:       ctrl.Vector.Spec.Agent.Resources,
 		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
 		ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,

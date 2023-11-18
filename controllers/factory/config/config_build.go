@@ -24,11 +24,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
-	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -79,20 +79,22 @@ var (
 )
 
 type Builder struct {
-	Name      string
-	vaCtrl    *vectoragent.Controller
+	Name string
+	// vaCtrl    *vectoragent.Controller
+	Vector    *v1alpha1.Vector
 	Pipelines []pipeline.Pipeline
 }
 
-func NewBuilder(vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline) *Builder {
+func NewBuilder(vector *v1alpha1.Vector, pipelines ...pipeline.Pipeline) *Builder {
 	return &Builder{
-		vaCtrl:    vaCtrl,
+		// vaCtrl:    vaCtrl,
+		Vector:    vector,
 		Pipelines: pipelines,
 	}
 }
 
-func (b *Builder) GetByteConfig() ([]byte, error) {
-	config, err := b.generateVectorConfig()
+func (b *Builder) GetByteConfig(pipelines ...pipeline.Pipeline) ([]byte, error) {
+	config, err := b.generateVectorConfig(pipelines)
 	if err != nil {
 		return nil, err
 	}
@@ -103,15 +105,37 @@ func (b *Builder) GetByteConfig() ([]byte, error) {
 	return data, nil
 }
 
-func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
-	vectorConfig := New(b.vaCtrl.Vector)
+func (b *Builder) GetByteConfigs() ([][]byte, error) {
+	data := [][]byte{}
 
-	sources, transforms, sinks, err := b.getComponents()
+	var vectorCount = 1
+	if b.Vector.Spec.Agent.InstanceCount != nil {
+		vectorCount = *b.Vector.Spec.Agent.InstanceCount
+	}
+
+	slicePipelines := b.slicePipelines(vectorCount)
+
+	for _, sp := range slicePipelines {
+		byteConfig, err := b.GetByteConfig(sp...)
+		if err != nil {
+			return nil, err
+		}
+
+		data = append(data, byteConfig)
+	}
+
+	return data, nil
+}
+
+func (b *Builder) generateVectorConfig(pipelines []pipeline.Pipeline) (*VectorConfig, error) {
+	vectorConfig := New(b.Vector)
+
+	sources, transforms, sinks, err := b.getComponents(pipelines)
 	if err != nil {
 		return nil, err
 	}
 
-	if b.vaCtrl.Vector.Spec.Agent.InternalMetrics && !isExporterSinkExists(sinks) {
+	if b.Vector.Spec.Agent.InternalMetrics && !isExporterSinkExists(sinks) {
 		sources = append(sources, internalMetricSource)
 		sinks = append(sinks, internalMetricsExporter)
 	}
@@ -127,13 +151,13 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	vectorConfig.Sources = sources
 	vectorConfig.Transforms = transforms
 
-	if b.vaCtrl.Vector.Spec.MergeKubernetesSources {
+	if b.Vector.Spec.MergeKubernetesSources {
 		if err := b.mergeKubernetesSources(vectorConfig); err != nil {
 			return nil, err
 		}
 	}
 
-	if b.vaCtrl.Vector.Spec.MergeSinks {
+	if b.Vector.Spec.MergeSinks {
 		if err := b.mergeSyncs(vectorConfig); err != nil {
 			return nil, err
 		}
@@ -142,8 +166,8 @@ func (b *Builder) generateVectorConfig() (*VectorConfig, error) {
 	return vectorConfig, nil
 }
 
-func (b *Builder) getComponents() (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
-	for _, pipeline := range b.Pipelines {
+func (b *Builder) getComponents(pipelines []pipeline.Pipeline) (sources []*Source, transforms []*Transform, sinks []*Sink, err error) {
+	for _, pipeline := range pipelines {
 		pipelineSources, err := getSources(pipeline, nil)
 		if err != nil {
 			return nil, nil, nil, err
@@ -409,6 +433,35 @@ func (b *Builder) mergeSyncs(config *VectorConfig) error {
 		config.Sinks = mergedSinks
 	}
 	return nil
+}
+
+func (b *Builder) slicePipelines(count int) [][]pipeline.Pipeline {
+	slicePipelines := [][]pipeline.Pipeline{}
+
+	if count == 1 {
+		slicePipelines = append(slicePipelines, b.Pipelines)
+		return slicePipelines
+	}
+
+	for i := 1; i <= count; i++ {
+		if i == 1 {
+			lastElem := len(b.Pipelines) / count
+			slicePipelines = append(slicePipelines, b.Pipelines[0:lastElem])
+			continue
+		}
+
+		if i == count {
+			firstElem := (len(b.Pipelines) / count) * (i - 1)
+			slicePipelines = append(slicePipelines, b.Pipelines[firstElem:])
+			continue
+		}
+
+		firstElem := (len(b.Pipelines) / count) * (i - 1)
+		lastElem := (len(b.Pipelines) / count) * (i)
+		slicePipelines = append(slicePipelines, b.Pipelines[firstElem:lastElem])
+	}
+
+	return slicePipelines
 }
 
 func generateVrlFilter(selector string, selectorType string) string {

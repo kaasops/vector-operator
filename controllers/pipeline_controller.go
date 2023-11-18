@@ -108,14 +108,10 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			continue
 		}
 
-		// Init Controller for Vector Agent
-		vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
-
-		vaCtrl.SetDefault()
 		// Get Vector Config file
-		configBuilder := config.NewBuilder(vaCtrl, pipelineCR)
+		configBuilder := config.NewBuilder(vector, pipelineCR)
 
-		byteConfig, err := configBuilder.GetByteConfig()
+		byteConfig, err := configBuilder.GetByteConfig(pipelineCR)
 		if err != nil {
 			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 				return ctrl.Result{}, err
@@ -126,7 +122,10 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 
-		vaCtrl.Config = byteConfig
+		// Init Controller for Vector Agent
+		vaCtrl := vectoragent.NewController(0, vector, r.Client, r.Clientset, byteConfig)
+		vaCtrl.SetDefault()
+
 		r.PipelineCheckWG.Add(1)
 		go r.runPipelineCheck(ctx, pipelineCR, vaCtrl)
 	}

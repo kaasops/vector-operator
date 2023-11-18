@@ -26,6 +26,9 @@ import (
 )
 
 type Controller struct {
+	// Vector Agent Controller can generate mant Vectors instalation.
+	Number int
+
 	client.Client
 	Vector *vectorv1alpha1.Vector
 
@@ -34,11 +37,13 @@ type Controller struct {
 	ClientSet *kubernetes.Clientset
 }
 
-func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) *Controller {
+func NewController(number int, v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset, config []byte) *Controller {
 	return &Controller{
+		Number:    number,
 		Client:    c,
 		Vector:    v,
 		ClientSet: cs,
+		Config:    config,
 	}
 }
 

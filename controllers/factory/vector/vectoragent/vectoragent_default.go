@@ -146,4 +146,9 @@ func (ctrl *Controller) SetDefault() {
 		}
 	}
 
+	if ctrl.Vector.Spec.Agent.InstanceCount == nil {
+		count := 1
+		ctrl.Vector.Spec.Agent.InstanceCount = &count
+	}
+
 }

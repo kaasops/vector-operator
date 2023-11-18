@@ -18,6 +18,7 @@ package vectoragent
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -152,7 +153,7 @@ func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 
 func (ctrl *Controller) objectMetaVectorAgent(labels map[string]string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name:            ctrl.Vector.Name + "-agent",
+		Name:            fmt.Sprintf("%s-%s-%d", ctrl.Vector.Name, "agent", ctrl.Number),
 		Namespace:       ctrl.Vector.Namespace,
 		Labels:          labels,
 		OwnerReferences: ctrl.getControllerReference(),

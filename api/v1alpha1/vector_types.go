@@ -134,6 +134,9 @@ type VectorAgent struct {
 	CompressConfigFile      bool                    `json:"compressConfigFile,omitempty"`
 	ConfigReloaderImage     string                  `json:"configReloaderImage,omitempty"`
 	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
+
+	// Number of Vector Agent installations, between which a shared configuration file will be sliced."
+	InstanceCount *int `json:"instanceCount,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/

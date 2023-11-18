@@ -4,10 +4,12 @@ metadata:
   name: vector-sample
   namespace: vector
 spec:
-  mergeKubernetesSources: true
+  # mergeKubernetesSources: true
   agent:
     image: "timberio/vector:0.28.1-debian"
     internalMetrics: false
     api:
       enabled: false
     compressConfigFile: false
+    instanceCount: 2
+

@@ -1,0 +1,17 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: vectorpipeline-sample2
+  namespace: vector
+spec:
+  sources:
+    test1:
+      type: "kubernetes_logs"
+      extra_label_selector: "app!=testdeployment2"
+  sinks:
+    test2:
+      type: "console"
+      encoding:
+        codec: "json"
+      inputs:
+        - test1

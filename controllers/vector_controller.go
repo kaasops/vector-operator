@@ -18,14 +18,11 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
 	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
 	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
 	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
 
@@ -77,12 +74,15 @@ type VectorReconciler struct {
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	log.Info("Waiting pipeline checks")
+
+	// Wait if PipelineCheck works right now
 	if waitPipelineChecks(r.PipelineCheckWG, r.PipelineCheckTimeout) {
 		log.Info("Timeout waiting pipeline checks, continue reconcile vector")
 	}
+
 	log.Info("Start Reconcile Vector")
 	if req.Namespace == "" {
+		// TODO: Why we reconcile another vectors?
 		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to list vector instances")
@@ -172,70 +172,28 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 }
 
 func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-	log := log.FromContext(ctx).WithValues("Vector", v.Name)
-	// Init Controller for Vector Agent
-	vaCtrl := vectoragent.NewController(v, client, clientset)
-
-	vaCtrl.SetDefault()
-
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client)
+	pipelines, err := pipeline.GetValidPipelines(ctx, client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	configBuilder := config.NewBuilder(vaCtrl, pipelines...)
+	configBuilder := config.NewBuilder(v, pipelines...)
 
 	// Get Config in Json ([]byte)
-	byteConfig, err := configBuilder.GetByteConfig()
+	byteConfigs, err := configBuilder.GetByteConfigs()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cfgHash := hash.Get(byteConfig)
 
-	if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
-		configCheck := configcheck.New(
-			byteConfig,
-			vaCtrl.Client,
-			vaCtrl.ClientSet,
-			vaCtrl.Vector,
-			r.ConfigCheckTimeout,
-		)
-		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
-		reason, err := configCheck.Run(ctx)
-		if err != nil {
-			if errors.Is(err, configcheck.ValidationError) {
-				if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
-					return ctrl.Result{}, err
-				}
-				log.Error(err, "Invalid config")
-				return ctrl.Result{}, nil
-			}
+	for i, byteConfig := range byteConfigs {
+		// Init Controller for Vector Agent
+		vaCtrl := vectoragent.NewController(i, v, client, clientset, byteConfig)
+		vaCtrl.SetDefault()
+
+		// Start Reconcile Vector Agent
+		if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
-
-	}
-	vaCtrl.Config = byteConfig
-
-	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(ctx, configOnly); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
-		//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, err
-	}
-
-	if err := vaCtrl.SetSucceesStatus(ctx); err != nil {
-		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil

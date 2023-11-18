@@ -2272,6 +2272,10 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     type: array
+                  instanceCount:
+                    description: Number of Vector Agent installations, between which
+                      a shared configuration file will be sliced."
+                    type: integer
                   internalMetrics:
                     description: Enable internal metrics exporter
                     type: boolean

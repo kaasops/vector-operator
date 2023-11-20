@@ -1,3 +1,6 @@
+## v0.0.32
+- [[128]](https://github.com/kaasops/vector-operator/pull/128) **Feature** Add probes attribute to vector-agent
+
 ## v0.0.31
 - [[127]](https://github.com/kaasops/vector-operator/pull/127) **Fix** Add imagePullSecrets from Vector Agent to ConfigCheck
 

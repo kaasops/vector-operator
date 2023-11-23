@@ -105,6 +105,7 @@ type VectorAgent struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 	// Env that will be added to Vector pod
 	Env []v1.EnvVar `json:"env,omitempty"`
+	EnvFrom []v1.EnvFromSource `json:"envFrom,omitempty"`
 
 	DataDir string  `json:"dataDir,omitempty"`
 	Api     ApiSpec `json:"api,omitempty"`

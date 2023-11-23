@@ -94,6 +94,10 @@
         <td>env</td>
         <td>Env that will be added to Vector pod. By default - not set</td>
     </tr>
+    <tr>
+        <td>envFrom</td>
+        <tf>envFrom that will be added to Vector pod. By default - not set</td>
+    </tr>
 </table>
 
 ## Api Spec

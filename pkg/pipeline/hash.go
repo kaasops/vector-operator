@@ -19,7 +19,7 @@ package pipeline
 import (
 	"encoding/json"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
+	"github.com/kaasops/vector-operator/pkg/utils/hash"
 )
 
 func GetSpecHash(pipeline Pipeline) (*uint32, error) {

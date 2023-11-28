@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/hash"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
-	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	"github.com/kaasops/vector-operator/pkg/config"
+	"github.com/kaasops/vector-operator/pkg/config/configcheck"
+	"github.com/kaasops/vector-operator/pkg/pipeline"
+	"github.com/kaasops/vector-operator/pkg/utils/hash"
+	"github.com/kaasops/vector-operator/pkg/utils/k8s"
+	"github.com/kaasops/vector-operator/pkg/vector/vectoragent"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -184,10 +184,9 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	configBuilder := config.NewBuilder(vaCtrl, pipelines...)
 
 	// Get Config in Json ([]byte)
-	byteConfig, err := configBuilder.GetByteConfig()
+	byteConfig, err := config.BuildByteConfig(vaCtrl, pipelines...)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

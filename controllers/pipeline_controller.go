@@ -33,10 +33,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/config"
-	"github.com/kaasops/vector-operator/controllers/factory/config/configcheck"
-	"github.com/kaasops/vector-operator/controllers/factory/pipeline"
-	"github.com/kaasops/vector-operator/controllers/factory/vector/vectoragent"
+	"github.com/kaasops/vector-operator/pkg/config"
+	"github.com/kaasops/vector-operator/pkg/config/configcheck"
+	"github.com/kaasops/vector-operator/pkg/pipeline"
+	"github.com/kaasops/vector-operator/pkg/vector/vectoragent"
 )
 
 type PipelineReconciler struct {
@@ -110,12 +110,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		// Init Controller for Vector Agent
 		vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
-
 		vaCtrl.SetDefault()
 		// Get Vector Config file
-		configBuilder := config.NewBuilder(vaCtrl, pipelineCR)
-
-		byteConfig, err := configBuilder.GetByteConfig()
+		byteConfig, _ := config.BuildByteConfig(vaCtrl, pipelineCR)
 		if err != nil {
 			if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 				return ctrl.Result{}, err

@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
+	"github.com/kaasops/vector-operator/pkg/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -13,18 +13,6 @@ var (
 
 func (vp *ClusterVectorPipeline) GetSpec() VectorPipelineSpec {
 	return vp.Spec
-}
-
-func (vp *ClusterVectorPipeline) GetName() string {
-	return vp.Name
-}
-
-func (vp *ClusterVectorPipeline) GetNamespace() string {
-	return vp.Namespace
-}
-
-func (vp *ClusterVectorPipeline) Type() string {
-	return vp.Kind
 }
 
 func (vp *ClusterVectorPipeline) IsValid() bool {

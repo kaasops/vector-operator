@@ -30,14 +30,8 @@ type VectorSpec struct {
 	// DisableAggregation bool `json:"disableAggregation,omitempty"`
 	// Vector Agent
 	Agent *VectorAgent `json:"agent,omitempty"`
-
-	// Merge kubernetes sources and move selectors processing to transforms.
-	// +optional
-	MergeKubernetesSources bool `json:"mergeKubernetesSources,omitempty"`
-	// Merge kubernetes sink with equal options.
-	// +optional
-	MergeSinks bool `json:"mergeSinks,omitempty"`
-
+	// Determines if requests to the kube-apiserver can be served by a cache.
+	UseApiServerCache bool `json:"use_apiserver_cache,omitempty"`
 	// Vector Aggregator
 	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`
 }

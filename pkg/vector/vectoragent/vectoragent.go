@@ -20,7 +20,7 @@ import (
 	"context"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
+	"github.com/kaasops/vector-operator/pkg/utils/k8s"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

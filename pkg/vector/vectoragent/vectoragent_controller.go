@@ -19,7 +19,7 @@ package vectoragent
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
+	"github.com/kaasops/vector-operator/pkg/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"

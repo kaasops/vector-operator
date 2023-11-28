@@ -19,7 +19,7 @@ package vectoragent
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/controllers/factory/utils/compression"
+	"github.com/kaasops/vector-operator/pkg/utils/compression"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )

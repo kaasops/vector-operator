@@ -33,7 +33,7 @@ var (
 			DefaultSourceName: defaultSource,
 		},
 		Sinks: map[string]*Sink{
-			DefaultSourceName: defaultSink,
+			DefaultSinkName: defaultSink,
 		},
 	}
 

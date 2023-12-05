@@ -4443,7 +4443,7 @@ spec:
                       type: object
                     type: array
                 type: object
-              use_apiserver_cache:
+              useApiServerCache:
                 description: Determines if requests to the kube-apiserver can be served
                   by a cache.
                 type: boolean

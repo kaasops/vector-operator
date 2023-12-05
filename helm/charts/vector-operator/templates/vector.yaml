@@ -5,8 +5,7 @@ metadata:
   name: {{ .Values.vector.name }}
   namespace: {{ .Release.Namespace }}
 spec:
-  mergeKubernetesSources: {{ .Values.vector.mergeKubernetesSources}}
-  mergeSinks: {{ .Values.vector.mergeSinks}}
+  useApiServerCache: {{ .Values.vector.useApiServerCache }}
 {{- with .Values.vector.agent }}
   agent:
 {{ toYaml . | indent 4 }}

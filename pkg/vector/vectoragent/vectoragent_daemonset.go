@@ -204,7 +204,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 	return &corev1.Container{
 		Name:  ctrl.getNameVectorAgent(),
 		Image: ctrl.Vector.Spec.Agent.Image,
-		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
+		Args:  []string{"--config-dir", "/etc/vector", "--watch-config", "--require-healthy", "false"},
 		// Command: []string{"/bin/sleep", "1000000000000000"},
 		Env: ctrl.generateVectorAgentEnvs(),
 		Ports: []corev1.ContainerPort{

@@ -4443,12 +4443,9 @@ spec:
                       type: object
                     type: array
                 type: object
-              mergeKubernetesSources:
-                description: Merge kubernetes sources and move selectors processing
-                  to transforms.
-                type: boolean
-              mergeSinks:
-                description: Merge kubernetes sink with equal options.
+              use_apiserver_cache:
+                description: Determines if requests to the kube-apiserver can be served
+                  by a cache.
                 type: boolean
             type: object
           status:

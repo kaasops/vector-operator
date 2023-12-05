@@ -1,3 +1,6 @@
+## v0.0.33
+- [[134]](https://github.com/kaasops/vector-operator/pull/134) **Feature** Add use_apiserver_cache option and config build refactoring
+
 ## v0.0.32
 - [[128]](https://github.com/kaasops/vector-operator/pull/128) **Feature** Add probes attribute to vector-agent
 

@@ -43,7 +43,7 @@ import (
 
 	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/controllers"
-	"github.com/kaasops/vector-operator/controllers/factory/utils/k8s"
+	"github.com/kaasops/vector-operator/pkg/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	//+kubebuilder:scaffold:imports
 )

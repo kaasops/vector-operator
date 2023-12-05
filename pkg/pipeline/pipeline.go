@@ -24,10 +24,8 @@ import (
 )
 
 type Pipeline interface {
+	client.Object
 	GetSpec() vectorv1alpha1.VectorPipelineSpec
-	GetName() string
-	GetNamespace() string
-	Type() string
 	SetConfigCheck(bool)
 	SetReason(*string)
 	GetLastAppliedPipeline() *uint32

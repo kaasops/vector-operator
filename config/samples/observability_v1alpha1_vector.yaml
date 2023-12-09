@@ -9,3 +9,4 @@ spec:
     internalMetrics: false
     api:
       enabled: true
+      healthcheck: true

@@ -23,21 +23,21 @@ import (
 	"fmt"
 	"io"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
-	ErrNotSupported = errors.New("Not Supported type for create or update kubernetes resource")
+	ErrNotSupported = errors.New("not Supported type for create or update kubernetes resource")
 )
 
 func NewNotSupportedError(obj client.Object) error {
@@ -45,381 +45,170 @@ func NewNotSupportedError(obj client.Object) error {
 }
 
 func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Client) error {
-	switch obj.(type) {
+	switch o := obj.(type) {
 	case *appsv1.Deployment:
-		return createOrUpdateDeployment(ctx, obj, c)
+		return createOrUpdateDeployment(ctx, o, c)
 	case *appsv1.StatefulSet:
-		return createOrUpdateStatefulSet(ctx, obj, c)
+		return createOrUpdateStatefulSet(ctx, o, c)
 	case *appsv1.DaemonSet:
-		return createOrUpdateDaemonSet(ctx, obj, c)
+		return createOrUpdateDaemonSet(ctx, o, c)
 	case *corev1.Secret:
-		return createOrUpdateSecret(ctx, obj, c)
+		return createOrUpdateSecret(ctx, o, c)
 	case *corev1.Service:
-		return createOrUpdateService(ctx, obj, c)
+		return createOrUpdateService(ctx, o, c)
 	case *corev1.ServiceAccount:
-		return createOrUpdateServiceAccount(ctx, obj, c)
+		return createOrUpdateServiceAccount(ctx, o, c)
 	case *rbacv1.ClusterRole:
-		return createOrUpdateClusterRole(ctx, obj, c)
+		return createOrUpdateClusterRole(ctx, o, c)
 	case *rbacv1.ClusterRoleBinding:
-		return createOrUpdateClusterRoleBinding(ctx, obj, c)
+		return createOrUpdateClusterRoleBinding(ctx, o, c)
 	case *monitorv1.PodMonitor:
-		return createOrUpdatePodMonitor(ctx, obj, c)
+		return createOrUpdatePodMonitor(ctx, o, c)
+	case *victoriametricsv1beta1.VMPodScrape:
+		return createOrUpdatePodSrape(ctx, o, c)
 	default:
-		return NewNotSupportedError(obj)
+		return NewNotSupportedError(o)
 	}
 }
 
-func createOrUpdateDeployment(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*appsv1.Deployment)
-
-	// Create Deployment
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &appsv1.Deployment{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Spec,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Spec,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateDeployment(ctx context.Context, desired *appsv1.Deployment, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update Deployment: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateStatefulSet(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*appsv1.StatefulSet)
-
-	// Create StatefulSet
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &appsv1.StatefulSet{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Spec,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Spec,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update StatefulSet: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateDaemonSet(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*appsv1.DaemonSet)
-
-	// Create DaemonSet
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &appsv1.DaemonSet{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Spec,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Spec,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateDaemonSet(ctx context.Context, desired *appsv1.DaemonSet, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update Daemonset: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateSecret(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*corev1.Secret)
-
-	// Create Secret
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &corev1.Secret{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Data,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Data,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Data = desired.Data
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateSecret(ctx context.Context, desired *corev1.Secret, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Data = desired.Data
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update Secret: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateService(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*corev1.Service)
-
-	// Create Service
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &corev1.Service{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Spec,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Spec,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateService(ctx context.Context, desired *corev1.Service, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update Deployment: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateServiceAccount(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*corev1.ServiceAccount)
-
-	// Create ServiceAccount
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &corev1.ServiceAccount{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateServiceAccount(ctx context.Context, desired *corev1.ServiceAccount, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update ServiceAccount: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateClusterRole(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*rbacv1.ClusterRole)
-
-	// Create ClusterRole
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &rbacv1.ClusterRole{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Rules,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Rules,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Rules = desired.Rules
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateClusterRole(ctx context.Context, desired *rbacv1.ClusterRole, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Rules = desired.Rules
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update ClusterRole: %w", err)
 	}
-	return err
+	return nil
 }
 
-func createOrUpdateClusterRoleBinding(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*rbacv1.ClusterRoleBinding)
-
-	// Create ClusterRoleBinding
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &rbacv1.ClusterRoleBinding{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// Init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.RoleRef,
-			desired.Subjects,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.RoleRef,
-			existing.Subjects,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.RoleRef = desired.RoleRef
-			existing.Subjects = desired.Subjects
-			return c.Update(ctx, existing)
-		}
+func createOrUpdateClusterRoleBinding(ctx context.Context, desired *rbacv1.ClusterRoleBinding, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.RoleRef = desired.RoleRef
+		existing.Subjects = desired.Subjects
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update ClusterRoleBinding: %w", err)
 	}
-	return err
+	return nil
 }
 
-//
-
-func createOrUpdatePodMonitor(ctx context.Context, obj runtime.Object, c client.Client) error {
-	desired := obj.(*monitorv1.PodMonitor)
-
-	// Create PodMonitor
-	err := c.Create(ctx, desired)
-	if api_errors.IsAlreadyExists(err) {
-		// If alredy exist - compare with existed
-		existing := &monitorv1.PodMonitor{}
-		err := c.Get(ctx, client.ObjectKeyFromObject(desired), existing)
-		if err != nil {
-			return err
-		}
-
-		// init Interface for compare
-		desiredFields := []interface{}{
-			desired.GetAnnotations(),
-			desired.GetLabels(),
-			desired.Spec,
-		}
-		existingFields := []interface{}{
-			existing.GetAnnotations(),
-			existing.GetLabels(),
-			existing.Spec,
-		}
-
-		// Compare
-		// FIXME: DeepDerivative does not compare fields, if they omitted in desiredFields
-		if !equality.Semantic.DeepDerivative(desiredFields, existingFields) {
-			// Update if not equal
-			existing.Labels = desired.Labels
-			existing.Annotations = desired.Annotations
-			existing.Spec = desired.Spec
-			return c.Update(ctx, existing)
-		}
+func createOrUpdatePodMonitor(ctx context.Context, desired *monitorv1.PodMonitor, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
 		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update PodMonitor: %w", err)
 	}
-	return err
+	return nil
+}
+
+func createOrUpdatePodSrape(ctx context.Context, desired *victoriametricsv1beta1.VMPodScrape, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = desired.Annotations
+		existing.Spec = desired.Spec
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update VMPodScrape: %w", err)
+	}
+	return nil
 }
 
 // Something else:

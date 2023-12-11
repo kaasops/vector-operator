@@ -36,7 +36,7 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 		"agent.json": data,
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
 		Data:       config,
 	}
 

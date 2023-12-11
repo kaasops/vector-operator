@@ -25,7 +25,7 @@ func (ctrl *Controller) createVectorAgentServiceAccount() *corev1.ServiceAccount
 	labels := ctrl.labelsForVectorAgent()
 
 	serviceAccount := &corev1.ServiceAccount{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
 	}
 
 	return serviceAccount
@@ -35,7 +35,7 @@ func (ctrl *Controller) createVectorAgentClusterRole() *rbacv1.ClusterRole {
 	labels := ctrl.labelsForVectorAgent()
 
 	clusterRole := &rbacv1.ClusterRole{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ""),
 		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{""},
@@ -52,7 +52,7 @@ func (ctrl *Controller) createVectorAgentClusterRoleBinding() *rbacv1.ClusterRol
 	labels := ctrl.labelsForVectorAgent()
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ""),
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			APIGroup: "rbac.authorization.k8s.io",

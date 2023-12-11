@@ -37,11 +37,11 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 	}
 
 	daemonset := &appsv1.DaemonSet{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: ctrl.objectMetaVectorAgent(labels),
+				ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
 				Spec: corev1.PodSpec{
 					ServiceAccountName: ctrl.getNameVectorAgent(),
 					Volumes:            ctrl.generateVectorAgentVolume(),

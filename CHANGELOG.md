@@ -1,3 +1,7 @@
+## v0.0.34
+- [[136]](https://github.com/kaasops/vector-operator/pull/136) **Fix** Validate labels
+- [[135]](https://github.com/kaasops/vector-operator/pull/135) **Refactor** Create or update funcs refactoring
+
 ## v0.0.33
 - [[134]](https://github.com/kaasops/vector-operator/pull/134) **Feature** Add use_apiserver_cache option and config build refactoring
 

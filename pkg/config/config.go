@@ -28,12 +28,14 @@ import (
 	"github.com/kaasops/vector-operator/pkg/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/labels"
 	goyaml "sigs.k8s.io/yaml"
 )
 
 var (
 	ErrNotAllowedSourceType   error = errors.New("type kubernetes_logs only allowed")
 	ErrClusterScopeNotAllowed error = errors.New("logs from external namespace not allowed")
+	ErrInvalidSelector        error = errors.New("invalid selector")
 )
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
@@ -87,6 +89,14 @@ func BuildConfig(vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline)
 			if _, ok := pipeline.(*vectorv1alpha1.VectorPipeline); ok {
 				if v.Type != KubernetesSourceType {
 					return nil, ErrNotAllowedSourceType
+				}
+				_, err := labels.Parse(v.ExtraLabelSelector)
+				if err != nil {
+					return nil, ErrInvalidSelector
+				}
+				_, err = labels.Parse(v.ExtraNamespaceLabelSelector)
+				if err != nil {
+					return nil, ErrInvalidSelector
 				}
 				if v.ExtraNamespaceLabelSelector == "" {
 					v.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())

@@ -35,7 +35,6 @@ import (
 var (
 	ErrNotAllowedSourceType   error = errors.New("type kubernetes_logs only allowed")
 	ErrClusterScopeNotAllowed error = errors.New("logs from external namespace not allowed")
-	ErrInvalidSelector        error = errors.New("invalid selector")
 )
 
 func New(vector *vectorv1alpha1.Vector) *VectorConfig {
@@ -92,11 +91,11 @@ func BuildConfig(vaCtrl *vectoragent.Controller, pipelines ...pipeline.Pipeline)
 				}
 				_, err := labels.Parse(v.ExtraLabelSelector)
 				if err != nil {
-					return nil, ErrInvalidSelector
+					return nil, fmt.Errorf("invalid pod selector for source %s: %w", k, err)
 				}
 				_, err = labels.Parse(v.ExtraNamespaceLabelSelector)
 				if err != nil {
-					return nil, ErrInvalidSelector
+					return nil, fmt.Errorf("invalid namespace selector for source %s: %w", k, err)
 				}
 				if v.ExtraNamespaceLabelSelector == "" {
 					v.ExtraNamespaceLabelSelector = k8s.NamespaceNameToLabel(pipeline.GetNamespace())

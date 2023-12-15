@@ -82,6 +82,7 @@ func createOrUpdateDeployment(ctx context.Context, desired *appsv1.Deployment, c
 	if err != nil {
 		return fmt.Errorf("failed to create or update Deployment: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -96,6 +97,7 @@ func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet,
 	if err != nil {
 		return fmt.Errorf("failed to create or update StatefulSet: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -110,6 +112,7 @@ func createOrUpdateDaemonSet(ctx context.Context, desired *appsv1.DaemonSet, c c
 	if err != nil {
 		return fmt.Errorf("failed to create or update Daemonset: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -124,6 +127,7 @@ func createOrUpdateSecret(ctx context.Context, desired *corev1.Secret, c client.
 	if err != nil {
 		return fmt.Errorf("failed to create or update Secret: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -138,6 +142,7 @@ func createOrUpdateService(ctx context.Context, desired *corev1.Service, c clien
 	if err != nil {
 		return fmt.Errorf("failed to create or update Deployment: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -151,6 +156,7 @@ func createOrUpdateServiceAccount(ctx context.Context, desired *corev1.ServiceAc
 	if err != nil {
 		return fmt.Errorf("failed to create or update ServiceAccount: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -165,6 +171,7 @@ func createOrUpdateClusterRole(ctx context.Context, desired *rbacv1.ClusterRole,
 	if err != nil {
 		return fmt.Errorf("failed to create or update ClusterRole: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -180,6 +187,7 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, desired *rbacv1.Clust
 	if err != nil {
 		return fmt.Errorf("failed to create or update ClusterRoleBinding: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -194,6 +202,7 @@ func createOrUpdatePodMonitor(ctx context.Context, desired *monitorv1.PodMonitor
 	if err != nil {
 		return fmt.Errorf("failed to create or update PodMonitor: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 
@@ -208,6 +217,7 @@ func createOrUpdatePodSrape(ctx context.Context, desired *victoriametricsv1beta1
 	if err != nil {
 		return fmt.Errorf("failed to create or update VMPodScrape: %w", err)
 	}
+	existing.DeepCopyInto(desired)
 	return nil
 }
 

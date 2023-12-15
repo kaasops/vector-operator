@@ -131,12 +131,6 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	vectorConfigCheckSecret, err = k8s.GetSecret(ctx, types.NamespacedName{Namespace: cc.Namespace, Name: vectorConfigCheckSecret.Name}, cc.Client)
-
-	if err != nil {
-		return "", err
-	}
-
 	// Set OwnerReference to pod
 	if err = controllerutil.SetOwnerReference(vectorConfigCheckSecret, vectorConfigCheckPod, cc.Client.Scheme()); err != nil {
 		return "", err

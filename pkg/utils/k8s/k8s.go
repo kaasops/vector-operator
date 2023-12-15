@@ -76,6 +76,7 @@ func createOrUpdateDeployment(ctx context.Context, desired *appsv1.Deployment, c
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})
@@ -91,6 +92,7 @@ func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet,
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})
@@ -106,6 +108,7 @@ func createOrUpdateDaemonSet(ctx context.Context, desired *appsv1.DaemonSet, c c
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})
@@ -121,6 +124,7 @@ func createOrUpdateSecret(ctx context.Context, desired *corev1.Secret, c client.
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Data = desired.Data
 		return nil
 	})
@@ -136,6 +140,7 @@ func createOrUpdateService(ctx context.Context, desired *corev1.Service, c clien
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})
@@ -151,6 +156,7 @@ func createOrUpdateServiceAccount(ctx context.Context, desired *corev1.ServiceAc
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		return nil
 	})
 	if err != nil {
@@ -180,6 +186,7 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, desired *rbacv1.Clust
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.RoleRef = desired.RoleRef
 		existing.Subjects = desired.Subjects
 		return nil
@@ -196,6 +203,7 @@ func createOrUpdatePodMonitor(ctx context.Context, desired *monitorv1.PodMonitor
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})
@@ -211,6 +219,7 @@ func createOrUpdatePodSrape(ctx context.Context, desired *victoriametricsv1beta1
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
 		existing.Annotations = desired.Annotations
+		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
 	})

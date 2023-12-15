@@ -47,7 +47,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 					Name:            "config-check",
 					Image:           cc.Image,
 					Resources:       cc.Resources,
-					Args:            []string{"validate", "/etc/vector/*.json"},
+					Args:            []string{"--require-healthy=false", "validate", "/etc/vector/*.json"},
 					Env:             cc.generateVectorConfigCheckEnvs(),
 					SecurityContext: cc.ContainerSecurityContext,
 					VolumeMounts:    cc.generateVectorConfigCheckVolumeMounts(),

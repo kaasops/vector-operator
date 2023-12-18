@@ -142,6 +142,7 @@ type ApiSpec struct {
 
 // ConfigCheck is the Schema for control params for ConfigCheck pods
 type ConfigCheck struct {
+	Disabled bool `json:"disabled,omitempty"`
 	// Image - docker image settings for Vector Agent
 	// if no specified operator uses default config version
 	// +optional

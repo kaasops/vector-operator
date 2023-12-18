@@ -10,3 +10,13 @@ spec:
     api:
       enabled: true
       healthcheck: true
+    configCheck:
+      disabled: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 800Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+

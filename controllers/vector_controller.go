@@ -192,28 +192,30 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 	cfgHash := hash.Get(byteConfig)
 
-	if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
-		configCheck := configcheck.New(
-			byteConfig,
-			vaCtrl.Client,
-			vaCtrl.ClientSet,
-			vaCtrl.Vector,
-			r.ConfigCheckTimeout,
-		)
-		configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
-		reason, err := configCheck.Run(ctx)
-		if err != nil {
-			if errors.Is(err, configcheck.ValidationError) {
-				if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
-					return ctrl.Result{}, err
+	if !vaCtrl.Vector.Spec.Agent.ConfigCheck.Disabled {
+		if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
+			configCheck := configcheck.New(
+				byteConfig,
+				vaCtrl.Client,
+				vaCtrl.ClientSet,
+				vaCtrl.Vector,
+				r.ConfigCheckTimeout,
+			)
+			configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
+			reason, err := configCheck.Run(ctx)
+			if err != nil {
+				if errors.Is(err, configcheck.ValidationError) {
+					if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
+						return ctrl.Result{}, err
+					}
+					log.Error(err, "Invalid config")
+					return ctrl.Result{}, nil
 				}
-				log.Error(err, "Invalid config")
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
 		}
-
 	}
+
 	vaCtrl.Config = byteConfig
 
 	// Start Reconcile Vector Agent

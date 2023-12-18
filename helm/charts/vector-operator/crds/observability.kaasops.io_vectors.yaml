@@ -1837,6 +1837,8 @@ spec:
                                 type: array
                             type: object
                         type: object
+                      disabled:
+                        type: boolean
                       image:
                         description: Image - docker image settings for Vector Agent
                           if no specified operator uses default config version

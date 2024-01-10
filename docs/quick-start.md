@@ -195,6 +195,12 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - podmonitors
+  verbs:
+  - '*'
 EOF
 
 # Create ClusterRoleBinding for Vector Operator

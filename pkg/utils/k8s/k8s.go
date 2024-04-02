@@ -75,7 +75,7 @@ func createOrUpdateDeployment(ctx context.Context, desired *appsv1.Deployment, c
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -91,7 +91,7 @@ func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet,
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -107,7 +107,7 @@ func createOrUpdateDaemonSet(ctx context.Context, desired *appsv1.DaemonSet, c c
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -123,7 +123,7 @@ func createOrUpdateSecret(ctx context.Context, desired *corev1.Secret, c client.
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Data = desired.Data
 		return nil
@@ -139,7 +139,7 @@ func createOrUpdateService(ctx context.Context, desired *corev1.Service, c clien
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -155,7 +155,7 @@ func createOrUpdateServiceAccount(ctx context.Context, desired *corev1.ServiceAc
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		return nil
 	})
@@ -170,7 +170,7 @@ func createOrUpdateClusterRole(ctx context.Context, desired *rbacv1.ClusterRole,
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.Rules = desired.Rules
 		return nil
 	})
@@ -185,7 +185,7 @@ func createOrUpdateClusterRoleBinding(ctx context.Context, desired *rbacv1.Clust
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.RoleRef = desired.RoleRef
 		existing.Subjects = desired.Subjects
@@ -202,7 +202,7 @@ func createOrUpdatePodMonitor(ctx context.Context, desired *monitorv1.PodMonitor
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -218,7 +218,7 @@ func createOrUpdatePodSrape(ctx context.Context, desired *victoriametricsv1beta1
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
 		existing.Labels = desired.Labels
-		existing.Annotations = desired.Annotations
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
 		return nil
@@ -338,4 +338,14 @@ func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind strin
 	}
 
 	return false, nil
+}
+
+func mergeMaps(new, old map[string]string) map[string]string {
+	if old == nil {
+		old = make(map[string]string, len(new))
+	}
+	for k, v := range new {
+		old[k] = v
+	}
+	return old
 }

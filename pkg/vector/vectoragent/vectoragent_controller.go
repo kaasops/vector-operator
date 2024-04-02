@@ -150,11 +150,16 @@ func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 	}
 }
 
-func (ctrl *Controller) objectMetaVectorAgent(labels map[string]string, namespace string) metav1.ObjectMeta {
+func (ctrl *Controller) annotationsForVectorAgent() map[string]string {
+	return ctrl.Vector.Spec.Agent.Annotations
+}
+
+func (ctrl *Controller) objectMetaVectorAgent(labels map[string]string, annotations map[string]string, namespace string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:            ctrl.Vector.Name + "-agent",
 		Namespace:       namespace,
 		Labels:          labels,
+		Annotations:     annotations,
 		OwnerReferences: ctrl.getControllerReference(),
 	}
 }

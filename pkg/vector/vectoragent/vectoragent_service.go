@@ -28,9 +28,10 @@ const (
 
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 	labels := ctrl.labelsForVectorAgent()
+	annotations := ctrl.annotationsForVectorAgent()
 
 	return &corev1.Service{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{

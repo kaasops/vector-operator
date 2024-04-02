@@ -56,6 +56,9 @@ type VectorAgent struct {
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// ImagePullPolicy of pods
 	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	// Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not specified - default setting will be used
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
@@ -99,32 +102,30 @@ type VectorAgent struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 	// Env that will be added to Vector pod
 	Env []v1.EnvVar `json:"env,omitempty"`
-
-	DataDir string  `json:"dataDir,omitempty"`
-	Api     ApiSpec `json:"api,omitempty"`
-
+	// The directory used for persisting Vector state, such as on-disk buffers, file checkpoints, and more. Please make sure the Vector project has write permissions to this directory.
+	// https://vector.dev/docs/reference/configuration/global-options/#data_dir
+	DataDir string `json:"dataDir,omitempty"`
+	// Vector API params. Allows to interact with a running Vector instance.
+	// https://vector.dev/docs/reference/api/
+	Api ApiSpec `json:"api,omitempty"`
 	// Enable internal metrics exporter
 	// +optional
 	InternalMetrics bool `json:"internalMetrics,omitempty"`
-
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
-
 	// Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails.
 	// +optional
 	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
-
 	// Periodic probe of container liveness. Container will be restarted if the probe fails.
 	// +optional
 	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
-
 	// Pod volumes to mount into the container's filesystem.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-
+	// Control params for ConfigCheck pods
 	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
-	// Compress config file
+	// Compress config file to fix: metadata.annotations: Too long: must have at most 262144 characters
 	CompressConfigFile      bool                    `json:"compressConfigFile,omitempty"`
 	ConfigReloaderImage     string                  `json:"configReloaderImage,omitempty"`
 	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
@@ -158,11 +159,9 @@ type ConfigCheck struct {
 	// Tolerations If specified, the pod's tolerations.
 	// +optional
 	Tolerations *[]v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
+	// Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata.
 	// +optional
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // VectorAggregator is the Schema for the Vector Aggregator

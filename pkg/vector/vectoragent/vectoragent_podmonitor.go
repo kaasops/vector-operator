@@ -8,9 +8,10 @@ import (
 
 func (ctrl *Controller) createVectorAgentPodMonitor() *monitorv1.PodMonitor {
 	labels := ctrl.labelsForVectorAgent()
+	annotations := ctrl.annotationsForVectorAgent()
 
 	podmonitor := &monitorv1.PodMonitor{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
 		Spec: monitorv1.PodMonitorSpec{
 			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{
 				{

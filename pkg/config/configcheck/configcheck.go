@@ -59,6 +59,7 @@ type ConfigCheck struct {
 	ConfigReloaderImage      string
 	ConfigReloaderResources  corev1.ResourceRequirements
 	ConfigCheckTimeout       time.Duration
+	Annotations              map[string]string
 }
 
 func New(
@@ -103,6 +104,7 @@ func New(
 		ConfigReloaderImage:      va.Spec.Agent.ConfigReloaderImage,
 		ConfigReloaderResources:  va.Spec.Agent.ConfigReloaderResources,
 		ConfigCheckTimeout:       timeout,
+		Annotations:              va.Spec.Agent.ConfigCheck.Annotations,
 	}
 }
 
@@ -168,6 +170,10 @@ func labelsForVectorConfigCheck() map[string]string {
 		k8s.NameLabelKey:      "vector-configcheck",
 		k8s.ComponentLabelKey: "ConfigCheck",
 	}
+}
+
+func (cc *ConfigCheck) annotationsForVectorConfigCheck() map[string]string {
+	return cc.Annotations
 }
 
 func (cc *ConfigCheck) getNameVectorConfigCheck() string {

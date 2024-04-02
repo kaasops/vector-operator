@@ -23,6 +23,7 @@ import (
 
 func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 	labels := labelsForVectorConfigCheck()
+	annotations := cc.annotationsForVectorConfigCheck()
 	var initContainers []corev1.Container
 
 	if cc.CompressedConfig {
@@ -31,9 +32,10 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cc.getNameVectorConfigCheck(),
-			Namespace: cc.Namespace,
-			Labels:    labels,
+			Name:        cc.getNameVectorConfigCheck(),
+			Namespace:   cc.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: "vector-configcheck",

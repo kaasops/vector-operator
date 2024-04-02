@@ -27,6 +27,7 @@ import (
 func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 	labels := ctrl.labelsForVectorAgent()
+	annotations := ctrl.annotationsForVectorAgent()
 	var data []byte = ctrl.Config
 
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
@@ -36,7 +37,7 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 		"agent.json": data,
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels, ctrl.Vector.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
 		Data:       config,
 	}
 

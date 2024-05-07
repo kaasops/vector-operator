@@ -914,9 +914,16 @@ spec:
                             type: array
                         type: object
                     type: object
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations is an unstructured key value map stored
+                      with a resource that may be set by external tools to store and
+                      retrieve arbitrary metadata.
+                    type: object
                   api:
-                    description: ApiSpec is the Schema for the Vector Agent GraphQL
-                      API - https://vector.dev/docs/reference/api/
+                    description: Vector API params. Allows to interact with a running
+                      Vector instance. https://vector.dev/docs/reference/api/
                     properties:
                       enabled:
                         type: boolean
@@ -929,11 +936,11 @@ spec:
                         type: boolean
                     type: object
                   compressConfigFile:
-                    description: Compress config file
+                    description: 'Compress config file to fix: metadata.annotations:
+                      Too long: must have at most 262144 characters'
                     type: boolean
                   configCheck:
-                    description: ConfigCheck is the Schema for control params for
-                      ConfigCheck pods
+                    description: Control params for ConfigCheck pods
                     properties:
                       affinity:
                         description: Affinity If specified, the pod's scheduling constraints.
@@ -1837,6 +1844,13 @@ spec:
                                 type: array
                             type: object
                         type: object
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map
+                          stored with a resource that may be set by external tools
+                          to store and retrieve arbitrary metadata.
+                        type: object
                       disabled:
                         type: boolean
                       image:
@@ -2116,6 +2130,10 @@ spec:
                         type: object
                     type: object
                   dataDir:
+                    description: The directory used for persisting Vector state, such
+                      as on-disk buffers, file checkpoints, and more. Please make
+                      sure the Vector project has write permissions to this directory.
+                      https://vector.dev/docs/reference/configuration/global-options/#data_dir
                     type: string
                   env:
                     description: Env that will be added to Vector pod

@@ -1,3 +1,6 @@
+## v0.0.40
+- [[138]](https://github.com/kaasops/vector-operator/issues/138), [[142]](https://github.com/kaasops/vector-operator/issues/142) **Feature** Add control for Vector DaemonSet annotation
+
 ## v0.0.33
 - [[134]](https://github.com/kaasops/vector-operator/pull/134) **Feature** Add use_apiserver_cache option and config build refactoring
 

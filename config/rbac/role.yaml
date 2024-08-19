@@ -2,36 +2,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role
 rules:
 - apiGroups:
   - ""
   resources:
   - sercrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - services
   verbs:
   - create
@@ -58,6 +35,7 @@ rules:
   resources:
   - clustervectorpipelines
   - vectorpipelines
+  - vectors
   verbs:
   - create
   - delete
@@ -71,6 +49,7 @@ rules:
   resources:
   - clustervectorpipelines/finalizers
   - vectorpipelines/finalizers
+  - vectors/finalizers
   verbs:
   - update
 - apiGroups:
@@ -78,31 +57,6 @@ rules:
   resources:
   - clustervectorpipelines/status
   - vectorpipelines/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - observability.kaasops.io
-  resources:
-  - vectors
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - observability.kaasops.io
-  resources:
-  - vectors/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - observability.kaasops.io
-  resources:
   - vectors/status
   verbs:
   - get
@@ -112,17 +66,6 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - clusterroles
   verbs:
   - create

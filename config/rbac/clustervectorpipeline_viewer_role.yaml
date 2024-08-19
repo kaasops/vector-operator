@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: vector-operator-migration
+    app.kubernetes.io/name: vector-operator
     app.kubernetes.io/managed-by: kustomize
   name: clustervectorpipeline-viewer-role
 rules:

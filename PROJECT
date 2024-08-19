@@ -5,7 +5,7 @@
 domain: kaasops.io
 layout:
 - go.kubebuilder.io/v4
-projectName: vector-operator-migration
+projectName: vector-operator
 repo: github.com/kaasops/vector-operator
 resources:
 - api:

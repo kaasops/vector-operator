@@ -23,7 +23,7 @@ import (
 	// . "github.com/onsi/ginkgo/v2"
 	// . "github.com/onsi/gomega"
 
-	"github.com/kaasops/vector-operator/pkg/utils/k8s"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +44,7 @@ type objCase struct {
 	want    error
 }
 
-var nameRequeriedError = api_errors.NewInvalid(
+var nameRequiredError = api_errors.NewInvalid(
 	schema.GroupKind{},
 	"",
 	field.ErrorList{
@@ -125,7 +125,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -189,7 +189,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -253,7 +253,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.DaemonSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -317,7 +317,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -381,7 +381,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -445,7 +445,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -512,7 +512,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -579,7 +579,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequeriedError,
+			want: nameRequiredError,
 		},
 		{
 			name: "Update exist case",
@@ -987,7 +987,7 @@ func TestUpdateStatus(t *testing.T) {
 			updateObj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequeriedError,
+			err: nameRequiredError,
 		},
 		{
 			name: "Update status case",

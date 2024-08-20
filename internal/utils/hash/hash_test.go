@@ -19,7 +19,7 @@ package hash_test
 import (
 	"testing"
 
-	"github.com/kaasops/vector-operator/pkg/utils/hash"
+	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/stretchr/testify/require"
 )
 

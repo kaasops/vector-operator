@@ -75,7 +75,6 @@ type VectorReconciler struct {
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;list;watch;create;update;patch;delete
 
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
 	log.Info("Waiting pipeline checks")
 	if waitPipelineChecks(r.PipelineCheckWG, r.PipelineCheckTimeout) {
@@ -172,7 +171,6 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 }
 
 func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
 	log := log.FromContext(ctx).WithValues("Vector", v.Name)
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
@@ -231,7 +229,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetSucceesStatus(ctx); err != nil {
+	if err := vaCtrl.SetSuccessStatus(ctx); err != nil {
 		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
 		if api_errors.IsConflict(err) {
 			return ctrl.Result{}, err

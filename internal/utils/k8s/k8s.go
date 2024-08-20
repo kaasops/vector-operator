@@ -145,7 +145,7 @@ func createOrUpdateService(ctx context.Context, desired *corev1.Service, c clien
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update Deployment: %w", err)
+		return fmt.Errorf("failed to create or update Service: %w", err)
 	}
 	existing.DeepCopyInto(desired)
 	return nil

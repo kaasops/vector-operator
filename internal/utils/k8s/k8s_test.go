@@ -18,6 +18,7 @@ package k8s_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	// . "github.com/onsi/ginkgo/v2"
@@ -65,15 +66,22 @@ func getInitObjectMeta() metav1.ObjectMeta {
 }
 
 func TestCreateOrUpdateResource(t *testing.T) {
-	createOrUpdateResourceCase := func(initObj, obj client.Object, want error) func(t *testing.T) {
+	createOrUpdateResourceCase := func(initObj, obj client.Object, expected error) func(t *testing.T) {
 		return func(t *testing.T) {
 			t.Helper()
 			t.Parallel()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(initObj).Build()
-			result := k8s.CreateOrUpdateResource(context.Background(), obj, cl)
-			req.Equal(result, want)
+			actualErr := k8s.CreateOrUpdateResource(context.Background(), obj, cl)
+			switch {
+			case expected == nil && actualErr != nil:
+				t.Errorf("unexpected error: '%v'", actualErr)
+			case expected != nil && actualErr == nil:
+				t.Errorf("expected error: '%v', but actual nil", actualErr)
+			case expected != nil && actualErr != nil:
+				req.EqualError(actualErr, expected.Error())
+			}
 		}
 	}
 
@@ -95,7 +103,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -125,7 +133,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update Deployment: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -159,7 +167,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &appsv1.StatefulSet{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -189,7 +197,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update StatefulSet: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -223,7 +231,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &appsv1.DaemonSet{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -253,7 +261,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.DaemonSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update Daemonset: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -287,7 +295,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &corev1.Secret{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -317,7 +325,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update Secret: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -351,7 +359,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &corev1.Service{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -381,7 +389,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update Service: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -415,7 +423,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &corev1.ServiceAccount{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -445,7 +453,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update ServiceAccount: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -482,7 +490,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &rbacv1.ClusterRole{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -512,7 +520,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update ClusterRole: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -549,7 +557,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Create Alredy exist case",
+			name: "Create Already exist case",
 			initObj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: getInitObjectMeta(),
 			},
@@ -579,7 +587,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: nameRequiredError,
+			want: fmt.Errorf("failed to create or update ClusterRoleBinding: %w", nameRequiredError),
 		},
 		{
 			name: "Update exist case",
@@ -601,7 +609,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 	cases = append(cases, clusterRoleBindingCases...)
 
 	// Not supported type case
-	notSuppurtedcase := []objCase{
+	notSupportedCase := []objCase{
 		{
 			name: "Update exist case",
 			initObj: &rbacv1.RoleBinding{
@@ -628,7 +636,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			),
 		},
 	}
-	cases = append(cases, notSuppurtedcase...)
+	cases = append(cases, notSupportedCase...)
 
 	for _, tc := range cases {
 		t.Run(tc.name, createOrUpdateResourceCase(tc.initObj, tc.obj, tc.want))
@@ -775,7 +783,7 @@ func TestDeletePod(t *testing.T) {
 
 	var cases []objCase
 
-	// DeletePodcases
+	// DeletePodCases
 	deletePodCases := []objCase{
 		{
 			name: "Delete Simple case",
@@ -899,7 +907,7 @@ func TestDeleteSecret(t *testing.T) {
 
 	var cases []objCase
 
-	// DeletePodcases
+	// DeletePodCases
 	deleteSecretCases := []objCase{
 		{
 			name: "Delete Simple case",
@@ -939,15 +947,22 @@ func TestDeleteSecret(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	updateStatusCase := func(objInit, obj client.Object, want error) func(t *testing.T) {
+	updateStatusCase := func(objInit, obj client.Object, expected error) func(t *testing.T) {
 		return func(t *testing.T) {
 			t.Helper()
 			t.Parallel()
 			req := require.New(t)
 
 			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
-			err := k8s.UpdateStatus(context.Background(), obj, cl)
-			req.Equal(err, want)
+			actualErr := k8s.UpdateStatus(context.Background(), obj, cl)
+			switch {
+			case expected == nil && actualErr != nil:
+				t.Errorf("unexpected error: '%v'", actualErr)
+			case expected != nil && actualErr == nil:
+				t.Errorf("expected error: '%v', but actual nil", actualErr)
+			case expected != nil && actualErr != nil:
+				req.EqualError(actualErr, expected.Error())
+			}
 		}
 	}
 
@@ -970,7 +985,7 @@ func TestUpdateStatus(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Update Alredy exist case",
+			name: "Update Already exist case",
 			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
 			},

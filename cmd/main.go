@@ -22,7 +22,6 @@ import (
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -70,7 +69,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
-	var namespace string
+	var watchNamespace string
 	var watchLabel string
 	var pipelineCheckWG sync.WaitGroup
 	var pipelineCheckTimeout time.Duration
@@ -87,7 +86,7 @@ func main() {
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&namespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
+	flag.StringVar(&watchNamespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	flag.DurationVar(&pipelineCheckTimeout, "pipeline-check-timeout", 15*time.Second, "wait pipeline checks before force vector reconcile. Default: 15s")
 	flag.DurationVar(&pipelineDeleteEventTimeout, "pipeline-delete-timeout", 5*time.Second, "collect delete events timeout")
@@ -176,7 +175,7 @@ func main() {
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
 	}
-	customMgrOptions, err := setupCustomCache(&mgrOptions, namespace, watchLabel)
+	customMgrOptions, err := setupCustomCache(&mgrOptions, watchNamespace, watchLabel)
 	if err != nil {
 		setupLog.Error(err, "unable to set up custom cache settings")
 		os.Exit(1)
@@ -230,40 +229,57 @@ func main() {
 }
 
 func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel string) (*ctrl.Options, error) {
-	if namespace == "" && watchLabel == "" {
+	if namespace == "" && watchLabel == "" { // TODO(aa1ex): remove?
 		return mgrOptions, nil
 	}
 
-	var namespaceSelector fields.Selector
-	var labelSelector labels.Selector
-	if namespace != "" {
-		namespaceSelector = fields.Set{"metadata.namespace": namespace}.AsSelector()
+	if namespace == "" {
+		namespace = cache.AllNamespaces
 	}
+
+	var labelSelector labels.Selector
 	if watchLabel != "" {
 		labelSelector = labels.Set{k8s.ManagedByLabelKey: "vector-operator", k8s.NameLabelKey: watchLabel}.AsSelector()
+	} else {
+		labelSelector = labels.Everything()
 	}
 
 	mgrOptions.Cache = cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Pod{}: {
-				Field: namespaceSelector,
-				Label: labelSelector,
+				Namespaces: map[string]cache.Config{
+					namespace: {
+						LabelSelector: labelSelector,
+					},
+				},
 			},
 			&appsv1.DaemonSet{}: {
-				Field: namespaceSelector,
-				Label: labelSelector,
+				Namespaces: map[string]cache.Config{
+					namespace: {
+						LabelSelector: labelSelector,
+					},
+				},
 			},
 			&corev1.Service{}: {
-				Field: namespaceSelector,
-				Label: labelSelector,
+				Namespaces: map[string]cache.Config{
+					namespace: {
+						LabelSelector: labelSelector,
+					},
+				},
 			},
 			&corev1.Secret{}: {
-				Field: namespaceSelector,
-				Label: labelSelector,
+				Namespaces: map[string]cache.Config{
+					namespace: {
+						LabelSelector: labelSelector,
+					},
+				},
 			},
 			&corev1.ServiceAccount{}: {
-				Field: namespaceSelector,
-				Label: labelSelector,
+				Namespaces: map[string]cache.Config{
+					namespace: {
+						LabelSelector: labelSelector,
+					},
+				},
 			},
 		},
 	}

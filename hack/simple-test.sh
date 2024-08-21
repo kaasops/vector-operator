@@ -145,8 +145,8 @@ spec:
         - transform-test
 EOF
 
-echo `date`": INFO: Wait 1m second"
-sleep 60
+echo `date`": INFO: Wait 80 seconds"
+sleep 80
 
 
 echo `date`": INFO: Check logs"

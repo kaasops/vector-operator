@@ -7,6 +7,16 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - events
+  - namespaces
+  - nodes
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
   - secrets
   - serviceaccounts
   - services
@@ -18,6 +28,13 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
+  - list
 - apiGroups:
   - apps
   resources:

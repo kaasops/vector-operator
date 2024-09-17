@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -69,8 +68,13 @@ var _ = Describe("Vector Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &VectorReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:               k8sClient,
+				Scheme:               k8sClient.Scheme(),
+				Clientset:            clientset,
+				PipelineCheckWG:      wg,
+				PipelineCheckTimeout: pipelineCheckTimeout,
+				ConfigCheckTimeout:   configCheckTimeout,
+				DiscoveryClient:      clientset.DiscoveryClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

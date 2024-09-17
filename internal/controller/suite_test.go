@@ -19,9 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/pointer"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -45,6 +49,11 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
+var clientset *kubernetes.Clientset
+var wg *sync.WaitGroup
+var pipelineCheckTimeout time.Duration
+var pipelineDeleteEventTimeout time.Duration
+var configCheckTimeout time.Duration
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -59,6 +68,7 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
+		UseExistingCluster:    pointer.Bool(true),
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 
@@ -86,6 +96,14 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	wg = &sync.WaitGroup{}
+	pipelineCheckTimeout = time.Second * 15
+	configCheckTimeout = time.Second * 60
+	pipelineDeleteEventTimeout = time.Second * 3
+
+	clientset, err = kubernetes.NewForConfig(cfg)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(clientset).NotTo(BeNil())
 })
 
 var _ = AfterSuite(func() {

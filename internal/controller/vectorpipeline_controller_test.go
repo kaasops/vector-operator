@@ -69,8 +69,12 @@ var _ = Describe("VectorPipeline Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &PipelineReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:                     k8sClient,
+				Scheme:                     k8sClient.Scheme(),
+				Clientset:                  clientset,
+				PipelineCheckWG:            wg,
+				PipelineDeleteEventTimeout: pipelineDeleteEventTimeout,
+				ConfigCheckTimeout:         configCheckTimeout,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -231,7 +231,7 @@ func main() {
 }
 
 func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel string) (*ctrl.Options, error) {
-	if namespace == "" && watchLabel == "" { // TODO(aa1ex): remove?
+	if namespace == "" && watchLabel == "" {
 		return mgrOptions, nil
 	}
 

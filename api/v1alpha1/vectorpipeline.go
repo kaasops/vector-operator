@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/pkg/utils/k8s"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

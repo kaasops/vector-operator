@@ -186,33 +186,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	vectorReconciler := &controller.VectorReconciler{
+	vectorAgentEventCh := make(chan event.GenericEvent)
+	defer close(vectorAgentEventCh)
+
+	if err = (&controller.VectorReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		Clientset:          clientset,
 		ConfigCheckTimeout: configCheckTimeout,
 		DiscoveryClient:    dc,
-	}
-
-	if err = vectorReconciler.SetupWithManager(mgr); err != nil {
+		EventChan:          vectorAgentEventCh,
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
 	}
-	vectorAgentReconciliationCh := make(chan event.GenericEvent, 10)
+
+	vectorPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorPipelineEventCh)
 
 	if err = (&controller.PipelineReconciler{
-		Client:                      mgr.GetClient(),
-		Scheme:                      mgr.GetScheme(),
-		Clientset:                   clientset,
-		ConfigCheckTimeout:          configCheckTimeout,
-		VectorAgentReconciliationCh: vectorAgentReconciliationCh,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Clientset:          clientset,
+		ConfigCheckTimeout: configCheckTimeout,
+		VectorAgentEventCh: vectorPipelineEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 
-	go reconcileWithDelay(context.Background(), vectorReconciler, vectorAgentReconciliationCh, time.Second*10)
+	go reconcileWithDelay(context.Background(), vectorPipelineEventCh, vectorAgentEventCh, time.Second*10)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -289,22 +293,23 @@ func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel str
 	return mgrOptions, nil
 }
 
-func reconcileWithDelay(ctx context.Context, r *controller.VectorReconciler, in chan event.GenericEvent, delay time.Duration) {
+func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, delay time.Duration) {
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
-	m := make(map[types.NamespacedName]struct{})
+
+	store := make(map[types.NamespacedName]event.GenericEvent)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case ev := <-in:
-			m[types.NamespacedName{Namespace: ev.Object.GetNamespace(), Name: ev.Object.GetName()}] = struct{}{}
+			store[types.NamespacedName{Namespace: ev.Object.GetNamespace(), Name: ev.Object.GetName()}] = ev
 		case <-ticker.C:
-			if len(m) != 0 {
-				for nn := range m {
-					_, _ = r.Reconcile(ctx, ctrl.Request{NamespacedName: nn})
-					delete(m, nn)
+			if len(store) != 0 {
+				for nn, ev := range store {
+					out <- ev
+					delete(store, nn)
 				}
 			}
 		}

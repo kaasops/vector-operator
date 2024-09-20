@@ -44,9 +44,9 @@ type PipelineReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset                   *kubernetes.Clientset
-	ConfigCheckTimeout          time.Duration
-	VectorAgentReconciliationCh chan event.GenericEvent
+	Clientset          *kubernetes.Clientset
+	ConfigCheckTimeout time.Duration
+	VectorAgentEventCh chan event.GenericEvent
 }
 
 var (
@@ -80,7 +80,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if pipelineCR == nil {
 		log.Info("Pipeline CR not found. Ignoring since object must be deleted")
 		for _, vector := range vectorAgents {
-			r.VectorAgentReconciliationCh <- event.GenericEvent{Object: vector}
+			r.VectorAgentEventCh <- event.GenericEvent{Object: vector}
 		}
 		return ctrl.Result{}, nil
 	}
@@ -136,7 +136,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	for _, vector := range vectorAgents {
-		r.VectorAgentReconciliationCh <- event.GenericEvent{Object: vector}
+		r.VectorAgentEventCh <- event.GenericEvent{Object: vector}
 	}
 
 	log.Info("finish Reconcile Pipeline")

@@ -44,10 +44,11 @@ func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Cli
 	return ctrl
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash *uint32) error {
 	var status = true
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = nil
+	ctrl.Vector.Status.LastAppliedConfigHash = hash
 
 	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
 }
@@ -56,13 +57,6 @@ func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) erro
 	var status = false
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = &reason
-
-	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
-}
-
-func (ctrl *Controller) SetLastAppliedPipelineStatus(ctx context.Context, hash *uint32) error {
-
-	ctrl.Vector.Status.LastAppliedConfigHash = hash
 
 	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
 }

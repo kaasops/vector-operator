@@ -36,7 +36,7 @@ type Pipeline interface {
 	UpdateStatus(context.Context, client.Client) error
 }
 
-func GetValidPipelines(ctx context.Context, client client.Client) ([]Pipeline, error) {
+func GetValidPipelines(ctx context.Context, client client.Client, selector map[string]string) ([]Pipeline, error) {
 	var validPipelines []Pipeline
 	vps, err := GetVectorPipelines(ctx, client)
 	if err != nil {
@@ -48,14 +48,14 @@ func GetValidPipelines(ctx context.Context, client client.Client) ([]Pipeline, e
 	}
 	if len(vps) != 0 {
 		for _, vp := range vps {
-			if !vp.IsDeleted() && vp.IsValid() {
+			if !vp.IsDeleted() && vp.IsValid() && matchLabels(selector, vp.Labels) {
 				validPipelines = append(validPipelines, vp.DeepCopy())
 			}
 		}
 	}
 	if len(cvps) != 0 {
 		for _, cvp := range cvps {
-			if !cvp.IsDeleted() && cvp.IsValid() {
+			if !cvp.IsDeleted() && cvp.IsValid() && matchLabels(selector, cvp.Labels) {
 				validPipelines = append(validPipelines, cvp.DeepCopy())
 			}
 		}
@@ -66,6 +66,11 @@ func GetValidPipelines(ctx context.Context, client client.Client) ([]Pipeline, e
 func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) error {
 	p.SetConfigCheck(true)
 	p.SetReason(nil)
+	hash, err := GetSpecHash(p)
+	if err != nil {
+		return err
+	}
+	p.SetLastAppliedPipeline(hash)
 
 	return p.UpdateStatus(ctx, client)
 }
@@ -74,11 +79,6 @@ func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reas
 
 	p.SetConfigCheck(false)
 	p.SetReason(&reason)
-
-	return p.UpdateStatus(ctx, client)
-}
-
-func SetLastAppliedPipelineStatus(ctx context.Context, client client.Client, p Pipeline) error {
 	hash, err := GetSpecHash(p)
 	if err != nil {
 		return err
@@ -102,4 +102,16 @@ func GetClusterVectorPipelines(ctx context.Context, client client.Client) ([]vec
 		return nil, err
 	}
 	return cvps.Items, nil
+}
+
+func matchLabels(selector map[string]string, labels map[string]string) bool {
+	if selector == nil {
+		return true
+	}
+	for k, v := range selector {
+		if labels[k] != v {
+			return false
+		}
+	}
+	return true
 }

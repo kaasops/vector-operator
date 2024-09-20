@@ -19,7 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
-	"sync"
+	"fmt"
 	"time"
 
 	"github.com/kaasops/vector-operator/internal/config"
@@ -34,6 +34,8 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
@@ -41,13 +43,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 // VectorReconciler reconciles a Vector object
@@ -56,11 +53,9 @@ type VectorReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset            *kubernetes.Clientset
-	PipelineCheckWG      *sync.WaitGroup
-	PipelineCheckTimeout time.Duration
-	ConfigCheckTimeout   time.Duration
-	DiscoveryClient      *discovery.DiscoveryClient
+	Clientset          *kubernetes.Clientset
+	ConfigCheckTimeout time.Duration
+	DiscoveryClient    *discovery.DiscoveryClient
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -81,13 +76,10 @@ type VectorReconciler struct {
 
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	log.Info("Waiting pipeline checks")
-	if waitPipelineChecks(r.PipelineCheckWG, r.PipelineCheckTimeout) {
-		log.Info("Timeout waiting pipeline checks, continue reconcile vector")
-	}
+	log.Info(fmt.Sprintf("==========================================[ %s ]==========================================", req.String()))
 	log.Info("Start Reconcile Vector")
 	if req.Namespace == "" {
-		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
+		vectors, err := listVectorAgents(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to list vector instances")
 			return ctrl.Result{}, err
@@ -104,7 +96,6 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		log.Info("Vector CR not found. Ignoring since object must be deleted")
 		return ctrl.Result{}, nil
 	}
-
 	return r.createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR, false)
 }
 
@@ -116,7 +107,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		WatchesRawSource(source.Channel(VectorAgentReconciliationSourceChannel, &handler.EnqueueRequestForObject{})).
+		//WatchesRawSource(source.Channel(r.VectorAgentReconciliationCh, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
@@ -134,13 +125,16 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func listVectorCustomResourceInstances(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
-	vectorlist := vectorv1alpha1.VectorList{}
-	err = client.List(ctx, &vectorlist)
+func listVectorAgents(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
+	vectorList := vectorv1alpha1.VectorList{}
+	err = client.List(ctx, &vectorList)
 	if err != nil {
 		return nil, err
 	}
-	for _, vector := range vectorlist.Items {
+	for _, vector := range vectorList.Items {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
 		vectors = append(vectors, &vector)
 	}
 	return vectors, nil
@@ -180,10 +174,8 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
-	vaCtrl.SetDefault()
-
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -203,8 +195,8 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 				vaCtrl.ClientSet,
 				vaCtrl.Vector,
 				r.ConfigCheckTimeout,
+				configcheck.ConfigCheckInitiatorVector,
 			)
-			configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 			reason, err := configCheck.Run(ctx)
 			if err != nil {
 				if errors.Is(err, configcheck.ValidationError) {
@@ -243,18 +235,4 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func waitPipelineChecks(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false
-	case <-time.After(timeout):
-		return true
-	}
 }

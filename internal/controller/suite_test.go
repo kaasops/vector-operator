@@ -23,7 +23,6 @@ import (
 	"k8s.io/utils/pointer"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
 	"time"
 
@@ -50,9 +49,6 @@ var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
 var clientset *kubernetes.Clientset
-var wg *sync.WaitGroup
-var pipelineCheckTimeout time.Duration
-var pipelineDeleteEventTimeout time.Duration
 var configCheckTimeout time.Duration
 
 func TestControllers(t *testing.T) {
@@ -96,10 +92,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	wg = &sync.WaitGroup{}
-	pipelineCheckTimeout = time.Second * 15
 	configCheckTimeout = time.Second * 60
-	pipelineDeleteEventTimeout = time.Second * 3
 
 	clientset, err = kubernetes.NewForConfig(cfg)
 	Expect(err).NotTo(HaveOccurred())

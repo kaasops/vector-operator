@@ -34,6 +34,7 @@ type VectorSpec struct {
 	UseApiServerCache bool `json:"useApiServerCache,omitempty"`
 	// Vector Aggregator
 	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`
+	Selector map[string]string `json:"selector,omitempty"`
 }
 
 // VectorStatus defines the observed state of Vector

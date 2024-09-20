@@ -35,11 +35,13 @@ type Controller struct {
 }
 
 func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) *Controller {
-	return &Controller{
+	ctrl := &Controller{
 		Client:    c,
 		Vector:    v,
 		ClientSet: cs,
 	}
+	ctrl.SetDefault()
+	return ctrl
 }
 
 func (ctrl *Controller) SetSuccessStatus(ctx context.Context) error {

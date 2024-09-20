@@ -4962,6 +4962,13 @@ spec:
                       type: object
                     type: array
                 type: object
+              selector:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Vector Aggregator
+                  Aggregator *VectorAggregator `json:"aggregator,omitempty"`
+                type: object
               useApiServerCache:
                 description: Determines if requests to the kube-apiserver can be served
                   by a cache.

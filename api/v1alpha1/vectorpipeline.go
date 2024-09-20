@@ -7,10 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	LocalPipelineKind = "VectorPipeline"
-)
-
 func (vp *VectorPipeline) GetSpec() VectorPipelineSpec {
 	return vp.Spec
 }

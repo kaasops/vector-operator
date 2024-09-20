@@ -26,14 +26,12 @@ import (
 
 // VectorSpec defines the desired state of Vector
 type VectorSpec struct {
-	// DisableAggregation
-	// DisableAggregation bool `json:"disableAggregation,omitempty"`
 	// Vector Agent
 	Agent *VectorAgent `json:"agent,omitempty"`
 	// Determines if requests to the kube-apiserver can be served by a cache.
 	UseApiServerCache bool `json:"useApiServerCache,omitempty"`
-	// Vector Aggregator
-	// Aggregator *VectorAggregator `json:"aggregator,omitempty"`
+	// Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
+	// If not specified, all pipelines will be selected.
 	Selector map[string]string `json:"selector,omitempty"`
 }
 

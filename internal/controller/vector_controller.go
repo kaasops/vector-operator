@@ -107,7 +107,6 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		//WatchesRawSource(source.Channel(r.VectorAgentReconciliationCh, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).

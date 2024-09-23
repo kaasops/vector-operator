@@ -98,6 +98,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	eg := errgroup.Group{}
 
 	for _, vector := range vectorAgents {
+		if !pipeline.MatchLabels(vector.Spec.Selector, pipelineCR.GetLabels()) {
+			continue
+		}
 		eg.Go(func() error {
 			vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 			byteConfig, err := config.BuildByteConfig(vaCtrl, pipelineCR)

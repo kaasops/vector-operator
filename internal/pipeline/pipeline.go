@@ -48,14 +48,14 @@ func GetValidPipelines(ctx context.Context, client client.Client, selector map[s
 	}
 	if len(vps) != 0 {
 		for _, vp := range vps {
-			if !vp.IsDeleted() && vp.IsValid() && matchLabels(selector, vp.Labels) {
+			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector, vp.Labels) {
 				validPipelines = append(validPipelines, vp.DeepCopy())
 			}
 		}
 	}
 	if len(cvps) != 0 {
 		for _, cvp := range cvps {
-			if !cvp.IsDeleted() && cvp.IsValid() && matchLabels(selector, cvp.Labels) {
+			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector, cvp.Labels) {
 				validPipelines = append(validPipelines, cvp.DeepCopy())
 			}
 		}
@@ -104,7 +104,7 @@ func GetClusterVectorPipelines(ctx context.Context, client client.Client) ([]vec
 	return cvps.Items, nil
 }
 
-func matchLabels(selector map[string]string, labels map[string]string) bool {
+func MatchLabels(selector map[string]string, labels map[string]string) bool {
 	if selector == nil {
 		return true
 	}

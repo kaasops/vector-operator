@@ -51,8 +51,8 @@ func TestMatchLabels(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := matchLabels(test.selector, test.labels); got != test.want {
-				t.Errorf("matchLabels() = %v, want %v", got, test.want)
+			if got := MatchLabels(test.selector, test.labels); got != test.want {
+				t.Errorf("MatchLabels() = %v, want %v", got, test.want)
 			}
 		})
 	}

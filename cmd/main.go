@@ -20,12 +20,12 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"os"
@@ -297,14 +297,14 @@ func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, de
 	ticker := time.NewTicker(delay)
 	defer ticker.Stop()
 
-	store := make(map[types.NamespacedName]event.GenericEvent)
+	store := make(map[string]event.GenericEvent)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case ev := <-in:
-			store[types.NamespacedName{Namespace: ev.Object.GetNamespace(), Name: ev.Object.GetName()}] = ev
+			store[fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())] = ev
 		case <-ticker.C:
 			if len(store) != 0 {
 				for nn, ev := range store {

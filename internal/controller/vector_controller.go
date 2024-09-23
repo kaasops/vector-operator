@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -80,7 +79,6 @@ type VectorReconciler struct {
 
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	log.Info(fmt.Sprintf("==========================================[ %s ]==========================================", req.String()))
 	log.Info("Start Reconcile Vector")
 	if req.Namespace == "" {
 		vectors, err := listVectorAgents(ctx, r.Client)

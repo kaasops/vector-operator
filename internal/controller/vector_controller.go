@@ -152,6 +152,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 		}
 		return nil, err
 	}
+	setTypeMetaIfNeeded(vectorCR)
 	return vectorCR, nil
 }
 
@@ -164,6 +165,7 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
+		setTypeMetaIfNeeded(vector)
 		if _, err := r.createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -229,4 +231,12 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func setTypeMetaIfNeeded(cr *vectorv1alpha1.Vector) {
+	// https://github.com/kubernetes/kubernetes/issues/80609
+	if cr.Kind == "" || cr.APIVersion == "" {
+		cr.Kind = "Vector"
+		cr.APIVersion = "observability.kaasops.io/v1alpha1"
+	}
 }

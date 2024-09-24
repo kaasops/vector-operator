@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -73,6 +74,7 @@ var _ = Describe("VectorPipeline Controller", func() {
 				Scheme:             k8sClient.Scheme(),
 				Clientset:          clientset,
 				ConfigCheckTimeout: configCheckTimeout,
+				VectorAgentEventCh: make(chan event.GenericEvent, 1),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,6 +74,7 @@ var _ = Describe("Vector Controller", func() {
 				Clientset:          clientset,
 				ConfigCheckTimeout: configCheckTimeout,
 				DiscoveryClient:    clientset.DiscoveryClient,
+				EventChan:          make(chan event.GenericEvent, 1),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

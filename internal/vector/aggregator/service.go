@@ -44,9 +44,6 @@ func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, erro
 
 		ports := make([]corev1.ServicePort, 0, len(list))
 		for _, sp := range list {
-			if sp.IsKubernetesEvents {
-				ann["observability.kaasops.io/k8s-events-namespace"] = sp.Namespace
-			}
 			ports = append(ports, corev1.ServicePort{
 				Name:       strcase.KebabCase(sp.SourceName),
 				Protocol:   sp.Protocol,

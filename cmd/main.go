@@ -21,18 +21,20 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
+	"os"
+	"time"
+
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"time"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -49,6 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
+	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -63,6 +66,7 @@ func init() {
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(monitorv1.AddToScheme(scheme))
+	utilruntime.Must(observabilityv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -212,6 +216,13 @@ func main() {
 		VectorAgentEventCh: vectorPipelineEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
+		os.Exit(1)
+	}
+	if err = (&controller.VectorAggregatorReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

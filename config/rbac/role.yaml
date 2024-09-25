@@ -51,6 +51,7 @@ rules:
   - observability.kaasops.io
   resources:
   - clustervectorpipelines
+  - vectoraggregators
   - vectorpipelines
   - vectors
   verbs:
@@ -65,6 +66,7 @@ rules:
   - observability.kaasops.io
   resources:
   - clustervectorpipelines/finalizers
+  - vectoraggregators/finalizers
   - vectorpipelines/finalizers
   - vectors/finalizers
   verbs:
@@ -73,6 +75,7 @@ rules:
   - observability.kaasops.io
   resources:
   - clustervectorpipelines/status
+  - vectoraggregators/status
   - vectorpipelines/status
   - vectors/status
   verbs:

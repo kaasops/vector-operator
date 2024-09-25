@@ -10,6 +10,7 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.60.1
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/sync v0.7.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.31.0
 	k8s.io/apimachinery v0.31.0
@@ -99,7 +100,6 @@ require (
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect

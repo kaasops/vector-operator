@@ -136,7 +136,8 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 func (c *VectorConfig) GetSourcesServicePorts() map[string][]*ServicePort {
 	m := make(map[string][]*ServicePort)
 	for _, s := range c.internal.servicePort {
-		m[s.PipelineName] = append(m[s.PipelineName], s)
+		key := fmt.Sprintf("%s-%s", s.Namespace, s.PipelineName)
+		m[key] = append(m[key], s)
 	}
 	return m
 }

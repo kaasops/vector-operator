@@ -25,21 +25,22 @@ import (
 
 // VectorAggregatorSpec defines the desired state of VectorAggregator
 type VectorAggregatorSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of VectorAggregator. Edit vectoraggregator_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	VectorCommon `json:",inline"`
+	Replicas     int32 `json:"replicas,omitempty"`
+	// Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
+	// If not specified, all pipelines will be selected.
+	Selector VectorSelectorSpec `json:"selector,omitempty"`
 }
 
 // VectorAggregatorStatus defines the observed state of VectorAggregator
 type VectorAggregatorStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	VectorCommonStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 
 // VectorAggregator is the Schema for the vectoraggregators API
 type VectorAggregator struct {

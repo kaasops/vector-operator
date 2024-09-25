@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 var _ = Describe("Vector Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("Vector Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vector := &observabilityv1alpha1.Vector{}
+		vector := &v1alpha1.Vector{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Vector")
 			err := k8sClient.Get(ctx, typeNamespacedName, vector)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &observabilityv1alpha1.Vector{
+				resource := &v1alpha1.Vector{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("Vector Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &observabilityv1alpha1.Vector{}
+			resource := &v1alpha1.Vector{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

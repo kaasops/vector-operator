@@ -36,7 +36,7 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -108,7 +108,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
@@ -127,8 +127,8 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func listVectorAgents(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
-	vectorList := vectorv1alpha1.VectorList{}
+func listVectorAgents(ctx context.Context, client client.Client) (vectors []*v1alpha1.Vector, err error) {
+	vectorList := v1alpha1.VectorList{}
 	err = client.List(ctx, &vectorList)
 	if err != nil {
 		return nil, err
@@ -142,9 +142,9 @@ func listVectorAgents(ctx context.Context, client client.Client) (vectors []*vec
 	return vectors, nil
 }
 
-func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.Vector, error) {
+func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*v1alpha1.Vector, error) {
 	// fetch the master instance
-	vectorCR := &vectorv1alpha1.Vector{}
+	vectorCR := &v1alpha1.Vector{}
 	err := r.Get(ctx, req.NamespacedName, vectorCR)
 	if err != nil {
 		if api_errors.IsNotFound(err) {
@@ -156,7 +156,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 	return vectorCR, nil
 }
 
-func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
+func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*v1alpha1.Vector) (ctrl.Result, error) {
 	if len(vectors) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -173,7 +173,7 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
+func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", v.Name)
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
@@ -233,7 +233,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	return ctrl.Result{}, nil
 }
 
-func setTypeMetaIfNeeded(cr *vectorv1alpha1.Vector) {
+func setTypeMetaIfNeeded(cr *v1alpha1.Vector) {
 	// https://github.com/kubernetes/kubernetes/issues/80609
 	if cr.Kind == "" || cr.APIVersion == "" {
 		cr.Kind = "Vector"

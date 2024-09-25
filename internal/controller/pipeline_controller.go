@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
 	"github.com/kaasops/vector-operator/internal/pipeline"
@@ -102,7 +102,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 			byteConfig, err := config.BuildByteConfig(vaCtrl, pipelineCR)
 			if err != nil {
-				return fmt.Errorf("%w: %w", ErrBuildConfigFailed, err)
+				return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
 			}
 
 			vaCtrl.Config = byteConfig
@@ -117,7 +117,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			reason, err := configCheck.Run(ctx)
 			if reason != "" {
-				return errors.New(reason)
+				return fmt.Errorf("agent %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
 			}
 			return err
 		})
@@ -145,14 +145,14 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 func (r *PipelineReconciler) getPipeline(ctx context.Context, req ctrl.Request) (pipeline pipeline.Pipeline, err error) {
 	if req.Namespace != "" {
-		vp := &vectorv1alpha1.VectorPipeline{}
+		vp := &v1alpha1.VectorPipeline{}
 		err := r.Get(ctx, req.NamespacedName, vp)
 		if err != nil {
 			return nil, client.IgnoreNotFound(err)
 		}
 		return vp, nil
 	}
-	cvp := &vectorv1alpha1.ClusterVectorPipeline{}
+	cvp := &v1alpha1.ClusterVectorPipeline{}
 	err = r.Get(ctx, req.NamespacedName, cvp)
 	if err != nil {
 		return nil, client.IgnoreNotFound(err)
@@ -163,9 +163,9 @@ func (r *PipelineReconciler) getPipeline(ctx context.Context, req ctrl.Request) 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.VectorPipeline{}).
+		For(&v1alpha1.VectorPipeline{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 20}).
-		Watches(&vectorv1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
+		Watches(&v1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }

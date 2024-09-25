@@ -304,7 +304,10 @@ func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, de
 		case <-ctx.Done():
 			return
 		case ev := <-in:
-			store[fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())] = ev
+			key := fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())
+			if _, ok := store[key]; !ok {
+				store[key] = ev
+			}
 		case <-ticker.C:
 			if len(store) != 0 {
 				for nn, ev := range store {

@@ -1,23 +1,33 @@
 package config
 
+import "fmt"
+
 const (
 	// types
-	KubernetesSourceType      = "kubernetes_logs"
-	BlackholeSinkType         = "blackhole"
-	InternalMetricsSourceType = "internal_metrics"
-	InternalMetricsSinkType   = "prometheus_exporter"
+	BlackholeSinkType      = "blackhole"
+	PrometheusExporterType = "prometheus_exporter"
 
 	// default names
 	DefaultSourceName                = "defaultSource"
 	DefaultSinkName                  = "defaultSink"
 	DefaultInternalMetricsSourceName = "internalMetricsSource"
 	DefaultInternalMetricsSinkName   = "internalMetricsSink"
+	DefaultAggregatorSourcePort      = 8989
+	DefaultNamespace                 = "default"
+	DefaultPipelineName              = "default-pipeline"
 )
 
 var (
-	defaultSource = &Source{
+	defaultAgentSource = &Source{
 		Name: DefaultSourceName,
-		Type: KubernetesSourceType,
+		Type: KubernetesLogsType,
+	}
+	defaultAggregatorSource = &Source{
+		Name: DefaultSourceName,
+		Type: VectorType,
+		Options: map[string]any{
+			"address": fmt.Sprintf("0.0.0.0:%d", DefaultAggregatorSourcePort),
+		},
 	}
 	defaultSink = &Sink{
 		Name:   DefaultSinkName,
@@ -28,9 +38,17 @@ var (
 			"print_interval_secs": 60,
 		},
 	}
-	defaultPipelineConfig = PipelineConfig{
+	defaultAgentPipelineConfig = PipelineConfig{
 		Sources: map[string]*Source{
-			DefaultSourceName: defaultSource,
+			DefaultSourceName: defaultAgentSource,
+		},
+		Sinks: map[string]*Sink{
+			DefaultSinkName: defaultSink,
+		},
+	}
+	defaultAggregatorPipelineConfig = PipelineConfig{
+		Sources: map[string]*Source{
+			DefaultSourceName: defaultAggregatorSource,
 		},
 		Sinks: map[string]*Sink{
 			DefaultSinkName: defaultSink,
@@ -39,11 +57,11 @@ var (
 
 	defaultInternalMetricsSource = &Source{
 		Name: DefaultInternalMetricsSourceName,
-		Type: InternalMetricsSourceType,
+		Type: InternalMetricsType,
 	}
 	defaultInternalMetricsSink = &Sink{
 		Name:   DefaultInternalMetricsSinkName,
-		Type:   InternalMetricsSinkType,
+		Type:   PrometheusExporterType,
 		Inputs: []string{DefaultInternalMetricsSourceName},
 	}
 )

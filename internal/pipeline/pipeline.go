@@ -18,14 +18,15 @@ package pipeline
 
 import (
 	"context"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Pipeline interface {
 	client.Object
-	GetSpec() vectorv1alpha1.VectorPipelineSpec
+	GetSpec() v1alpha1.VectorPipelineSpec
 	SetConfigCheck(bool)
 	SetReason(*string)
 	GetLastAppliedPipeline() *uint32
@@ -34,9 +35,12 @@ type Pipeline interface {
 	IsValid() bool
 	IsDeleted() bool
 	UpdateStatus(context.Context, client.Client) error
+	GetRole() v1alpha1.VectorPipelineRole
+	SetRole(*v1alpha1.VectorPipelineRole)
+	GetTypeMeta() v1.TypeMeta
 }
 
-func GetValidPipelines(ctx context.Context, client client.Client, selector vectorv1alpha1.VectorSelectorSpec) ([]Pipeline, error) {
+func GetValidPipelines(ctx context.Context, client client.Client, selector v1alpha1.VectorSelectorSpec, role v1alpha1.VectorPipelineRole) ([]Pipeline, error) {
 	var validPipelines []Pipeline
 	vps, err := GetVectorPipelines(ctx, client)
 	if err != nil {
@@ -48,14 +52,14 @@ func GetValidPipelines(ctx context.Context, client client.Client, selector vecto
 	}
 	if len(vps) != 0 {
 		for _, vp := range vps {
-			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector.MatchLabels, vp.Labels) {
+			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector.MatchLabels, vp.Labels) && vp.GetRole() == role {
 				validPipelines = append(validPipelines, vp.DeepCopy())
 			}
 		}
 	}
 	if len(cvps) != 0 {
 		for _, cvp := range cvps {
-			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector.MatchLabels, cvp.Labels) {
+			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector.MatchLabels, cvp.Labels) && cvp.GetRole() == role {
 				validPipelines = append(validPipelines, cvp.DeepCopy())
 			}
 		}
@@ -88,16 +92,16 @@ func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reas
 	return p.UpdateStatus(ctx, client)
 }
 
-func GetVectorPipelines(ctx context.Context, client client.Client) ([]vectorv1alpha1.VectorPipeline, error) {
-	vps := vectorv1alpha1.VectorPipelineList{}
+func GetVectorPipelines(ctx context.Context, client client.Client) ([]v1alpha1.VectorPipeline, error) {
+	vps := v1alpha1.VectorPipelineList{}
 	if err := client.List(ctx, &vps); err != nil {
 		return nil, err
 	}
 	return vps.Items, nil
 }
 
-func GetClusterVectorPipelines(ctx context.Context, client client.Client) ([]vectorv1alpha1.ClusterVectorPipeline, error) {
-	cvps := vectorv1alpha1.ClusterVectorPipelineList{}
+func GetClusterVectorPipelines(ctx context.Context, client client.Client) ([]v1alpha1.ClusterVectorPipeline, error) {
+	cvps := v1alpha1.ClusterVectorPipelineList{}
 	if err := client.List(ctx, &cvps); err != nil {
 		return nil, err
 	}

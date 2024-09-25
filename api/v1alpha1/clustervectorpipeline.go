@@ -2,13 +2,10 @@ package v1alpha1
 
 import (
 	"context"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-var (
-	ClusterPipelineKind = "ClusterVectorPipeline"
 )
 
 func (vp *ClusterVectorPipeline) GetSpec() VectorPipelineSpec {
@@ -48,4 +45,19 @@ func (vp *ClusterVectorPipeline) SetLastAppliedPipeline(hash *uint32) {
 
 func (vp *ClusterVectorPipeline) UpdateStatus(ctx context.Context, c client.Client) error {
 	return k8s.UpdateStatus(ctx, vp, c)
+}
+
+func (vp *ClusterVectorPipeline) GetRole() VectorPipelineRole {
+	if vp.Status.Role == nil {
+		return VectorPipelineRoleUnknown
+	}
+	return *vp.Status.Role
+}
+
+func (vp *ClusterVectorPipeline) SetRole(role *VectorPipelineRole) {
+	vp.Status.Role = role
+}
+
+func (vp *ClusterVectorPipeline) GetTypeMeta() metav1.TypeMeta {
+	return vp.TypeMeta
 }

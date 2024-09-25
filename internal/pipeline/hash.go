@@ -31,8 +31,8 @@ func GetSpecHash(pipeline Pipeline) (*uint32, error) {
 	return &hash, nil
 }
 
-// CheckHash returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
-func CheckHash(pipeline Pipeline) (bool, error) {
+// IsSpecChanged returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
+func IsSpecChanged(pipeline Pipeline) (bool, error) {
 	hash, err := GetSpecHash(pipeline)
 	if err != nil {
 		return false, err

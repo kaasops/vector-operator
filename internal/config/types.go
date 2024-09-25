@@ -16,10 +16,16 @@ limitations under the License.
 
 package config
 
+import (
+	"fmt"
+	corev1 "k8s.io/api/core/v1"
+)
+
 type VectorConfig struct {
 	DataDir        string   `yaml:"data_dir"`
 	Api            *ApiSpec `yaml:"api"`
 	PipelineConfig `yaml:",inline"`
+	internal       internalConfig `yaml:"-"`
 }
 
 type PipelineConfig struct {
@@ -35,13 +41,13 @@ type ApiSpec struct {
 }
 
 type Source struct {
-	Name                        string                 `yaml:"-"`
-	Type                        string                 `mapstructure:"type" yaml:"type"`
-	ExtraNamespaceLabelSelector string                 `mapstructure:"extra_namespace_label_selector" yaml:"extra_namespace_label_selector,omitempty"`
-	ExtraLabelSelector          string                 `mapstructure:"extra_label_selector" yaml:"extra_label_selector,omitempty"`
-	ExtraFieldSelector          string                 `mapstructure:"extra_field_selector" yaml:"extra_field_selector,omitempty"`
-	UseApiServerCache           bool                   `mapstructure:"use_apiserver_cache" yaml:"use_apiserver_cache,omitempty"`
-	Options                     map[string]interface{} `mapstructure:",remain" yaml:",inline,omitempty"`
+	Name                        string         `yaml:"-"`
+	Type                        string         `mapstructure:"type" yaml:"type"`
+	ExtraNamespaceLabelSelector string         `mapstructure:"extra_namespace_label_selector" yaml:"extra_namespace_label_selector,omitempty"`
+	ExtraLabelSelector          string         `mapstructure:"extra_label_selector" yaml:"extra_label_selector,omitempty"`
+	ExtraFieldSelector          string         `mapstructure:"extra_field_selector" yaml:"extra_field_selector,omitempty"`
+	UseApiServerCache           bool           `mapstructure:"use_apiserver_cache" yaml:"use_apiserver_cache,omitempty"`
+	Options                     map[string]any `mapstructure:",remain" yaml:",inline,omitempty"`
 }
 
 type Transform struct {
@@ -63,4 +69,27 @@ type pipelineConfig_ struct {
 	Sources    map[string]interface{}
 	Transforms map[string]interface{}
 	Sinks      map[string]interface{}
+}
+
+type ServicePort struct {
+	IsKubernetesEvents bool
+	SourceName         string
+	Namespace          string
+	Port               int32
+	Protocol           corev1.Protocol
+	PipelineName       string
+}
+
+type internalConfig struct {
+	servicePort map[string]*ServicePort
+}
+
+func (c *internalConfig) addServicePort(port *ServicePort) error {
+	key := fmt.Sprintf("%d/%s", port.Port, port.Protocol)
+	if v, ok := c.servicePort[key]; !ok {
+		c.servicePort[key] = port
+	} else {
+		return fmt.Errorf("duplicate port %s in %s and %s", key, v.PipelineName, port.PipelineName)
+	}
+	return nil
 }

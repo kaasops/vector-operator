@@ -205,29 +205,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	vectorPipelineEventCh := make(chan event.GenericEvent, 10)
-	defer close(vectorPipelineEventCh)
+	vectorAgentsPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorAgentsPipelineEventCh)
+	vectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorAggregatorsPipelineEventCh)
 
 	if err = (&controller.PipelineReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		Clientset:          clientset,
-		ConfigCheckTimeout: configCheckTimeout,
-		VectorAgentEventCh: vectorPipelineEventCh,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		Clientset:                clientset,
+		ConfigCheckTimeout:       configCheckTimeout,
+		VectorAgentEventCh:       vectorAgentsPipelineEventCh,
+		VectorAggregatorsEventCh: vectorAggregatorsPipelineEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
 	}
+
+	vectorAggregatorsEventCh := make(chan event.GenericEvent)
+	defer close(vectorAggregatorsEventCh)
+
 	if err = (&controller.VectorAggregatorReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:             mgr.GetClient(),
+		Clientset:          clientset,
+		Scheme:             mgr.GetScheme(),
+		ConfigCheckTimeout: configCheckTimeout,
+		EventChan:          vectorAggregatorsEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 
-	go reconcileWithDelay(context.Background(), vectorPipelineEventCh, vectorAgentEventCh, time.Second*10)
+	go reconcileWithDelay(context.Background(), vectorAgentsPipelineEventCh, vectorAgentEventCh, time.Second*10)
+	go reconcileWithDelay(context.Background(), vectorAggregatorsPipelineEventCh, vectorAggregatorsEventCh, time.Second*10)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

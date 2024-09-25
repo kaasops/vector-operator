@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -62,4 +63,12 @@ type VectorAggregatorList struct {
 
 func init() {
 	SchemeBuilder.Register(&VectorAggregator{}, &VectorAggregatorList{})
+}
+
+func (v *VectorAggregator) IsBeingDeleted() bool {
+	return !v.ObjectMeta.DeletionTimestamp.IsZero()
+}
+
+func (v *VectorAggregator) HasFinalizer(finalizerName string) bool {
+	return controllerutil.ContainsFinalizer(v, finalizerName)
 }

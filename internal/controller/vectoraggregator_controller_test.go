@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,8 +71,11 @@ var _ = Describe("VectorAggregator Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &VectorAggregatorReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				Clientset:          clientset,
+				ConfigCheckTimeout: time.Second * 10,
+				EventChan:          make(chan event.GenericEvent, 1),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -179,13 +179,18 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector, v1alpha1.VectorPipelineRoleAgent)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Get Config in Json ([]byte)
-	byteConfig, err := config.BuildByteConfig(vaCtrl, pipelines...)
+	byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
+		ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
+		PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
+		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
+		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
+	}, pipelines...)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -197,7 +202,9 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 				byteConfig,
 				vaCtrl.Client,
 				vaCtrl.ClientSet,
-				vaCtrl.Vector,
+				&vaCtrl.Vector.Spec.Agent.VectorCommon,
+				vaCtrl.Vector.Name,
+				vaCtrl.Vector.Namespace,
 				r.ConfigCheckTimeout,
 				configcheck.ConfigCheckInitiatorVector,
 			)

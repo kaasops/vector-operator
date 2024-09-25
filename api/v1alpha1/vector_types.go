@@ -167,14 +167,6 @@ type ConfigCheck struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
-// VectorAggregator is the Schema for the Vector Aggregator
-type VectorAggregator struct {
-	Enable bool `json:"enable,omitempty"`
-	// +kubebuilder:default:="timberio/vector:0.24.0-distroless-libc"
-	Image    string `json:"image,omitempty"`
-	Replicas int    `json:"replicas,omitempty"`
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"

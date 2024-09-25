@@ -36,7 +36,7 @@ type Pipeline interface {
 	UpdateStatus(context.Context, client.Client) error
 }
 
-func GetValidPipelines(ctx context.Context, client client.Client, selector map[string]string) ([]Pipeline, error) {
+func GetValidPipelines(ctx context.Context, client client.Client, selector vectorv1alpha1.VectorSelectorSpec) ([]Pipeline, error) {
 	var validPipelines []Pipeline
 	vps, err := GetVectorPipelines(ctx, client)
 	if err != nil {
@@ -48,14 +48,14 @@ func GetValidPipelines(ctx context.Context, client client.Client, selector map[s
 	}
 	if len(vps) != 0 {
 		for _, vp := range vps {
-			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector, vp.Labels) {
+			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector.MatchLabels, vp.Labels) {
 				validPipelines = append(validPipelines, vp.DeepCopy())
 			}
 		}
 	}
 	if len(cvps) != 0 {
 		for _, cvp := range cvps {
-			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector, cvp.Labels) {
+			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector.MatchLabels, cvp.Labels) {
 				validPipelines = append(validPipelines, cvp.DeepCopy())
 			}
 		}

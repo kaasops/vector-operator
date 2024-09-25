@@ -133,14 +133,19 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 	return nil, fmt.Errorf("unknown vector role")
 }
 
-func (c *VectorConfig) GetSourcesServicePorts() map[string][]*ServicePort {
-	m := make(map[string][]*ServicePort)
+type SPGroup struct {
+	PipelineName string
+	Namespace    string
+}
+
+func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
+	m := make(map[SPGroup][]*ServicePort)
 	for _, s := range c.internal.servicePort {
-		key := s.PipelineName
-		if s.Namespace != "" {
-			key = fmt.Sprintf("%s-%s", s.Namespace, s.PipelineName)
+		spg := SPGroup{
+			PipelineName: s.PipelineName,
+			Namespace:    s.Namespace,
 		}
-		m[key] = append(m[key], s)
+		m[spg] = append(m[spg], s)
 	}
 	return m
 }

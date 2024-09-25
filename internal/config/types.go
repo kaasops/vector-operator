@@ -72,11 +72,11 @@ type pipelineConfig_ struct {
 }
 
 type ServicePort struct {
+	PipelineName string
 	SourceName   string
 	Namespace    string
 	Port         int32
 	Protocol     corev1.Protocol
-	PipelineName string
 }
 
 type internalConfig struct {

@@ -38,7 +38,7 @@ func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, erro
 
 	svcList := make([]*corev1.Service, 0)
 
-	for nsPipelineName, list := range ctrl.Config.GetSourcesServicePorts() {
+	for groupName, list := range ctrl.Config.GetSourcesServicePorts() {
 		ann := make(map[string]string, len(annotations))
 		maps.Copy(ann, annotations)
 
@@ -58,7 +58,7 @@ func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, erro
 				Selector: labels,
 			},
 		}
-		svc.ObjectMeta.Name = strcase.KebabCase(fmt.Sprintf("%s-%s", svc.ObjectMeta.Name, nsPipelineName))
+		svc.ObjectMeta.Name = strcase.KebabCase(fmt.Sprintf("%s-%s", svc.ObjectMeta.Name, groupName))
 		svcList = append(svcList, svc)
 	}
 

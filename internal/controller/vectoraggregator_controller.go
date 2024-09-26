@@ -178,7 +178,12 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
 	vaCtrl := aggregator.NewController(v, client, clientset)
 
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, v.Spec.Selector, observabilityv1alpha1.VectorPipelineRoleAggregator)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
+		Scope:     pipeline.NamespacedPipeline,
+		Selector:  v.Spec.Selector,
+		Role:      observabilityv1alpha1.VectorPipelineRoleAggregator,
+		Namespace: vaCtrl.VectorAggregator.Namespace,
+	})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -189,7 +194,11 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 		InternalMetrics:   vaCtrl.VectorAggregator.Spec.InternalMetrics,
 	}, pipelines...)
 	if err != nil {
-		return ctrl.Result{}, err
+		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Error(err, "Build config failed")
+		return ctrl.Result{}, nil
 	}
 
 	byteCfg, err := cfg.MarshalJSON()

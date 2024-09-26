@@ -77,6 +77,7 @@ type ServicePort struct {
 	Namespace    string
 	Port         int32
 	Protocol     corev1.Protocol
+	ServiceName  string
 }
 
 type internalConfig struct {

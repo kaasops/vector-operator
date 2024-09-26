@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	"net"
@@ -41,6 +42,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 						Namespace:    pipeline.GetNamespace(),
 						SourceName:   k,
 						PipelineName: pipeline.GetName(),
+						ServiceName:  pipeline.GetAnnotations()[common.AnnotationServiceName],
 					})
 					if err != nil {
 						return nil, err

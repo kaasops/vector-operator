@@ -18,6 +18,7 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
@@ -40,27 +41,60 @@ type Pipeline interface {
 	GetTypeMeta() v1.TypeMeta
 }
 
-func GetValidPipelines(ctx context.Context, client client.Client, selector v1alpha1.VectorSelectorSpec, role v1alpha1.VectorPipelineRole) ([]Pipeline, error) {
+type FilterPipelines struct {
+	Scope     FilterScope
+	Selector  v1alpha1.VectorSelectorSpec
+	Role      v1alpha1.VectorPipelineRole
+	Namespace string
+}
+
+type FilterScope int
+
+const (
+	AllPipelines       FilterScope = iota
+	NamespacedPipeline FilterScope = iota
+	ClusterPipelines   FilterScope = iota
+)
+
+func GetValidPipelines(ctx context.Context, client client.Client, filter FilterPipelines) ([]Pipeline, error) {
 	var validPipelines []Pipeline
-	vps, err := GetVectorPipelines(ctx, client)
-	if err != nil {
-		return nil, err
-	}
-	cvps, err := GetClusterVectorPipelines(ctx, client)
-	if err != nil {
-		return nil, err
-	}
-	if len(vps) != 0 {
-		for _, vp := range vps {
-			if !vp.IsDeleted() && vp.IsValid() && MatchLabels(selector.MatchLabels, vp.Labels) && vp.GetRole() == role {
-				validPipelines = append(validPipelines, vp.DeepCopy())
+
+	if filter.Scope == AllPipelines || filter.Scope == NamespacedPipeline {
+
+		if filter.Namespace == "" {
+			return nil, fmt.Errorf("namespace not specified")
+		}
+
+		vps, err := GetVectorPipelines(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		if len(vps) != 0 {
+			for _, vp := range vps {
+				if !vp.IsDeleted() &&
+					vp.IsValid() &&
+					vp.GetRole() == filter.Role &&
+					vp.Namespace == filter.Namespace &&
+					MatchLabels(filter.Selector.MatchLabels, vp.Labels) {
+					validPipelines = append(validPipelines, vp.DeepCopy())
+				}
 			}
 		}
 	}
-	if len(cvps) != 0 {
-		for _, cvp := range cvps {
-			if !cvp.IsDeleted() && cvp.IsValid() && MatchLabels(selector.MatchLabels, cvp.Labels) && cvp.GetRole() == role {
-				validPipelines = append(validPipelines, cvp.DeepCopy())
+
+	if filter.Scope == AllPipelines || filter.Scope == ClusterPipelines {
+		cvps, err := GetClusterVectorPipelines(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		if len(cvps) != 0 {
+			for _, cvp := range cvps {
+				if !cvp.IsDeleted() &&
+					cvp.IsValid() &&
+					cvp.GetRole() == filter.Role &&
+					MatchLabels(filter.Selector.MatchLabels, cvp.Labels) {
+					validPipelines = append(validPipelines, cvp.DeepCopy())
+				}
 			}
 		}
 	}
@@ -70,7 +104,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, selector v1alp
 func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) error {
 	p.SetConfigCheck(true)
 	p.SetReason(nil)
-	hash, err := GetSpecHash(p)
+	hash, err := GegPipelineHash(p)
 	if err != nil {
 		return err
 	}
@@ -83,7 +117,7 @@ func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reas
 
 	p.SetConfigCheck(false)
 	p.SetReason(&reason)
-	hash, err := GetSpecHash(p)
+	hash, err := GegPipelineHash(p)
 	if err != nil {
 		return err
 	}

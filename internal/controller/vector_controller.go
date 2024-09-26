@@ -179,7 +179,11 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector, v1alpha1.VectorPipelineRoleAgent)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
+		Scope:    pipeline.AllPipelines,
+		Selector: vaCtrl.Vector.Spec.Selector,
+		Role:     v1alpha1.VectorPipelineRoleAgent,
+	})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -192,7 +196,11 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 	}, pipelines...)
 	if err != nil {
-		return ctrl.Result{}, err
+		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Error(err, "Build config failed")
+		return ctrl.Result{}, nil
 	}
 	cfgHash := hash.Get(byteConfig)
 

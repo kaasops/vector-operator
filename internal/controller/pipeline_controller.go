@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 type PipelineReconciler struct {
@@ -95,11 +94,11 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	speckChanged, err := pipeline.IsSpecChanged(pipelineCR)
+	pipelineChanged, err := pipeline.IsPipelineChanged(pipelineCR)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if speckChanged {
+	if pipelineChanged {
 		log.Info("Pipeline has no changes. Finish Reconcile Pipeline")
 		return ctrl.Result{}, nil
 	}
@@ -247,7 +246,6 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha1.VectorPipeline{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 20}).
 		Watches(&v1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 

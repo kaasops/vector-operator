@@ -18,12 +18,23 @@ package pipeline
 
 import (
 	"encoding/json"
-
+	"github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 )
 
-func GetSpecHash(pipeline Pipeline) (*uint32, error) {
-	a, err := json.Marshal(pipeline.GetSpec())
+type tmp struct {
+	Spec        v1alpha1.VectorPipelineSpec
+	Labels      map[string]string
+	ServiceName string
+}
+
+func GegPipelineHash(pipeline Pipeline) (*uint32, error) {
+	a, err := json.Marshal(tmp{
+		Spec:        pipeline.GetSpec(),
+		Labels:      pipeline.GetLabels(),
+		ServiceName: pipeline.GetAnnotations()[common.AnnotationServiceName],
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -31,9 +42,9 @@ func GetSpecHash(pipeline Pipeline) (*uint32, error) {
 	return &hash, nil
 }
 
-// IsSpecChanged returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
-func IsSpecChanged(pipeline Pipeline) (bool, error) {
-	hash, err := GetSpecHash(pipeline)
+// IsPipelineChanged returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
+func IsPipelineChanged(pipeline Pipeline) (bool, error) {
+	hash, err := GegPipelineHash(pipeline)
 	if err != nil {
 		return false, err
 	}

@@ -136,6 +136,7 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 type SPGroup struct {
 	PipelineName string
 	Namespace    string
+	ServiceName  string
 }
 
 func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
@@ -144,6 +145,7 @@ func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
 		spg := SPGroup{
 			PipelineName: s.PipelineName,
 			Namespace:    s.Namespace,
+			ServiceName:  s.ServiceName,
 		}
 		m[spg] = append(m[spg], s)
 	}

@@ -6,30 +6,39 @@ import (
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"maps"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues("vector-aggregator-service", ctrl.VectorAggregator.Name)
 	log.Info("start Reconcile Vector Aggregator Service")
-	svcs, err := ctrl.createVectorAggregatorService()
+	existing, err := ctrl.getExistingServices(ctx)
 	if err != nil {
 		return err
 	}
-	if len(svcs) == 0 {
-		return nil
+	svcs, err := ctrl.createVectorAggregatorServices()
+	if err != nil {
+		return err
 	}
 	for _, svc := range svcs {
+		delete(existing, svc.Name)
 		if err := k8s.CreateOrUpdateResource(ctx, svc, ctrl.Client); err != nil {
+			return err
+		}
+	}
+	for _, svc := range existing {
+		if err := ctrl.Client.Delete(ctx, svc); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, error) {
+func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, error) {
 	labels := ctrl.labelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 	if annotations == nil {
@@ -58,7 +67,11 @@ func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, erro
 				Selector: labels,
 			},
 		}
-		svc.ObjectMeta.Name = genSvcName(svc.ObjectMeta.Name, group.Namespace, group.PipelineName)
+		name := group.ServiceName
+		if name == "" {
+			name = strcase.KebabCase(fmt.Sprintf("%s-%s", svc.ObjectMeta.Name, group.PipelineName))
+		}
+		svc.ObjectMeta.Name = name
 		svcList = append(svcList, svc)
 	}
 
@@ -82,9 +95,19 @@ func (ctrl *Controller) createVectorAggregatorService() ([]*corev1.Service, erro
 	return svcList, nil
 }
 
-func genSvcName(aggregator, ns, pipeline string) string {
-	if ns == "" {
-		return strcase.KebabCase(fmt.Sprintf("%s-%s", aggregator, pipeline))
+func (ctrl *Controller) getExistingServices(ctx context.Context) (map[string]*corev1.Service, error) {
+	svcList := corev1.ServiceList{}
+	opts := &client.ListOptions{
+		Namespace:     ctrl.VectorAggregator.Namespace,
+		LabelSelector: labels.Set(ctrl.labelsForVectorAggregator()).AsSelector(),
 	}
-	return strcase.KebabCase(fmt.Sprintf("%s-%s-%s", aggregator, ns, pipeline))
+	err := ctrl.Client.List(ctx, &svcList, opts)
+	if err != nil {
+		return nil, err
+	}
+	existing := make(map[string]*corev1.Service, len(svcList.Items))
+	for _, svc := range svcList.Items {
+		existing[svc.Name] = &svc
+	}
+	return existing, nil
 }

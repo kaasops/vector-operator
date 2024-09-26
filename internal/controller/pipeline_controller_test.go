@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,7 +28,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 var _ = Describe("VectorPipeline Controller", func() {
@@ -40,13 +41,13 @@ var _ = Describe("VectorPipeline Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vectorpipeline := &observabilityv1alpha1.VectorPipeline{}
+		vectorpipeline := &v1alpha1.VectorPipeline{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VectorPipeline")
 			err := k8sClient.Get(ctx, typeNamespacedName, vectorpipeline)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &observabilityv1alpha1.VectorPipeline{
+				resource := &v1alpha1.VectorPipeline{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +60,7 @@ var _ = Describe("VectorPipeline Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &observabilityv1alpha1.VectorPipeline{}
+			resource := &v1alpha1.VectorPipeline{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -69,12 +70,11 @@ var _ = Describe("VectorPipeline Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &PipelineReconciler{
-				Client:                     k8sClient,
-				Scheme:                     k8sClient.Scheme(),
-				Clientset:                  clientset,
-				PipelineCheckWG:            wg,
-				PipelineDeleteEventTimeout: pipelineDeleteEventTimeout,
-				ConfigCheckTimeout:         configCheckTimeout,
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				Clientset:          clientset,
+				ConfigCheckTimeout: configCheckTimeout,
+				VectorAgentEventCh: make(chan event.GenericEvent, 1),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

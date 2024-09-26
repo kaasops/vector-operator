@@ -17,8 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,7 +31,7 @@ import (
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sync"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -73,9 +75,6 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	var watchNamespace string
 	var watchLabel string
-	var pipelineCheckWG sync.WaitGroup
-	var pipelineCheckTimeout time.Duration
-	var pipelineDeleteEventTimeout time.Duration
 	var configCheckTimeout time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -90,8 +89,6 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
-	flag.DurationVar(&pipelineCheckTimeout, "pipeline-check-timeout", 15*time.Second, "wait pipeline checks before force vector reconcile. Default: 15s")
-	flag.DurationVar(&pipelineDeleteEventTimeout, "pipeline-delete-timeout", 5*time.Second, "collect delete events timeout")
 	flag.DurationVar(&configCheckTimeout, "configcheck-timeout", 300*time.Second, "configcheck timeout")
 	opts := zap.Options{
 		Development: true,
@@ -189,30 +186,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	vectorAgentEventCh := make(chan event.GenericEvent)
+	defer close(vectorAgentEventCh)
+
 	if err = (&controller.VectorReconciler{
-		Client:               mgr.GetClient(),
-		Scheme:               mgr.GetScheme(),
-		Clientset:            clientset,
-		PipelineCheckWG:      &pipelineCheckWG,
-		PipelineCheckTimeout: pipelineCheckTimeout,
-		ConfigCheckTimeout:   configCheckTimeout,
-		DiscoveryClient:      dc,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Clientset:          clientset,
+		ConfigCheckTimeout: configCheckTimeout,
+		DiscoveryClient:    dc,
+		EventChan:          vectorAgentEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
 	}
+
+	vectorPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorPipelineEventCh)
+
 	if err = (&controller.PipelineReconciler{
-		Client:                     mgr.GetClient(),
-		Scheme:                     mgr.GetScheme(),
-		Clientset:                  clientset,
-		PipelineCheckWG:            &pipelineCheckWG,
-		PipelineDeleteEventTimeout: pipelineDeleteEventTimeout,
-		ConfigCheckTimeout:         configCheckTimeout,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Clientset:          clientset,
+		ConfigCheckTimeout: configCheckTimeout,
+		VectorAgentEventCh: vectorPipelineEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	go reconcileWithDelay(context.Background(), vectorPipelineEventCh, vectorAgentEventCh, time.Second*10)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -287,4 +291,30 @@ func setupCustomCache(mgrOptions *ctrl.Options, namespace string, watchLabel str
 	}
 
 	return mgrOptions, nil
+}
+
+func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, delay time.Duration) {
+	ticker := time.NewTicker(delay)
+	defer ticker.Stop()
+
+	store := make(map[string]event.GenericEvent)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev := <-in:
+			key := fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())
+			if _, ok := store[key]; !ok {
+				store[key] = ev
+			}
+		case <-ticker.C:
+			if len(store) != 0 {
+				for nn, ev := range store {
+					out <- ev
+					delete(store, nn)
+				}
+			}
+		}
+	}
 }

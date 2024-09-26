@@ -22,11 +22,12 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 var _ = Describe("Vector Controller", func() {
@@ -39,13 +40,13 @@ var _ = Describe("Vector Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vector := &observabilityv1alpha1.Vector{}
+		vector := &v1alpha1.Vector{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Vector")
 			err := k8sClient.Get(ctx, typeNamespacedName, vector)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &observabilityv1alpha1.Vector{
+				resource := &v1alpha1.Vector{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -58,7 +59,7 @@ var _ = Describe("Vector Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &observabilityv1alpha1.Vector{}
+			resource := &v1alpha1.Vector{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -68,13 +69,12 @@ var _ = Describe("Vector Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &VectorReconciler{
-				Client:               k8sClient,
-				Scheme:               k8sClient.Scheme(),
-				Clientset:            clientset,
-				PipelineCheckWG:      wg,
-				PipelineCheckTimeout: pipelineCheckTimeout,
-				ConfigCheckTimeout:   configCheckTimeout,
-				DiscoveryClient:      clientset.DiscoveryClient,
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				Clientset:          clientset,
+				ConfigCheckTimeout: configCheckTimeout,
+				DiscoveryClient:    clientset.DiscoveryClient,
+				EventChan:          make(chan event.GenericEvent, 1),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -68,6 +68,7 @@ func New(
 	cs *kubernetes.Clientset,
 	va *vectorv1alpha1.Vector,
 	timeout time.Duration,
+	initiator string,
 ) *ConfigCheck {
 	image := va.Spec.Agent.Image
 	if va.Spec.Agent.ConfigCheck.Image != nil {
@@ -105,6 +106,7 @@ func New(
 		ConfigReloaderResources:  va.Spec.Agent.ConfigReloaderResources,
 		ConfigCheckTimeout:       timeout,
 		Annotations:              va.Spec.Agent.ConfigCheck.Annotations,
+		Initiator:                initiator,
 	}
 }
 

@@ -47,10 +47,7 @@ spec:
             description: VectorSpec defines the desired state of Vector
             properties:
               agent:
-                description: |-
-                  DisableAggregation
-                  DisableAggregation bool `json:"disableAggregation,omitempty"`
-                  Vector Agent
+                description: Vector Agent
                 properties:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.
@@ -4961,6 +4958,16 @@ spec:
                       - name
                       type: object
                     type: array
+                type: object
+              selector:
+                description: |-
+                  Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
+                  If not specified, all pipelines will be selected.
+                properties:
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                 type: object
               useApiServerCache:
                 description: Determines if requests to the kube-apiserver can be served

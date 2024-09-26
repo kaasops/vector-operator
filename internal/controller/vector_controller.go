@@ -19,7 +19,9 @@ package controller
 import (
 	"context"
 	"errors"
-	"sync"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"time"
 
 	"github.com/kaasops/vector-operator/internal/config"
@@ -34,6 +36,8 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	"github.com/kaasops/vector-operator/api/v1alpha1"
+	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
@@ -41,13 +45,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 // VectorReconciler reconciles a Vector object
@@ -56,11 +55,10 @@ type VectorReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset            *kubernetes.Clientset
-	PipelineCheckWG      *sync.WaitGroup
-	PipelineCheckTimeout time.Duration
-	ConfigCheckTimeout   time.Duration
-	DiscoveryClient      *discovery.DiscoveryClient
+	Clientset          *kubernetes.Clientset
+	ConfigCheckTimeout time.Duration
+	DiscoveryClient    *discovery.DiscoveryClient
+	EventChan          chan event.GenericEvent
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -81,13 +79,9 @@ type VectorReconciler struct {
 
 func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", req.NamespacedName)
-	log.Info("Waiting pipeline checks")
-	if waitPipelineChecks(r.PipelineCheckWG, r.PipelineCheckTimeout) {
-		log.Info("Timeout waiting pipeline checks, continue reconcile vector")
-	}
 	log.Info("Start Reconcile Vector")
 	if req.Namespace == "" {
-		vectors, err := listVectorCustomResourceInstances(ctx, r.Client)
+		vectors, err := listVectorAgents(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to list vector instances")
 			return ctrl.Result{}, err
@@ -104,7 +98,6 @@ func (r *VectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		log.Info("Vector CR not found. Ignoring since object must be deleted")
 		return ctrl.Result{}, nil
 	}
-
 	return r.createOrUpdateVector(ctx, r.Client, r.Clientset, vectorCR, false)
 }
 
@@ -115,8 +108,8 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&vectorv1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		WatchesRawSource(source.Channel(VectorAgentReconciliationSourceChannel, &handler.EnqueueRequestForObject{})).
+		For(&v1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
@@ -134,21 +127,24 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func listVectorCustomResourceInstances(ctx context.Context, client client.Client) (vectors []*vectorv1alpha1.Vector, err error) {
-	vectorlist := vectorv1alpha1.VectorList{}
-	err = client.List(ctx, &vectorlist)
+func listVectorAgents(ctx context.Context, client client.Client) (vectors []*v1alpha1.Vector, err error) {
+	vectorList := v1alpha1.VectorList{}
+	err = client.List(ctx, &vectorList)
 	if err != nil {
 		return nil, err
 	}
-	for _, vector := range vectorlist.Items {
+	for _, vector := range vectorList.Items {
+		if vector.DeletionTimestamp != nil {
+			continue
+		}
 		vectors = append(vectors, &vector)
 	}
 	return vectors, nil
 }
 
-func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*vectorv1alpha1.Vector, error) {
+func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context, req ctrl.Request) (*v1alpha1.Vector, error) {
 	// fetch the master instance
-	vectorCR := &vectorv1alpha1.Vector{}
+	vectorCR := &v1alpha1.Vector{}
 	err := r.Get(ctx, req.NamespacedName, vectorCR)
 	if err != nil {
 		if api_errors.IsNotFound(err) {
@@ -156,10 +152,11 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 		}
 		return nil, err
 	}
+	setTypeMetaIfNeeded(vectorCR)
 	return vectorCR, nil
 }
 
-func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*vectorv1alpha1.Vector) (ctrl.Result, error) {
+func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, configOnly bool, vectors ...*v1alpha1.Vector) (ctrl.Result, error) {
 	if len(vectors) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -168,6 +165,7 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
+		setTypeMetaIfNeeded(vector)
 		if _, err := r.createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -175,15 +173,13 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *vectorv1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
+func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.Vector, configOnly bool) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", v.Name)
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
-	vaCtrl.SetDefault()
-
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -203,8 +199,8 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 				vaCtrl.ClientSet,
 				vaCtrl.Vector,
 				r.ConfigCheckTimeout,
+				configcheck.ConfigCheckInitiatorVector,
 			)
-			configCheck.Initiator = configcheck.ConfigCheckInitiatorVector
 			reason, err := configCheck.Run(ctx)
 			if err != nil {
 				if errors.Is(err, configcheck.ValidationError) {
@@ -226,15 +222,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetLastAppliedPipelineStatus(ctx, &cfgHash); err != nil {
-		//TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, err
-	}
-
-	if err := vaCtrl.SetSuccessStatus(ctx); err != nil {
+	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash); err != nil {
 		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
 		if api_errors.IsConflict(err) {
 			return ctrl.Result{}, err
@@ -245,16 +233,10 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	return ctrl.Result{}, nil
 }
 
-func waitPipelineChecks(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false
-	case <-time.After(timeout):
-		return true
+func setTypeMetaIfNeeded(cr *v1alpha1.Vector) {
+	// https://github.com/kubernetes/kubernetes/issues/80609
+	if cr.Kind == "" || cr.APIVersion == "" {
+		cr.Kind = "Vector"
+		cr.APIVersion = "observability.kaasops.io/v1alpha1"
 	}
 }

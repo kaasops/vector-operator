@@ -43,7 +43,7 @@ type Pipeline interface {
 
 type FilterPipelines struct {
 	Scope     FilterScope
-	Selector  v1alpha1.VectorSelectorSpec
+	Selector  *v1alpha1.VectorSelectorSpec
 	Role      v1alpha1.VectorPipelineRole
 	Namespace string
 }
@@ -58,6 +58,11 @@ const (
 
 func GetValidPipelines(ctx context.Context, client client.Client, filter FilterPipelines) ([]Pipeline, error) {
 	var validPipelines []Pipeline
+
+	matchLabels := map[string]string{}
+	if filter.Selector != nil && filter.Selector.MatchLabels != nil {
+		matchLabels = filter.Selector.MatchLabels
+	}
 
 	if filter.Scope == AllPipelines || filter.Scope == NamespacedPipeline {
 
@@ -75,7 +80,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 					vp.IsValid() &&
 					vp.GetRole() == filter.Role &&
 					vp.Namespace == filter.Namespace &&
-					MatchLabels(filter.Selector.MatchLabels, vp.Labels) {
+					MatchLabels(matchLabels, vp.Labels) {
 					validPipelines = append(validPipelines, vp.DeepCopy())
 				}
 			}
@@ -92,7 +97,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 				if !cvp.IsDeleted() &&
 					cvp.IsValid() &&
 					cvp.GetRole() == filter.Role &&
-					MatchLabels(filter.Selector.MatchLabels, cvp.Labels) {
+					MatchLabels(matchLabels, cvp.Labels) {
 					validPipelines = append(validPipelines, cvp.DeepCopy())
 				}
 			}

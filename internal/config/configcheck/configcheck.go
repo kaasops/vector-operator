@@ -67,26 +67,26 @@ func New(
 	config []byte,
 	c client.Client,
 	cs *kubernetes.Clientset,
-	va *vectorv1alpha1.VectorCommon,
+	vc *vectorv1alpha1.VectorCommon,
 	name, namespace string,
 	timeout time.Duration,
 	initiator string,
 ) *ConfigCheck {
-	image := va.Image
-	if va.ConfigCheck.Image != nil {
-		image = *va.ConfigCheck.Image
+	image := vc.Image
+	if vc.ConfigCheck.Image != nil {
+		image = *vc.ConfigCheck.Image
 	}
 
-	env := va.Env
+	env := vc.Env
 
-	tolerations := va.Tolerations
-	if va.ConfigCheck.Tolerations != nil {
-		tolerations = *va.ConfigCheck.Tolerations
+	tolerations := vc.Tolerations
+	if vc.ConfigCheck.Tolerations != nil {
+		tolerations = *vc.ConfigCheck.Tolerations
 	}
 
-	resources := va.Resources
-	if va.ConfigCheck.Resources != nil {
-		resources = *va.ConfigCheck.Resources
+	resources := vc.Resources
+	if vc.ConfigCheck.Resources != nil {
+		resources = *vc.ConfigCheck.Resources
 	}
 
 	return &ConfigCheck{
@@ -96,18 +96,18 @@ func New(
 		Name:                     name,
 		Namespace:                namespace,
 		Image:                    image,
-		ImagePullPolicy:          va.ImagePullPolicy,
-		ImagePullSecrets:         va.ImagePullSecrets,
+		ImagePullPolicy:          vc.ImagePullPolicy,
+		ImagePullSecrets:         vc.ImagePullSecrets,
 		Envs:                     env,
 		Tolerations:              tolerations,
 		Resources:                resources,
-		SecurityContext:          va.SecurityContext,
-		ContainerSecurityContext: va.ContainerSecurityContext,
-		CompressedConfig:         va.CompressConfigFile,
-		ConfigReloaderImage:      va.ConfigReloaderImage,
-		ConfigReloaderResources:  va.ConfigReloaderResources,
+		SecurityContext:          vc.SecurityContext,
+		ContainerSecurityContext: vc.ContainerSecurityContext,
+		CompressedConfig:         vc.CompressConfigFile,
+		ConfigReloaderImage:      vc.ConfigReloaderImage,
+		ConfigReloaderResources:  vc.ConfigReloaderResources,
 		ConfigCheckTimeout:       timeout,
-		Annotations:              va.ConfigCheck.Annotations,
+		Annotations:              vc.ConfigCheck.Annotations,
 		Initiator:                initiator,
 	}
 }

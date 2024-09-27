@@ -20,9 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // VectorSpec defines the desired state of Vector
 type VectorSpec struct {
 	// Vector Agent
@@ -31,7 +28,7 @@ type VectorSpec struct {
 	UseApiServerCache bool `json:"useApiServerCache,omitempty"`
 	// Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
 	// If not specified, all pipelines will be selected.
-	Selector VectorSelectorSpec `json:"selector,omitempty"`
+	Selector *VectorSelectorSpec `json:"selector,omitempty"`
 }
 
 // VectorStatus defines the observed state of Vector

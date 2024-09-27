@@ -94,11 +94,11 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	pipelineChanged, err := pipeline.IsPipelineChanged(pipelineCR)
+	notChanged, err := pipeline.IsPipelineChanged(pipelineCR)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if pipelineChanged {
+	if notChanged {
 		log.Info("Pipeline has no changes. Finish Reconcile Pipeline")
 		return ctrl.Result{}, nil
 	}
@@ -109,10 +109,11 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	pipelineVectorRole, err := p.VectorRole()
 	if err != nil {
-		if err = pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
+		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 			log.Error(err, "Failed to set pipeline status")
 			return ctrl.Result{}, err
 		}
+		log.Error(err, "Failed to determine pipeline role")
 		return ctrl.Result{}, nil
 	}
 	pipelineCR.SetRole(pipelineVectorRole)

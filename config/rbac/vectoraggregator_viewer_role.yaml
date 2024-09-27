@@ -1,0 +1,23 @@
+# permissions for end users to view vectoraggregators.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: vector-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vectoraggregator-viewer-role
+rules:
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectoraggregators
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - observability.kaasops.io
+  resources:
+  - vectoraggregators/status
+  verbs:
+  - get

@@ -19,6 +19,7 @@ package configcheck
 import (
 	"context"
 	"errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"math/rand"
 	"time"
 
@@ -66,46 +67,47 @@ func New(
 	config []byte,
 	c client.Client,
 	cs *kubernetes.Clientset,
-	va *vectorv1alpha1.Vector,
+	vc *vectorv1alpha1.VectorCommon,
+	name, namespace string,
 	timeout time.Duration,
 	initiator string,
 ) *ConfigCheck {
-	image := va.Spec.Agent.Image
-	if va.Spec.Agent.ConfigCheck.Image != nil {
-		image = *va.Spec.Agent.ConfigCheck.Image
+	image := vc.Image
+	if vc.ConfigCheck.Image != nil {
+		image = *vc.ConfigCheck.Image
 	}
 
-	env := va.Spec.Agent.Env
+	env := vc.Env
 
-	tolerations := va.Spec.Agent.Tolerations
-	if va.Spec.Agent.ConfigCheck.Tolerations != nil {
-		tolerations = *va.Spec.Agent.ConfigCheck.Tolerations
+	tolerations := vc.Tolerations
+	if vc.ConfigCheck.Tolerations != nil {
+		tolerations = *vc.ConfigCheck.Tolerations
 	}
 
-	resources := va.Spec.Agent.Resources
-	if va.Spec.Agent.ConfigCheck.Resources != nil {
-		resources = *va.Spec.Agent.ConfigCheck.Resources
+	resources := vc.Resources
+	if vc.ConfigCheck.Resources != nil {
+		resources = *vc.ConfigCheck.Resources
 	}
 
 	return &ConfigCheck{
 		Config:                   config,
 		Client:                   c,
 		ClientSet:                cs,
-		Name:                     va.Name,
-		Namespace:                va.Namespace,
+		Name:                     name,
+		Namespace:                namespace,
 		Image:                    image,
-		ImagePullPolicy:          va.Spec.Agent.ImagePullPolicy,
-		ImagePullSecrets:         va.Spec.Agent.ImagePullSecrets,
+		ImagePullPolicy:          vc.ImagePullPolicy,
+		ImagePullSecrets:         vc.ImagePullSecrets,
 		Envs:                     env,
 		Tolerations:              tolerations,
 		Resources:                resources,
-		SecurityContext:          va.Spec.Agent.SecurityContext,
-		ContainerSecurityContext: va.Spec.Agent.ContainerSecurityContext,
-		CompressedConfig:         va.Spec.Agent.CompressConfigFile,
-		ConfigReloaderImage:      va.Spec.Agent.ConfigReloaderImage,
-		ConfigReloaderResources:  va.Spec.Agent.ConfigReloaderResources,
+		SecurityContext:          vc.SecurityContext,
+		ContainerSecurityContext: vc.ContainerSecurityContext,
+		CompressedConfig:         vc.CompressConfigFile,
+		ConfigReloaderImage:      vc.ConfigReloaderImage,
+		ConfigReloaderResources:  vc.ConfigReloaderResources,
 		ConfigCheckTimeout:       timeout,
-		Annotations:              va.Spec.Agent.ConfigCheck.Annotations,
+		Annotations:              vc.ConfigCheck.Annotations,
 		Initiator:                initiator,
 	}
 }
@@ -114,7 +116,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =================")
 
-	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil {
+	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
 		return "", err
 	}
 

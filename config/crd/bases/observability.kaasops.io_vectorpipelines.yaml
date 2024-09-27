@@ -25,6 +25,9 @@ spec:
     - jsonPath: .status.configCheckResult
       name: Valid
       type: boolean
+    - jsonPath: .status.role
+      name: Role
+      type: boolean
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -69,6 +72,8 @@ spec:
               configCheckResult:
                 type: boolean
               reason:
+                type: string
+              role:
                 type: string
             type: object
         type: object

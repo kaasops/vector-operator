@@ -993,7 +993,7 @@ spec:
                       healthcheck:
                         description: |-
                           Enable ReadinessProbe and LivenessProbe via api /health endpoint.
-                          If probe enabled via VectorAgent, this setting will be ignored for that probe.
+                          If probe enabled via VectorAgent or VectorAggregator, this setting will be ignored for that probe.
                         type: boolean
                       playground:
                         type: boolean

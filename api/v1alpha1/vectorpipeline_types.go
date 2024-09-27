@@ -36,9 +36,10 @@ type VectorPipelineSpec struct {
 
 // VectorPipelineStatus defines the observed state of VectorPipeline
 type VectorPipelineStatus struct {
-	ConfigCheckResult       *bool   `json:"configCheckResult,omitempty"`
-	Reason                  *string `json:"reason,omitempty"`
-	LastAppliedPipelineHash *uint32 `json:"LastAppliedPipelineHash,omitempty"`
+	Role                    *VectorPipelineRole `json:"role,omitempty"`
+	ConfigCheckResult       *bool               `json:"configCheckResult,omitempty"`
+	Reason                  *string             `json:"reason,omitempty"`
+	LastAppliedPipelineHash *uint32             `json:"LastAppliedPipelineHash,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -46,6 +47,7 @@ type VectorPipelineStatus struct {
 //+kubebuilder:resource:shortName=vp,categories=all
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 //+kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
+//+kubebuilder:printcolumn:name="Role",type="boolean",JSONPath=".status.role"
 
 // VectorPipeline is the Schema for the vectorpipelines API
 type VectorPipeline struct {

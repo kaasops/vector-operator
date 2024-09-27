@@ -21,18 +21,20 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
+	"os"
+	"time"
+
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"time"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -201,22 +203,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	vectorPipelineEventCh := make(chan event.GenericEvent, 10)
-	defer close(vectorPipelineEventCh)
+	vectorAgentsPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorAgentsPipelineEventCh)
+	vectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
+	defer close(vectorAggregatorsPipelineEventCh)
 
 	if err = (&controller.PipelineReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		Clientset:          clientset,
-		ConfigCheckTimeout: configCheckTimeout,
-		VectorAgentEventCh: vectorPipelineEventCh,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		Clientset:                clientset,
+		ConfigCheckTimeout:       configCheckTimeout,
+		VectorAgentEventCh:       vectorAgentsPipelineEventCh,
+		VectorAggregatorsEventCh: vectorAggregatorsPipelineEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
 	}
+
+	vectorAggregatorsEventCh := make(chan event.GenericEvent)
+	defer close(vectorAggregatorsEventCh)
+
+	if err = (&controller.VectorAggregatorReconciler{
+		Client:             mgr.GetClient(),
+		Clientset:          clientset,
+		Scheme:             mgr.GetScheme(),
+		ConfigCheckTimeout: configCheckTimeout,
+		EventChan:          vectorAggregatorsEventCh,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
-	go reconcileWithDelay(context.Background(), vectorPipelineEventCh, vectorAgentEventCh, time.Second*10)
+	go reconcileWithDelay(context.Background(), vectorAgentsPipelineEventCh, vectorAgentEventCh, time.Second*10)
+	go reconcileWithDelay(context.Background(), vectorAggregatorsPipelineEventCh, vectorAggregatorsEventCh, time.Second*10)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

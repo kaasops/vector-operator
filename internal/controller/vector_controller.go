@@ -152,7 +152,7 @@ func (r *VectorReconciler) findVectorCustomResourceInstance(ctx context.Context,
 		}
 		return nil, err
 	}
-	setTypeMetaIfNeeded(vectorCR)
+	setAgentTypeMetaIfNeeded(vectorCR)
 	return vectorCR, nil
 }
 
@@ -165,7 +165,7 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 		if vector.DeletionTimestamp != nil {
 			continue
 		}
-		setTypeMetaIfNeeded(vector)
+		setAgentTypeMetaIfNeeded(vector)
 		if _, err := r.createOrUpdateVector(ctx, client, clientset, vector, configOnly); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -179,15 +179,28 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
 	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, vaCtrl.Vector.Spec.Selector)
+	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
+		Scope:    pipeline.AllPipelines,
+		Selector: vaCtrl.Vector.Spec.Selector,
+		Role:     v1alpha1.VectorPipelineRoleAgent,
+	})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Get Config in Json ([]byte)
-	byteConfig, err := config.BuildByteConfig(vaCtrl, pipelines...)
+	byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
+		ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
+		PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
+		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
+		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
+	}, pipelines...)
 	if err != nil {
-		return ctrl.Result{}, err
+		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Error(err, "Build config failed")
+		return ctrl.Result{}, nil
 	}
 	cfgHash := hash.Get(byteConfig)
 
@@ -197,7 +210,9 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 				byteConfig,
 				vaCtrl.Client,
 				vaCtrl.ClientSet,
-				vaCtrl.Vector,
+				&vaCtrl.Vector.Spec.Agent.VectorCommon,
+				vaCtrl.Vector.Name,
+				vaCtrl.Vector.Namespace,
 				r.ConfigCheckTimeout,
 				configcheck.ConfigCheckInitiatorVector,
 			)
@@ -233,7 +248,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	return ctrl.Result{}, nil
 }
 
-func setTypeMetaIfNeeded(cr *v1alpha1.Vector) {
+func setAgentTypeMetaIfNeeded(cr *v1alpha1.Vector) {
 	// https://github.com/kubernetes/kubernetes/issues/80609
 	if cr.Kind == "" || cr.APIVersion == "" {
 		cr.Kind = "Vector"

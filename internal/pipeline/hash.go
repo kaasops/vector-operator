@@ -29,7 +29,7 @@ type tmp struct {
 	ServiceName string
 }
 
-func GegPipelineHash(pipeline Pipeline) (*uint32, error) {
+func GetPipelineHash(pipeline Pipeline) (*uint32, error) {
 	a, err := json.Marshal(tmp{
 		Spec:        pipeline.GetSpec(),
 		Labels:      pipeline.GetLabels(),
@@ -44,7 +44,7 @@ func GegPipelineHash(pipeline Pipeline) (*uint32, error) {
 
 // IsPipelineChanged returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash
 func IsPipelineChanged(pipeline Pipeline) (bool, error) {
-	hash, err := GegPipelineHash(pipeline)
+	hash, err := GetPipelineHash(pipeline)
 	if err != nil {
 		return false, err
 	}

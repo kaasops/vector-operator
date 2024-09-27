@@ -104,7 +104,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) error {
 	p.SetConfigCheck(true)
 	p.SetReason(nil)
-	hash, err := GegPipelineHash(p)
+	hash, err := GetPipelineHash(p)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reas
 
 	p.SetConfigCheck(false)
 	p.SetReason(&reason)
-	hash, err := GegPipelineHash(p)
+	hash, err := GetPipelineHash(p)
 	if err != nil {
 		return err
 	}

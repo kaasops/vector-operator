@@ -61,7 +61,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 
 	if filter.Scope == AllPipelines || filter.Scope == NamespacedPipeline {
 
-		if filter.Namespace == "" {
+		if filter.Scope == NamespacedPipeline && filter.Namespace == "" {
 			return nil, fmt.Errorf("namespace not specified")
 		}
 

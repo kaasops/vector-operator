@@ -44,7 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 const aggregatorFinalizerName = "vectoraggregator.observability.kaasops.io/finalizer"
@@ -94,7 +94,7 @@ func (r *VectorAggregatorReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			log.Error(err, "Failed to list vector aggregators instances")
 			return ctrl.Result{}, err
 		}
-		filtered := make([]*observabilityv1alpha1.VectorAggregator, 0, len(vectorAggregators))
+		filtered := make([]*v1alpha1.VectorAggregator, 0, len(vectorAggregators))
 		for _, vector := range vectorAggregators {
 			if vector.Name == req.Name {
 				filtered = append(filtered, vector)
@@ -103,11 +103,12 @@ func (r *VectorAggregatorReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return r.reconcileVectorAggregators(ctx, r.Client, r.Clientset, filtered...)
 	}
 
-	vectorCR := &observabilityv1alpha1.VectorAggregator{}
+	vectorCR := &v1alpha1.VectorAggregator{}
 	err := r.Get(ctx, req.NamespacedName, vectorCR)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	setAggregatorTypeMetaIfNeeded(vectorCR)
 
 	if vectorCR.IsBeingDeleted() {
 		if controllerutil.ContainsFinalizer(vectorCR, aggregatorFinalizerName) {
@@ -143,7 +144,7 @@ func (r *VectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&observabilityv1alpha1.VectorAggregator{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.VectorAggregator{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
@@ -162,26 +163,27 @@ func (r *VectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func listVectorAggregators(ctx context.Context, client client.Client) (vectors []*observabilityv1alpha1.VectorAggregator, err error) {
-	vectorList := observabilityv1alpha1.VectorAggregatorList{}
+func listVectorAggregators(ctx context.Context, client client.Client) (vectors []*v1alpha1.VectorAggregator, err error) {
+	vectorList := v1alpha1.VectorAggregatorList{}
 	err = client.List(ctx, &vectorList)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range vectorList.Items {
+		setAggregatorTypeMetaIfNeeded(&v)
 		vectors = append(vectors, &v)
 	}
 	return vectors, nil
 }
 
-func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *observabilityv1alpha1.VectorAggregator) (ctrl.Result, error) {
+func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.VectorAggregator) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
 	vaCtrl := aggregator.NewController(v, client, clientset)
 
 	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
 		Scope:     pipeline.NamespacedPipeline,
 		Selector:  v.Spec.Selector,
-		Role:      observabilityv1alpha1.VectorPipelineRoleAggregator,
+		Role:      v1alpha1.VectorPipelineRoleAggregator,
 		Namespace: vaCtrl.VectorAggregator.Namespace,
 	})
 	if err != nil {
@@ -246,7 +248,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Context, c client.Client, clientset *kubernetes.Clientset, aggregators ...*observabilityv1alpha1.VectorAggregator) (ctrl.Result, error) {
+func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Context, c client.Client, clientset *kubernetes.Clientset, aggregators ...*v1alpha1.VectorAggregator) (ctrl.Result, error) {
 	if len(aggregators) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -262,6 +264,14 @@ func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Cont
 	return ctrl.Result{}, nil
 }
 
-func (r *VectorAggregatorReconciler) deleteVectorAggregator(ctx context.Context, v *observabilityv1alpha1.VectorAggregator) error {
+func (r *VectorAggregatorReconciler) deleteVectorAggregator(ctx context.Context, v *v1alpha1.VectorAggregator) error {
 	return aggregator.NewController(v, r.Client, r.Clientset).DeleteVectorAggregator(ctx)
+}
+
+func setAggregatorTypeMetaIfNeeded(cr *v1alpha1.VectorAggregator) {
+	// https://github.com/kubernetes/kubernetes/issues/80609
+	if cr.Kind == "" || cr.APIVersion == "" {
+		cr.Kind = "VectorAggregator"
+		cr.APIVersion = "observability.kaasops.io/v1alpha1"
+	}
 }

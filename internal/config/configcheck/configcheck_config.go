@@ -28,14 +28,14 @@ import (
 func (cc *ConfigCheck) createVectorConfigCheckConfig(ctx context.Context) (*corev1.Secret, error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	labels := labelsForVectorConfigCheck()
-	var data []byte = cc.Config
+	var data = cc.Config
 
 	if cc.CompressedConfig {
 		data = compression.Compress(cc.Config, log)
 	}
 
 	config := map[string][]byte{
-		"agent.json": data,
+		"config.json": data,
 	}
 
 	secret := &corev1.Secret{

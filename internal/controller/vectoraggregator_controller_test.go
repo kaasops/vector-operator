@@ -67,6 +67,18 @@ var _ = Describe("VectorAggregator Controller", func() {
 
 			By("Cleanup the specific resource instance VectorAggregator")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			controllerReconciler := &VectorAggregatorReconciler{
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				Clientset:          clientset,
+				ConfigCheckTimeout: time.Second * 10,
+				EventChan:          make(chan event.GenericEvent, 1),
+			}
+			// remove finalizer
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
@@ -77,7 +89,6 @@ var _ = Describe("VectorAggregator Controller", func() {
 				ConfigCheckTimeout: time.Second * 10,
 				EventChan:          make(chan event.GenericEvent, 1),
 			}
-
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})

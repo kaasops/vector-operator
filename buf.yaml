@@ -1,0 +1,9 @@
+version: v2
+modules:
+  - path: proto/vector
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE

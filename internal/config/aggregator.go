@@ -34,22 +34,14 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 					if address == "" {
 						return nil, fmt.Errorf("address is empty from %s", pipeline.GetName())
 					}
-					protocol, _ := v.Options["mode"].(string)
-					if protocol == "" {
-						protocol = "tcp"
-					}
-					if protocol != "tcp" && protocol != "udp" {
-						return nil, fmt.Errorf("unsupported mode '%s' for %s pipeline", v.Options["mode"], pipeline.GetName())
-					}
 					_, port, err := net.SplitHostPort(address)
 					if err != nil {
 						return nil, fmt.Errorf("failed to parse address %s: %w", address, err)
 					}
 					settings = &Source{
 						Name: k,
-						Type: SocketType,
+						Type: VectorType,
 						Options: map[string]any{
-							"mode":    protocol,
 							"address": address,
 						},
 					}
@@ -60,7 +52,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 					err = cfg.internal.addServicePort(&ServicePort{
 						IsKubernetesEvents: true,
 						Port:               portN,
-						Protocol:           corev1.Protocol(strings.ToUpper(protocol)),
+						Protocol:           corev1.ProtocolTCP,
 						Namespace:          pipeline.GetNamespace(),
 						SourceName:         k,
 						PipelineName:       pipeline.GetName(),

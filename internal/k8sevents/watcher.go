@@ -1,12 +1,14 @@
 package k8sevents
 
 import (
-	"encoding/json"
+	"context"
+	"github.com/kaasops/vector-operator/internal/vector/gen"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"net"
 	"time"
 )
 
@@ -53,7 +55,8 @@ func (w *watcher) watchEvents(client rest.Interface, namespace string) {
 		},
 	})
 	go func() {
-		var conn net.Conn
+		var conn *grpc.ClientConn
+		var vectorClient gen.VectorClient
 		var err error
 		var event *corev1.Event
 		var sending bool
@@ -84,24 +87,26 @@ func (w *watcher) watchEvents(client rest.Interface, namespace string) {
 
 				if conn == nil {
 					for {
-						conn, err = net.Dial(w.protocol, w.addr)
+						conn, err = grpc.NewClient(w.addr,
+							grpc.WithTransportCredentials(insecure.NewCredentials()),
+						)
 						if err != nil {
 							w.logger.Error(err, "connect to address", "address", w.addr)
 							time.Sleep(5 * time.Second)
 							continue
 						}
+						vectorClient = gen.NewVectorClient(conn)
 						break
 					}
 				}
 
-				data, err := json.Marshal(event)
-				if err != nil {
-					w.logger.Error(err, "marshal event", "event", event)
-					sending = false
-					continue
-				}
-
-				_, err = conn.Write(append(data, []byte("\n")...))
+				_, err = vectorClient.PushEvents(context.Background(), &gen.PushEventsRequest{
+					Events: []*gen.EventWrapper{{
+						Event: &gen.EventWrapper_Log{
+							Log: k8sEventToVectorLog(event),
+						},
+					}},
+				})
 				if err != nil {
 					w.logger.Error(err, "send event", "address", w.addr)
 					_ = conn.Close()

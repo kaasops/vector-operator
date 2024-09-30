@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"os"
 	"time"
 
@@ -233,6 +234,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
 	}
+
+	if err = (&controller.ServiceReconciler{
+		Client:        mgr.GetClient(),
+		EventsManager: k8sevents.NewEventsManager(clientset, ctrl.Log.WithName("kubernetes-events-manager")),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Service")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	go reconcileWithDelay(context.Background(), vectorAgentsPipelineEventCh, vectorAgentEventCh, time.Second*10)
@@ -324,6 +334,7 @@ func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, de
 		case <-ctx.Done():
 			return
 		case ev := <-in:
+			ticker.Reset(delay)
 			key := fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())
 			if _, ok := store[key]; !ok {
 				store[key] = ev

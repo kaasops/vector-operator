@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +54,10 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 
 		ports := make([]corev1.ServicePort, 0, len(list))
 		for _, sp := range list {
+			if sp.IsKubernetesEvents {
+				ann[common.AnnotationK8sEventsNamespace] = sp.Namespace
+			}
+
 			ports = append(ports, corev1.ServicePort{
 				Name:       strcase.KebabCase(sp.SourceName),
 				Protocol:   sp.Protocol,

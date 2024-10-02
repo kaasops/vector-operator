@@ -41,7 +41,7 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 		}
 	}
 	for _, svc := range existing {
-		if svc.Annotations[common.AnnotationK8sEventsNamespace] != "" {
+		if svc.Annotations[common.AnnotationK8sEventsPort] != "" {
 			ctrl.EventsCollector.UnregisterSubscriber(svc.Name, svc.Namespace)
 		}
 		if err := ctrl.Client.Delete(ctx, svc); err != nil {

@@ -209,7 +209,7 @@ func main() {
 	vectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
 	defer close(vectorAggregatorsPipelineEventCh)
 
-	evCollector := k8sevents.NewEventsCollector(clientset, ctrl.Log.WithName("kubernetes-events-manager"))
+	evCollector := k8sevents.NewEventsCollector(clientset, ctrl.Log.WithName("kubernetes-events-collector"))
 
 	if err = (&controller.PipelineReconciler{
 		Client:                   mgr.GetClient(),

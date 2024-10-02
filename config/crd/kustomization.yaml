@@ -6,6 +6,7 @@ resources:
 - bases/observability.kaasops.io_vectorpipelines.yaml
 - bases/observability.kaasops.io_clustervectorpipelines.yaml
 - bases/observability.kaasops.io_vectoraggregators.yaml
+- bases/observability.kaasops.io_clustervectoraggregators.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -19,6 +20,7 @@ patches:
 #- path: patches/cainjection_in_vectorpipelines.yaml
 #- path: patches/cainjection_in_clustervectorpipelines.yaml
 #- path: patches/cainjection_in_vectoraggregators.yaml
+#- path: patches/cainjection_in_clustervectoraggregators.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

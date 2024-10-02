@@ -10,7 +10,7 @@ import (
 )
 
 func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-deployment", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-deployment", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Deployment")
 	return k8s.CreateOrUpdateResource(ctx, ctrl.createVectorAggregatorDeployment(), ctrl.Client)
 }
@@ -22,33 +22,33 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 	var containers []corev1.Container
 	containers = append(containers, *ctrl.VectorAggregatorContainer())
 
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		initContainers = append(initContainers, *ctrl.ConfigReloaderInitContainer())
 	}
 
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		containers = append(containers, *ctrl.ConfigReloaderSidecarContainer())
 	}
 
 	deployment := &appsv1.Deployment{
-		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
-			Replicas: &ctrl.VectorAggregator.Spec.Replicas,
+			Replicas: &ctrl.Spec.Replicas,
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+				ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 				Spec: corev1.PodSpec{
 					ServiceAccountName: ctrl.getNameVectorAggregator(),
 					Volumes:            ctrl.generateVectorAggregatorVolume(),
-					SecurityContext:    ctrl.VectorAggregator.Spec.SecurityContext,
-					ImagePullSecrets:   ctrl.VectorAggregator.Spec.ImagePullSecrets,
-					Affinity:           ctrl.VectorAggregator.Spec.Affinity,
-					RuntimeClassName:   ctrl.VectorAggregator.Spec.RuntimeClassName,
-					SchedulerName:      ctrl.VectorAggregator.Spec.SchedulerName,
-					Tolerations:        ctrl.VectorAggregator.Spec.Tolerations,
-					PriorityClassName:  ctrl.VectorAggregator.Spec.PodSecurityPolicyName,
-					HostNetwork:        ctrl.VectorAggregator.Spec.HostNetwork,
-					HostAliases:        ctrl.VectorAggregator.Spec.HostAliases,
+					SecurityContext:    ctrl.Spec.SecurityContext,
+					ImagePullSecrets:   ctrl.Spec.ImagePullSecrets,
+					Affinity:           ctrl.Spec.Affinity,
+					RuntimeClassName:   ctrl.Spec.RuntimeClassName,
+					SchedulerName:      ctrl.Spec.SchedulerName,
+					Tolerations:        ctrl.Spec.Tolerations,
+					PriorityClassName:  ctrl.Spec.PodSecurityPolicyName,
+					HostNetwork:        ctrl.Spec.HostNetwork,
+					HostAliases:        ctrl.Spec.HostAliases,
 					InitContainers:     initContainers,
 					Containers:         containers,
 				},
@@ -62,7 +62,7 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 	return &corev1.Container{
 		Name:  ctrl.getNameVectorAggregator(),
-		Image: ctrl.VectorAggregator.Spec.Image,
+		Image: ctrl.Spec.Image,
 		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
 		Env:   ctrl.generateVectorAggregatorEnvs(),
 		Ports: []corev1.ContainerPort{
@@ -73,21 +73,21 @@ func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 			},
 		},
 		VolumeMounts:    ctrl.generateVectorAggregatorVolumeMounts(),
-		ReadinessProbe:  ctrl.VectorAggregator.Spec.ReadinessProbe,
-		LivenessProbe:   ctrl.VectorAggregator.Spec.LivenessProbe,
-		Resources:       ctrl.VectorAggregator.Spec.Resources,
-		SecurityContext: ctrl.VectorAggregator.Spec.ContainerSecurityContext,
-		ImagePullPolicy: ctrl.VectorAggregator.Spec.ImagePullPolicy,
+		ReadinessProbe:  ctrl.Spec.ReadinessProbe,
+		LivenessProbe:   ctrl.Spec.LivenessProbe,
+		Resources:       ctrl.Spec.Resources,
+		SecurityContext: ctrl.Spec.ContainerSecurityContext,
+		ImagePullPolicy: ctrl.Spec.ImagePullPolicy,
 	}
 }
 
 func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {
 	return &corev1.Container{
 		Name:            "init-config-reloader",
-		Image:           ctrl.VectorAggregator.Spec.ConfigReloaderImage,
-		ImagePullPolicy: ctrl.VectorAggregator.Spec.ImagePullPolicy,
-		Resources:       ctrl.VectorAggregator.Spec.ConfigReloaderResources,
-		SecurityContext: ctrl.VectorAggregator.Spec.ContainerSecurityContext,
+		Image:           ctrl.Spec.ConfigReloaderImage,
+		ImagePullPolicy: ctrl.Spec.ImagePullPolicy,
+		Resources:       ctrl.Spec.ConfigReloaderResources,
+		SecurityContext: ctrl.Spec.ContainerSecurityContext,
 		Args: []string{
 			"--init-mode=true",
 			"--volume-dir-archive=/tmp/archive",
@@ -109,10 +109,10 @@ func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {
 func (ctrl *Controller) ConfigReloaderSidecarContainer() *corev1.Container {
 	return &corev1.Container{
 		Name:            "config-reloader",
-		Image:           ctrl.VectorAggregator.Spec.ConfigReloaderImage,
-		ImagePullPolicy: ctrl.VectorAggregator.Spec.ImagePullPolicy,
-		Resources:       ctrl.VectorAggregator.Spec.ConfigReloaderResources,
-		SecurityContext: ctrl.VectorAggregator.Spec.ContainerSecurityContext,
+		Image:           ctrl.Spec.ConfigReloaderImage,
+		ImagePullPolicy: ctrl.Spec.ImagePullPolicy,
+		Resources:       ctrl.Spec.ConfigReloaderResources,
+		SecurityContext: ctrl.Spec.ContainerSecurityContext,
 		Args: []string{
 			"--init-mode=false",
 			"--volume-dir-archive=/tmp/archive",
@@ -132,13 +132,13 @@ func (ctrl *Controller) ConfigReloaderSidecarContainer() *corev1.Container {
 }
 
 func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
-	volume := ctrl.VectorAggregator.Spec.Volumes
+	volume := ctrl.Spec.Volumes
 	configVolumeSource := corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
 			SecretName: ctrl.getNameVectorAggregator(),
 		},
 	}
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		configVolumeSource = corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
@@ -153,7 +153,7 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: ctrl.VectorAggregator.Spec.DataDir,
+					Path: ctrl.Spec.DataDir,
 				},
 			},
 		},
@@ -175,7 +175,7 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 		},
 	}...)
 
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		volume = append(volume, corev1.Volume{
 			Name: "app-config-compress",
 			VolumeSource: corev1.VolumeSource{
@@ -190,7 +190,7 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 }
 
 func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMount {
-	volumeMount := ctrl.VectorAggregator.Spec.VolumeMounts
+	volumeMount := ctrl.Spec.VolumeMounts
 
 	volumeMount = append(volumeMount, []corev1.VolumeMount{
 		{
@@ -211,7 +211,7 @@ func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMo
 		},
 	}...)
 
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		volumeMount = append(volumeMount, []corev1.VolumeMount{
 			{
 				Name:      "app-config-compress",
@@ -224,7 +224,7 @@ func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMo
 }
 
 func (ctrl *Controller) generateVectorAggregatorEnvs() []corev1.EnvVar {
-	envs := ctrl.VectorAggregator.Spec.Env
+	envs := ctrl.Spec.Env
 
 	envs = append(envs, []corev1.EnvVar{
 		{

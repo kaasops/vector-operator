@@ -9,7 +9,7 @@ import (
 )
 
 func (ctrl *Controller) ensureVectorAggregatorPodMonitor(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-podmonitor", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-podmonitor", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator PodMonitor")
 	vectorAggregatorPodMonitor := ctrl.createVectorAggregatorPodMonitor()
 	return k8s.CreateOrUpdateResource(ctx, vectorAggregatorPodMonitor, ctrl.Client)
@@ -20,7 +20,7 @@ func (ctrl *Controller) createVectorAggregatorPodMonitor() *monitorv1.PodMonitor
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	podmonitor := &monitorv1.PodMonitor{
-		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: monitorv1.PodMonitorSpec{
 			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{
 				{

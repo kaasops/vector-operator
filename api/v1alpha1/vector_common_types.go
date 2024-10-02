@@ -131,3 +131,11 @@ type ConfigCheck struct {
 type VectorSelectorSpec struct {
 	MatchLabels map[string]string `json:"matchLabels,omitempty"`
 }
+
+type VectorAggregatorCommon struct {
+	VectorCommon `json:",inline"`
+	Replicas     int32 `json:"replicas,omitempty"`
+	// Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
+	// If not specified, all pipelines will be selected.
+	Selector *VectorSelectorSpec `json:"selector,omitempty"`
+}

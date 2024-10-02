@@ -17,17 +17,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type Aggregator interface {
+	client.Object
+}
+
 type Controller struct {
 	client.Client
-	VectorAggregator *vectorv1alpha1.VectorAggregator
-	ConfigBytes      []byte
-	Config           *config.VectorConfig
-	ClientSet        *kubernetes.Clientset
-	EventsCollector  *k8sevents.EventsCollector
+	Name                string
+	Namespace           string
+	VectorAggregator    Aggregator
+	APIVersion          string
+	Kind                string
+	Spec                *vectorv1alpha1.VectorAggregatorCommon
+	Status              *vectorv1alpha1.VectorCommonStatus
+	ConfigBytes         []byte
+	Config              *config.VectorConfig
+	ClientSet           *kubernetes.Clientset
+	EventsCollector     *k8sevents.EventsCollector
+	isClusterAggregator bool
 }
 
 func NewController(
-	v *vectorv1alpha1.VectorAggregator,
+	v Aggregator,
 	c client.Client,
 	cs *kubernetes.Clientset,
 	evCollector *k8sevents.EventsCollector,
@@ -38,12 +49,32 @@ func NewController(
 		ClientSet:        cs,
 		EventsCollector:  evCollector,
 	}
+
+	switch agg := v.(type) {
+	case *vectorv1alpha1.VectorAggregator:
+		ctrl.isClusterAggregator = false
+		ctrl.Spec = &agg.Spec.VectorAggregatorCommon
+		ctrl.Name = agg.Name
+		ctrl.Namespace = agg.Namespace
+		ctrl.Status = &agg.Status.VectorCommonStatus
+		ctrl.APIVersion = agg.APIVersion
+		ctrl.Kind = agg.Kind
+	case *vectorv1alpha1.ClusterVectorAggregator:
+		ctrl.isClusterAggregator = true
+		ctrl.Spec = &agg.Spec.VectorAggregatorCommon
+		ctrl.Name = agg.Name
+		ctrl.Namespace = agg.Spec.ResourceNamespace
+		ctrl.Status = &agg.Status.VectorCommonStatus
+		ctrl.APIVersion = agg.APIVersion
+		ctrl.Kind = agg.Kind
+	}
+
 	ctrl.setDefault()
 	return ctrl
 }
 
 func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator")
 
 	monitoringCRD, err := k8s.ResourceExists(ctrl.ClientSet.Discovery(), monitorv1.SchemeGroupVersion.String(), monitorv1.PodMonitorsKind)
@@ -63,7 +94,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
-	if ctrl.VectorAggregator.Spec.InternalMetrics && monitoringCRD {
+	if ctrl.Spec.InternalMetrics && monitoringCRD {
 		if err := ctrl.ensureVectorAggregatorPodMonitor(ctx); err != nil {
 			return err
 		}
@@ -86,29 +117,29 @@ func (ctrl *Controller) DeleteVectorAggregator(ctx context.Context) error {
 }
 
 func (ctrl *Controller) setDefault() {
-	if ctrl.VectorAggregator.Spec.Image == "" {
-		ctrl.VectorAggregator.Spec.Image = "timberio/vector:0.28.1-distroless-libc"
+	if ctrl.Spec.Image == "" {
+		ctrl.Spec.Image = "timberio/vector:0.28.1-distroless-libc"
 	}
 
-	if ctrl.VectorAggregator.Spec.Resources.Requests == nil {
-		ctrl.VectorAggregator.Spec.Resources.Requests = corev1.ResourceList{
+	if ctrl.Spec.Resources.Requests == nil {
+		ctrl.Spec.Resources.Requests = corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("200Mi"),
 			corev1.ResourceCPU:    resourcev1.MustParse("100m"),
 		}
 	}
-	if ctrl.VectorAggregator.Spec.Resources.Limits == nil {
-		ctrl.VectorAggregator.Spec.Resources.Limits = corev1.ResourceList{
+	if ctrl.Spec.Resources.Limits == nil {
+		ctrl.Spec.Resources.Limits = corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
 			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
 		}
 	}
 
-	if ctrl.VectorAggregator.Spec.DataDir == "" {
-		ctrl.VectorAggregator.Spec.DataDir = "/var/lib/vector"
+	if ctrl.Spec.DataDir == "" {
+		ctrl.Spec.DataDir = "/var/lib/vector"
 	}
 
-	if ctrl.VectorAggregator.Spec.Volumes == nil {
-		ctrl.VectorAggregator.Spec.Volumes = []corev1.Volume{
+	if ctrl.Spec.Volumes == nil {
+		ctrl.Spec.Volumes = []corev1.Volume{
 			{
 				Name: "var-log",
 				VolumeSource: corev1.VolumeSource{
@@ -136,8 +167,8 @@ func (ctrl *Controller) setDefault() {
 		}
 	}
 
-	if ctrl.VectorAggregator.Spec.ReadinessProbe == nil && ctrl.VectorAggregator.Spec.Api.Enabled && ctrl.VectorAggregator.Spec.Api.Healthcheck {
-		ctrl.VectorAggregator.Spec.ReadinessProbe = &corev1.Probe{
+	if ctrl.Spec.ReadinessProbe == nil && ctrl.Spec.Api.Enabled && ctrl.Spec.Api.Healthcheck {
+		ctrl.Spec.ReadinessProbe = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/health",
@@ -154,8 +185,8 @@ func (ctrl *Controller) setDefault() {
 			FailureThreshold:    0,
 		}
 	}
-	if ctrl.VectorAggregator.Spec.LivenessProbe == nil && ctrl.VectorAggregator.Spec.Api.Enabled && ctrl.VectorAggregator.Spec.Api.Healthcheck {
-		ctrl.VectorAggregator.Spec.LivenessProbe = &corev1.Probe{
+	if ctrl.Spec.LivenessProbe == nil && ctrl.Spec.Api.Enabled && ctrl.Spec.Api.Healthcheck {
+		ctrl.Spec.LivenessProbe = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/health",
@@ -173,8 +204,8 @@ func (ctrl *Controller) setDefault() {
 		}
 	}
 
-	if ctrl.VectorAggregator.Spec.VolumeMounts == nil {
-		ctrl.VectorAggregator.Spec.VolumeMounts = []corev1.VolumeMount{
+	if ctrl.Spec.VolumeMounts == nil {
+		ctrl.Spec.VolumeMounts = []corev1.VolumeMount{
 			{
 				Name:      "var-log",
 				MountPath: "/var/log/",
@@ -189,17 +220,17 @@ func (ctrl *Controller) setDefault() {
 			},
 		}
 	}
-	if ctrl.VectorAggregator.Spec.CompressConfigFile && ctrl.VectorAggregator.Spec.ConfigReloaderImage == "" {
-		ctrl.VectorAggregator.Spec.ConfigReloaderImage = "docker.io/kaasops/config-reloader:v0.1.4"
+	if ctrl.Spec.CompressConfigFile && ctrl.Spec.ConfigReloaderImage == "" {
+		ctrl.Spec.ConfigReloaderImage = "docker.io/kaasops/config-reloader:v0.1.4"
 	}
-	if ctrl.VectorAggregator.Spec.CompressConfigFile && ctrl.VectorAggregator.Spec.ConfigReloaderResources.Requests == nil {
-		ctrl.VectorAggregator.Spec.ConfigReloaderResources.Requests = corev1.ResourceList{
+	if ctrl.Spec.CompressConfigFile && ctrl.Spec.ConfigReloaderResources.Requests == nil {
+		ctrl.Spec.ConfigReloaderResources.Requests = corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("200Mi"),
 			corev1.ResourceCPU:    resourcev1.MustParse("100m"),
 		}
 	}
-	if ctrl.VectorAggregator.Spec.CompressConfigFile && ctrl.VectorAggregator.Spec.ConfigReloaderResources.Limits == nil {
-		ctrl.VectorAggregator.Spec.ConfigReloaderResources.Limits = corev1.ResourceList{
+	if ctrl.Spec.CompressConfigFile && ctrl.Spec.ConfigReloaderResources.Limits == nil {
+		ctrl.Spec.ConfigReloaderResources.Limits = corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
 			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
 		}
@@ -208,16 +239,16 @@ func (ctrl *Controller) setDefault() {
 
 func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash *uint32) error {
 	var status = true
-	ctrl.VectorAggregator.Status.ConfigCheckResult = &status
-	ctrl.VectorAggregator.Status.Reason = nil
-	ctrl.VectorAggregator.Status.LastAppliedConfigHash = hash
+	ctrl.Status.ConfigCheckResult = &status
+	ctrl.Status.Reason = nil
+	ctrl.Status.LastAppliedConfigHash = hash
 	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
 }
 
 func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) error {
 	var status = false
-	ctrl.VectorAggregator.Status.ConfigCheckResult = &status
-	ctrl.VectorAggregator.Status.Reason = &reason
+	ctrl.Status.ConfigCheckResult = &status
+	ctrl.Status.Reason = &reason
 	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
 }
 
@@ -226,12 +257,12 @@ func (ctrl *Controller) labelsForVectorAggregator() map[string]string {
 		k8s.ManagedByLabelKey: "vector-operator",
 		k8s.NameLabelKey:      "vector",
 		k8s.ComponentLabelKey: "Aggregator",
-		k8s.InstanceLabelKey:  ctrl.VectorAggregator.Name,
+		k8s.InstanceLabelKey:  ctrl.Name,
 	}
 }
 
 func (ctrl *Controller) annotationsForVectorAggregator() map[string]string {
-	return ctrl.VectorAggregator.Spec.Annotations
+	return ctrl.Spec.Annotations
 }
 
 func (ctrl *Controller) objectMetaVectorAggregator(labels map[string]string, annotations map[string]string, namespace string) metav1.ObjectMeta {
@@ -245,15 +276,15 @@ func (ctrl *Controller) objectMetaVectorAggregator(labels map[string]string, ann
 }
 
 func (ctrl *Controller) getNameVectorAggregator() string {
-	name := ctrl.VectorAggregator.Name + "-aggregator"
+	name := ctrl.Name + "-aggregator"
 	return name
 }
 
 func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
-			APIVersion:         ctrl.VectorAggregator.APIVersion,
-			Kind:               ctrl.VectorAggregator.Kind,
+			APIVersion:         ctrl.APIVersion,
+			Kind:               ctrl.Kind,
 			Name:               ctrl.VectorAggregator.GetName(),
 			UID:                ctrl.VectorAggregator.GetUID(),
 			BlockOwnerDeletion: ptr.To(true),
@@ -264,4 +295,11 @@ func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 
 func (ctrl *Controller) GetServiceName() string {
 	return ctrl.getNameVectorAggregator()
+}
+
+func (ctrl *Controller) prefix() string {
+	if ctrl.isClusterAggregator {
+		return "cluster-"
+	}
+	return ""
 }

@@ -11,7 +11,7 @@ import (
 const ApiPort = 8686
 
 func (ctrl *Controller) ensureVectorAggregatorRBAC(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-rbac", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-rbac", ctrl.Name)
 
 	log.Info("start Reconcile Vector Aggregator RBAC")
 
@@ -44,7 +44,7 @@ func (ctrl *Controller) createVectorAggregatorServiceAccount() *corev1.ServiceAc
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	serviceAccount := &corev1.ServiceAccount{
-		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 	}
 
 	return serviceAccount
@@ -83,7 +83,7 @@ func (ctrl *Controller) createVectorAggregatorClusterRoleBinding() *rbacv1.Clust
 			{
 				Kind:      "ServiceAccount",
 				Name:      ctrl.getNameVectorAggregator(),
-				Namespace: ctrl.VectorAggregator.Namespace,
+				Namespace: ctrl.Namespace,
 			},
 		},
 	}

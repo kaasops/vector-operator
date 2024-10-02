@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
+	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
@@ -48,6 +49,7 @@ type PipelineReconciler struct {
 	ConfigCheckTimeout       time.Duration
 	VectorAgentEventCh       chan event.GenericEvent
 	VectorAggregatorsEventCh chan event.GenericEvent
+	EventsCollector          *k8sevents.EventsCollector
 }
 
 var (
@@ -159,7 +161,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		for _, vector := range vectorAggregators {
 			eg.Go(func() error {
-				vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
+				vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
 				cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
 					ApiEnabled:        vaCtrl.VectorAggregator.Spec.Api.Enabled,
 					PlaygroundEnabled: vaCtrl.VectorAggregator.Spec.Api.Playground,

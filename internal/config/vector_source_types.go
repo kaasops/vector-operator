@@ -39,6 +39,7 @@ const (
 	SplunkHECType             = "splunk_hec"
 	StatsDType                = "statsd"
 	VectorType                = "vector"
+	kubernetesEventsType      = "kubernetes_events"
 )
 
 var aggregatorTypes = map[string]struct{}{
@@ -64,6 +65,7 @@ var aggregatorTypes = map[string]struct{}{
 	SplunkHECType:          {},
 	StatsDType:             {},
 	VectorType:             {},
+	kubernetesEventsType:   {},
 }
 
 var agentTypes = map[string]struct{}{

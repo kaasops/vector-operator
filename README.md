@@ -25,7 +25,7 @@ Connect us in Telegram - https://t.me/+Y0PzGa1d5DFiYThi
 - [x] Full support of vector config options
 - [x] Namespace isolation
 - [ ] Vector config optimization
-- [ ] Vector aggregator support
+- [x] Vector aggregator support
 
 [RoadMap](https://github.com/orgs/kaasops/projects/1)
 

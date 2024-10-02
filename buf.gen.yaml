@@ -1,0 +1,15 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/kaasops/vector-operator/internal/vector/gen
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: internal/vector/gen
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: internal/vector/gen
+    opt: paths=source_relative
+inputs:
+  - directory: proto

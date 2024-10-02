@@ -4,6 +4,7 @@ import (
 	"context"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,13 +23,20 @@ type Controller struct {
 	ConfigBytes      []byte
 	Config           *config.VectorConfig
 	ClientSet        *kubernetes.Clientset
+	EventsCollector  *k8sevents.EventsCollector
 }
 
-func NewController(v *vectorv1alpha1.VectorAggregator, c client.Client, cs *kubernetes.Clientset) *Controller {
+func NewController(
+	v *vectorv1alpha1.VectorAggregator,
+	c client.Client,
+	cs *kubernetes.Clientset,
+	evCollector *k8sevents.EventsCollector,
+) *Controller {
 	ctrl := &Controller{
 		Client:           c,
 		VectorAggregator: v,
 		ClientSet:        cs,
+		EventsCollector:  evCollector,
 	}
 	ctrl.setDefault()
 	return ctrl

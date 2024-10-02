@@ -21,6 +21,7 @@ import (
 	"errors"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
+	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -54,6 +55,7 @@ type VectorAggregatorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
+	EventsCollector    *k8sevents.EventsCollector
 	Clientset          *kubernetes.Clientset
 	ConfigCheckTimeout time.Duration
 	EventChan          chan event.GenericEvent
@@ -178,7 +180,7 @@ func listVectorAggregators(ctx context.Context, client client.Client) (vectors [
 
 func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.VectorAggregator) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
-	vaCtrl := aggregator.NewController(v, client, clientset)
+	vaCtrl := aggregator.NewController(v, client, clientset, r.EventsCollector)
 
 	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
 		Scope:     pipeline.NamespacedPipeline,
@@ -265,7 +267,7 @@ func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Cont
 }
 
 func (r *VectorAggregatorReconciler) deleteVectorAggregator(ctx context.Context, v *v1alpha1.VectorAggregator) error {
-	return aggregator.NewController(v, r.Client, r.Clientset).DeleteVectorAggregator(ctx)
+	return aggregator.NewController(v, r.Client, r.Clientset, r.EventsCollector).DeleteVectorAggregator(ctx)
 }
 
 func setAggregatorTypeMetaIfNeeded(cr *v1alpha1.VectorAggregator) {

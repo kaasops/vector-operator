@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	"net"
@@ -28,24 +27,61 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 		for k, v := range p.Sources {
 			settings := v
 
-			if val, ok := v.Options["address"]; ok {
-				address, _ := val.(string)
-				if _, port, err := net.SplitHostPort(address); err == nil {
+			switch v.Type {
+			case kubernetesEventsType:
+				{
+					address := v.Options["address"].(string)
+					if address == "" {
+						return nil, fmt.Errorf("address is empty from %s", pipeline.GetName())
+					}
+					_, port, err := net.SplitHostPort(address)
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse address %s: %w", address, err)
+					}
+					settings = &Source{
+						Name: k,
+						Type: VectorType,
+						Options: map[string]any{
+							"address": address,
+						},
+					}
 					portN, err := parsePort(port)
 					if err != nil {
 						return nil, fmt.Errorf("failed to parse port %s: %w", port, err)
 					}
-					protocol := extractProtocol(v.Options)
 					err = cfg.internal.addServicePort(&ServicePort{
-						Port:         portN,
-						Protocol:     protocol,
-						Namespace:    pipeline.GetNamespace(),
-						SourceName:   k,
-						PipelineName: pipeline.GetName(),
-						ServiceName:  pipeline.GetAnnotations()[common.AnnotationServiceName],
+						IsKubernetesEvents: true,
+						Port:               portN,
+						Protocol:           corev1.ProtocolTCP,
+						Namespace:          pipeline.GetNamespace(),
+						SourceName:         k,
+						PipelineName:       pipeline.GetName(),
 					})
 					if err != nil {
 						return nil, err
+					}
+				}
+			default:
+				{
+					if val, ok := v.Options["address"]; ok {
+						address, _ := val.(string)
+						if _, port, err := net.SplitHostPort(address); err == nil {
+							portN, err := parsePort(port)
+							if err != nil {
+								return nil, fmt.Errorf("failed to parse port %s: %w", port, err)
+							}
+							protocol := extractProtocol(v.Options)
+							err = cfg.internal.addServicePort(&ServicePort{
+								Port:         portN,
+								Protocol:     protocol,
+								Namespace:    pipeline.GetNamespace(),
+								SourceName:   k,
+								PipelineName: pipeline.GetName(),
+							})
+							if err != nil {
+								return nil, err
+							}
+						}
 					}
 				}
 			}

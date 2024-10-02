@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"os"
 	"time"
 
@@ -208,6 +209,8 @@ func main() {
 	vectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
 	defer close(vectorAggregatorsPipelineEventCh)
 
+	evCollector := k8sevents.NewEventsCollector(clientset, ctrl.Log.WithName("kubernetes-events-collector"))
+
 	if err = (&controller.PipelineReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
@@ -215,6 +218,7 @@ func main() {
 		ConfigCheckTimeout:       configCheckTimeout,
 		VectorAgentEventCh:       vectorAgentsPipelineEventCh,
 		VectorAggregatorsEventCh: vectorAggregatorsPipelineEventCh,
+		EventsCollector:          evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
@@ -229,10 +233,12 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          vectorAggregatorsEventCh,
+		EventsCollector:    evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
 	}
+
 	// +kubebuilder:scaffold:builder
 
 	go reconcileWithDelay(context.Background(), vectorAgentsPipelineEventCh, vectorAgentEventCh, time.Second*10)
@@ -324,6 +330,7 @@ func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, de
 		case <-ctx.Done():
 			return
 		case ev := <-in:
+			ticker.Reset(delay)
 			key := fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())
 			if _, ok := store[key]; !ok {
 				store[key] = ev

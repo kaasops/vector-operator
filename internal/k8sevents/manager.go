@@ -1,6 +1,7 @@
 package k8sevents
 
 import (
+	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -14,41 +15,47 @@ type Logger interface {
 	Error(err error, msg string, keysAndValues ...any)
 }
 
-type EventsManager struct {
+type EventsCollector struct {
 	client rest.Interface
 	logger Logger
 	mx     sync.Mutex
 	mp     map[string]*watcher
 }
 
-func NewEventsManager(clientset *kubernetes.Clientset, logger Logger) *EventsManager {
-	return &EventsManager{
+func NewEventsCollector(clientset *kubernetes.Clientset, logger Logger) *EventsCollector {
+	return &EventsCollector{
 		mp:     make(map[string]*watcher),
 		client: clientset.CoreV1().RESTClient(),
 		logger: logger,
 	}
 }
 
-func (m *EventsManager) RegisterSubscriber(id, host, port, protocol, namespace string) {
+func (m *EventsCollector) RegisterSubscriber(svcName, svcNamespace, port, namespace string) {
+	host := fmt.Sprintf("%s.%s", svcName, svcNamespace)
 	addr := net.JoinHostPort(host, port)
-	c := newWatcher(protocol, addr, m.logger)
+	c := newWatcher(addr, namespace, m.logger)
 
 	m.mx.Lock()
-	if oldC, ok := m.mp[id]; ok {
+	if oldC, ok := m.mp[host]; ok {
+		if oldC.addr == addr && oldC.namespace == namespace {
+			m.mx.Unlock()
+			return
+		}
 		oldC.close()
 	}
-	m.mp[id] = c
+	m.mp[host] = c
 	m.mx.Unlock()
 
-	c.watchEvents(m.client, namespace)
+	c.watchEvents(m.client)
 }
 
-func (m *EventsManager) UnregisterSubscriber(id string) {
+func (m *EventsCollector) UnregisterSubscriber(svcName, svcNamespace string) {
+	host := fmt.Sprintf("%s.%s", svcName, svcNamespace)
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	if v, ok := m.mp[id]; ok {
+	if v, ok := m.mp[host]; ok {
 		v.close()
-		delete(m.mp, id)
+		delete(m.mp, host)
 	}
 }
 

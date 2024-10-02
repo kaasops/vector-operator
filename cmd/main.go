@@ -209,6 +209,8 @@ func main() {
 	vectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
 	defer close(vectorAggregatorsPipelineEventCh)
 
+	evCollector := k8sevents.NewEventsCollector(clientset, ctrl.Log.WithName("kubernetes-events-manager"))
+
 	if err = (&controller.PipelineReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
@@ -216,6 +218,7 @@ func main() {
 		ConfigCheckTimeout:       configCheckTimeout,
 		VectorAgentEventCh:       vectorAgentsPipelineEventCh,
 		VectorAggregatorsEventCh: vectorAggregatorsPipelineEventCh,
+		EventsCollector:          evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
@@ -230,16 +233,9 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          vectorAggregatorsEventCh,
+		EventsCollector:    evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
-		os.Exit(1)
-	}
-
-	if err = (&controller.ServiceReconciler{
-		Client:        mgr.GetClient(),
-		EventsManager: k8sevents.NewEventsManager(clientset, ctrl.Log.WithName("kubernetes-events-manager")),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
 

@@ -13,24 +13,24 @@ import (
 )
 
 type watcher struct {
-	protocol  string
 	addr      string
+	namespace string
 	createdAt time.Time
 	stopCh    chan struct{}
 	logger    Logger
 }
 
-func newWatcher(protocol, addr string, logger Logger) *watcher {
+func newWatcher(addr, namespace string, logger Logger) *watcher {
 	r := watcher{
 		addr:      addr,
-		protocol:  protocol,
 		createdAt: time.Now(),
 		logger:    logger,
+		namespace: namespace,
 	}
 	return &r
 }
 
-func (w *watcher) watchEvents(client rest.Interface, namespace string) {
+func (w *watcher) watchEvents(client rest.Interface) {
 	if w.stopCh != nil {
 		return
 	}
@@ -38,7 +38,7 @@ func (w *watcher) watchEvents(client rest.Interface, namespace string) {
 	w.stopCh = make(chan struct{})
 	eventsCh := make(chan *corev1.Event)
 
-	watchList := cache.NewListWatchFromClient(client, "events", namespace, fields.Everything())
+	watchList := cache.NewListWatchFromClient(client, "events", w.namespace, fields.Everything())
 	_, ctrl := cache.NewInformerWithOptions(cache.InformerOptions{
 		ListerWatcher: watchList,
 		ObjectType:    &corev1.Event{},

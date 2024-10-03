@@ -3068,7 +3068,7 @@ spec:
                 type: string
               selector:
                 description: |-
-                  Defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
+                  Selector defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
                   If not specified, all pipelines will be selected.
                 properties:
                   matchLabels:

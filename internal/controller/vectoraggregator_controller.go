@@ -113,6 +113,7 @@ func (r *VectorAggregatorReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	setAggregatorTypeMetaIfNeeded(vectorCR)
 
 	if vectorCR.IsBeingDeleted() {
+		r.EventsCollector.UnregisterByAggregatorID(req.String())
 		if controllerutil.ContainsFinalizer(vectorCR, aggregatorFinalizerName) {
 			if err := r.deleteVectorAggregator(ctx, vectorCR); err != nil {
 				if !api_errors.IsNotFound(err) {

@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
@@ -23,6 +24,7 @@ type Aggregator interface {
 
 type Controller struct {
 	client.Client
+	id                  string
 	Name                string
 	Namespace           string
 	VectorAggregator    Aggregator
@@ -59,6 +61,7 @@ func NewController(
 		ctrl.Status = &agg.Status.VectorCommonStatus
 		ctrl.APIVersion = agg.APIVersion
 		ctrl.Kind = agg.Kind
+		ctrl.id = types.NamespacedName{Name: agg.Name, Namespace: agg.Namespace}.String()
 	case *vectorv1alpha1.ClusterVectorAggregator:
 		ctrl.isClusterAggregator = true
 		ctrl.Spec = &agg.Spec.VectorAggregatorCommon
@@ -67,6 +70,7 @@ func NewController(
 		ctrl.Status = &agg.Status.VectorCommonStatus
 		ctrl.APIVersion = agg.APIVersion
 		ctrl.Kind = agg.Kind
+		ctrl.id = types.NamespacedName{Name: agg.Name}.String()
 	}
 
 	ctrl.setDefault()

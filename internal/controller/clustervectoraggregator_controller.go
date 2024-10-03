@@ -30,6 +30,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -85,7 +86,11 @@ func (r *ClusterVectorAggregatorReconciler) Reconcile(ctx context.Context, req c
 	clusterAggregator := &v1alpha1.ClusterVectorAggregator{}
 	err := r.Get(ctx, req.NamespacedName, clusterAggregator)
 	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if api_errors.IsNotFound(err) {
+			r.EventsCollector.UnregisterByAggregatorID(req.String())
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
 	}
 	setClusterAggregatorTypeMetaIfNeeded(clusterAggregator)
 

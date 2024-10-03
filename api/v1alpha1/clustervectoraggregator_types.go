@@ -23,7 +23,8 @@ import (
 // ClusterVectorAggregatorSpec defines the desired state of ClusterVectorAggregator
 type ClusterVectorAggregatorSpec struct {
 	VectorAggregatorCommon `json:",inline"`
-	ResourceNamespace      string `json:"resourceNamespace,omitempty"`
+	// ResourceNamespace specifies the namespace where the related resources, such as Deployments and Services, will be deployed.
+	ResourceNamespace string `json:"resourceNamespace,omitempty"`
 }
 
 // ClusterVectorAggregatorStatus defines the observed state of ClusterVectorAggregator

@@ -75,6 +75,7 @@ var _ = Describe("VectorPipeline Controller", func() {
 				Clientset:          clientset,
 				ConfigCheckTimeout: configCheckTimeout,
 				VectorAgentEventCh: make(chan event.GenericEvent, 1),
+				EventsCollector:    k8sEventsCollector,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,8 +70,12 @@ var _ = Describe("ClusterVectorAggregator Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &ClusterVectorAggregatorReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				EventsCollector:    k8sEventsCollector,
+				EventChan:          make(chan event.GenericEvent, 1),
+				ConfigCheckTimeout: configCheckTimeout,
+				Clientset:          clientset,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

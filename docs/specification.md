@@ -10,7 +10,7 @@
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="19">agent</td>
+      <td rowspan="21">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.24.0-distroless-libc</code> by default</td>
     </tr>

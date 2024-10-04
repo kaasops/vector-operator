@@ -113,6 +113,7 @@ func (r *VectorAggregatorReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	setAggregatorTypeMetaIfNeeded(vectorCR)
 
 	if vectorCR.IsBeingDeleted() {
+		r.EventsCollector.UnregisterByAggregatorID(req.String())
 		if controllerutil.ContainsFinalizer(vectorCR, aggregatorFinalizerName) {
 			if err := r.deleteVectorAggregator(ctx, vectorCR); err != nil {
 				if !api_errors.IsNotFound(err) {
@@ -186,16 +187,16 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 		Scope:     pipeline.NamespacedPipeline,
 		Selector:  v.Spec.Selector,
 		Role:      v1alpha1.VectorPipelineRoleAggregator,
-		Namespace: vaCtrl.VectorAggregator.Namespace,
+		Namespace: vaCtrl.Namespace,
 	})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-		ApiEnabled:        vaCtrl.VectorAggregator.Spec.Api.Enabled,
-		PlaygroundEnabled: vaCtrl.VectorAggregator.Spec.Api.Playground,
-		InternalMetrics:   vaCtrl.VectorAggregator.Spec.InternalMetrics,
+		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
+		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
+		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
 	}, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
@@ -211,15 +212,15 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	}
 	cfgHash := hash.Get(byteCfg)
 
-	if !vaCtrl.VectorAggregator.Spec.ConfigCheck.Disabled {
-		if vaCtrl.VectorAggregator.Status.LastAppliedConfigHash == nil || *vaCtrl.VectorAggregator.Status.LastAppliedConfigHash != cfgHash {
+	if !vaCtrl.Spec.ConfigCheck.Disabled {
+		if vaCtrl.Status.LastAppliedConfigHash == nil || *vaCtrl.Status.LastAppliedConfigHash != cfgHash {
 			reason, err := configcheck.New(
 				byteCfg,
 				vaCtrl.Client,
 				vaCtrl.ClientSet,
-				&vaCtrl.VectorAggregator.Spec.VectorCommon,
-				vaCtrl.VectorAggregator.Name,
-				vaCtrl.VectorAggregator.Namespace,
+				&vaCtrl.Spec.VectorCommon,
+				vaCtrl.Name,
+				vaCtrl.Namespace,
 				r.ConfigCheckTimeout,
 				configcheck.ConfigCheckInitiatorVector,
 			).Run(ctx)

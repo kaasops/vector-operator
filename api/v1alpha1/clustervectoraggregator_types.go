@@ -18,53 +18,44 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// VectorAggregatorSpec defines the desired state of VectorAggregator
-type VectorAggregatorSpec struct {
+// ClusterVectorAggregatorSpec defines the desired state of ClusterVectorAggregator
+type ClusterVectorAggregatorSpec struct {
 	VectorAggregatorCommon `json:",inline"`
+	// ResourceNamespace specifies the namespace where the related resources, such as Deployments and Services, will be deployed.
+	ResourceNamespace string `json:"resourceNamespace,omitempty"`
 }
 
-// VectorAggregatorStatus defines the observed state of VectorAggregator
-type VectorAggregatorStatus struct {
+// ClusterVectorAggregatorStatus defines the observed state of ClusterVectorAggregator
+type ClusterVectorAggregatorStatus struct {
 	VectorCommonStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 
-// VectorAggregator is the Schema for the vectoraggregators API
-type VectorAggregator struct {
+// ClusterVectorAggregator is the Schema for the clustervectoraggregators API
+type ClusterVectorAggregator struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VectorAggregatorSpec   `json:"spec,omitempty"`
-	Status VectorAggregatorStatus `json:"status,omitempty"`
+	Spec   ClusterVectorAggregatorSpec   `json:"spec,omitempty"`
+	Status ClusterVectorAggregatorStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// VectorAggregatorList contains a list of VectorAggregator
-type VectorAggregatorList struct {
+// ClusterVectorAggregatorList contains a list of ClusterVectorAggregator
+type ClusterVectorAggregatorList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VectorAggregator `json:"items"`
+	Items           []ClusterVectorAggregator `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&VectorAggregator{}, &VectorAggregatorList{})
-}
-
-func (v *VectorAggregator) IsBeingDeleted() bool {
-	return !v.ObjectMeta.DeletionTimestamp.IsZero()
-}
-
-func (v *VectorAggregator) HasFinalizer(finalizerName string) bool {
-	return controllerutil.ContainsFinalizer(v, finalizerName)
+	SchemeBuilder.Register(&ClusterVectorAggregator{}, &ClusterVectorAggregatorList{})
 }

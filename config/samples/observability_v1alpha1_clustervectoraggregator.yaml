@@ -1,0 +1,9 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorAggregator
+metadata:
+  labels:
+    app.kubernetes.io/name: vector-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clustervectoraggregator-sample
+spec:
+  # TODO(user): Add fields here

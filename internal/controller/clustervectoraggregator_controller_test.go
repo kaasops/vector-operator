@@ -28,10 +28,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/kaasops/vector-operator/api/v1alpha1"
+	observabilityv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
-var _ = Describe("VectorPipeline Controller", func() {
+var _ = Describe("ClusterVectorAggregator Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -41,13 +41,13 @@ var _ = Describe("VectorPipeline Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vectorpipeline := &v1alpha1.VectorPipeline{}
+		clustervectoraggregator := &observabilityv1alpha1.ClusterVectorAggregator{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind VectorPipeline")
-			err := k8sClient.Get(ctx, typeNamespacedName, vectorpipeline)
+			By("creating the custom resource for the Kind ClusterVectorAggregator")
+			err := k8sClient.Get(ctx, typeNamespacedName, clustervectoraggregator)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &v1alpha1.VectorPipeline{
+				resource := &observabilityv1alpha1.ClusterVectorAggregator{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -60,22 +60,22 @@ var _ = Describe("VectorPipeline Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &v1alpha1.VectorPipeline{}
+			resource := &observabilityv1alpha1.ClusterVectorAggregator{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance VectorPipeline")
+			By("Cleanup the specific resource instance ClusterVectorAggregator")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &PipelineReconciler{
+			controllerReconciler := &ClusterVectorAggregatorReconciler{
 				Client:             k8sClient,
 				Scheme:             k8sClient.Scheme(),
-				Clientset:          clientset,
-				ConfigCheckTimeout: configCheckTimeout,
-				VectorAgentEventCh: make(chan event.GenericEvent, 1),
 				EventsCollector:    k8sEventsCollector,
+				EventChan:          make(chan event.GenericEvent, 1),
+				ConfigCheckTimeout: configCheckTimeout,
+				Clientset:          clientset,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

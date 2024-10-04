@@ -4,4 +4,5 @@ resources:
 - observability_v1alpha1_vectorpipeline.yaml
 - observability_v1alpha1_clustervectorpipeline.yaml
 - observability_v1alpha1_vectoraggregator.yaml
+- observability_v1alpha1_clustervectoraggregator.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

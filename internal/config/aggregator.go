@@ -19,7 +19,10 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 
 	cfg.internal.servicePort = make(map[string]*ServicePort)
 
+	var kubernetesEventsPort int32 = 42000
+
 	for _, pipeline := range pipelines {
+		kubernetesEventsAlreadyExists := false
 		p := &PipelineConfig{}
 		if err := UnmarshalJson(pipeline.GetSpec(), p); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
@@ -30,14 +33,11 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 			switch v.Type {
 			case kubernetesEventsType:
 				{
-					address := v.Options["address"].(string)
-					if address == "" {
-						return nil, fmt.Errorf("address is empty from %s", pipeline.GetName())
+					if kubernetesEventsAlreadyExists {
+						return nil, fmt.Errorf("pipeline can only contain one source with the type kubernetes_events")
 					}
-					_, port, err := net.SplitHostPort(address)
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse address %s: %w", address, err)
-					}
+					kubernetesEventsAlreadyExists = true
+					address := net.JoinHostPort(net.IPv4zero.String(), strconv.Itoa(int(kubernetesEventsPort)))
 					settings = &Source{
 						Name: k,
 						Type: VectorType,
@@ -45,13 +45,9 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 							"address": address,
 						},
 					}
-					portN, err := parsePort(port)
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse port %s: %w", port, err)
-					}
-					err = cfg.internal.addServicePort(&ServicePort{
+					err := cfg.internal.addServicePort(&ServicePort{
 						IsKubernetesEvents: true,
-						Port:               portN,
+						Port:               kubernetesEventsPort,
 						Protocol:           corev1.ProtocolTCP,
 						Namespace:          pipeline.GetNamespace(),
 						SourceName:         k,
@@ -60,6 +56,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 					if err != nil {
 						return nil, err
 					}
+					kubernetesEventsPort++
 				}
 			default:
 				{

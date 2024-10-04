@@ -16,7 +16,7 @@ import (
 )
 
 func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-service", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-service", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Service")
 	existing, err := ctrl.getExistingServices(ctx)
 	if err != nil {
@@ -33,6 +33,7 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 		}
 		if svc.Annotations[common.AnnotationK8sEventsPort] != "" {
 			ctrl.EventsCollector.RegisterSubscriber(
+				ctrl.id,
 				svc.Name,
 				svc.Namespace,
 				svc.Annotations[common.AnnotationK8sEventsPort],
@@ -42,7 +43,7 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 	}
 	for _, svc := range existing {
 		if svc.Annotations[common.AnnotationK8sEventsPort] != "" {
-			ctrl.EventsCollector.UnregisterSubscriber(svc.Name, svc.Namespace)
+			ctrl.EventsCollector.UnregisterSubscriber(ctrl.id, svc.Name, svc.Namespace)
 		}
 		if err := ctrl.Client.Delete(ctx, svc); err != nil {
 			return err
@@ -79,7 +80,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 			})
 		}
 		svc := &corev1.Service{
-			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, ann, ctrl.VectorAggregator.Namespace),
+			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, ann, ctrl.Namespace),
 			Spec: corev1.ServiceSpec{
 				Ports:    ports,
 				Selector: labels,
@@ -93,9 +94,9 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 		svcList = append(svcList, svc)
 	}
 
-	if ctrl.VectorAggregator.Spec.Api.Enabled {
+	if ctrl.Spec.Api.Enabled {
 		svcList = append(svcList, &corev1.Service{
-			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
 					{
@@ -116,7 +117,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 func (ctrl *Controller) getExistingServices(ctx context.Context) (map[string]*corev1.Service, error) {
 	svcList := corev1.ServiceList{}
 	opts := &client.ListOptions{
-		Namespace:     ctrl.VectorAggregator.Namespace,
+		Namespace:     ctrl.Namespace,
 		LabelSelector: labels.Set(ctrl.labelsForVectorAggregator()).AsSelector(),
 	}
 	err := ctrl.Client.List(ctx, &svcList, opts)

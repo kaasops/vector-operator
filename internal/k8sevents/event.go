@@ -17,6 +17,7 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 							"message":           valueFromString(ev.Message),
 							"reason":            valueFromString(ev.Reason),
 							"action":            valueFromString(ev.Action),
+							"type":              valueFromString(ev.Type),
 							"creationTimestamp": valueFromString(ev.CreationTimestamp.Format(time.RFC3339)),
 							"firstTimestamp":    valueFromString(ev.FirstTimestamp.Format(time.RFC3339)),
 							"lastTimestamp":     valueFromString(ev.LastTimestamp.Format(time.RFC3339)),

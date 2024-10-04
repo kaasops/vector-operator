@@ -45,11 +45,12 @@ type PipelineReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset                *kubernetes.Clientset
-	ConfigCheckTimeout       time.Duration
-	VectorAgentEventCh       chan event.GenericEvent
-	VectorAggregatorsEventCh chan event.GenericEvent
-	EventsCollector          *k8sevents.EventsCollector
+	Clientset                       *kubernetes.Clientset
+	ConfigCheckTimeout              time.Duration
+	VectorAgentEventCh              chan event.GenericEvent
+	VectorAggregatorsEventCh        chan event.GenericEvent
+	ClusterVectorAggregatorsEventCh chan event.GenericEvent
+	EventsCollector                 *k8sevents.EventsCollector
 }
 
 var (
@@ -79,8 +80,13 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		log.Error(err, "Failed to get vector aggregators")
 		return ctrl.Result{}, nil
 	}
+	clusterVectorAggregators, err := listClusterVectorAggregators(ctx, r.Client)
+	if err != nil {
+		log.Error(err, "Failed to get cluster vector aggregators")
+		return ctrl.Result{}, nil
+	}
 
-	if len(vectorAgents) == 0 && len(vectorAggregators) == 0 {
+	if len(vectorAgents) == 0 && len(vectorAggregators) == 0 && len(clusterVectorAggregators) == 0 {
 		log.Info("Vectors not found")
 		return ctrl.Result{}, nil
 	}
@@ -92,6 +98,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		for _, vector := range vectorAggregators {
 			r.VectorAggregatorsEventCh <- event.GenericEvent{Object: vector}
+		}
+		for _, vector := range clusterVectorAggregators {
+			r.ClusterVectorAggregatorsEventCh <- event.GenericEvent{Object: vector}
 		}
 		return ctrl.Result{}, nil
 	}
@@ -159,46 +168,92 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	} else {
 
-		for _, vector := range vectorAggregators {
-			eg.Go(func() error {
-				vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
-				cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-					ApiEnabled:        vaCtrl.VectorAggregator.Spec.Api.Enabled,
-					PlaygroundEnabled: vaCtrl.VectorAggregator.Spec.Api.Playground,
-					InternalMetrics:   vaCtrl.VectorAggregator.Spec.InternalMetrics,
-				}, pipelineCR)
-				if err != nil {
-					return fmt.Errorf("aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
-				}
-				if err != nil {
+		if pipelineCR.GetNamespace() != "" {
+			for _, vector := range vectorAggregators {
+				eg.Go(func() error {
+					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
+					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
+						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
+						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
+					}, pipelineCR)
+					if err != nil {
+						return fmt.Errorf("aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
+					}
+					if err != nil {
+						return err
+					}
+
+					byteConfig, err := cfg.MarshalJSON()
+					if err != nil {
+						return err
+					}
+
+					vaCtrl.ConfigBytes = byteConfig
+					vaCtrl.Config = cfg
+
+					configCheck := configcheck.New(
+						vaCtrl.ConfigBytes,
+						vaCtrl.Client,
+						vaCtrl.ClientSet,
+						&vaCtrl.Spec.VectorCommon,
+						vaCtrl.Name,
+						vaCtrl.Namespace,
+						r.ConfigCheckTimeout,
+						configcheck.ConfigCheckInitiatorPipieline,
+					)
+
+					reason, err := configCheck.Run(ctx)
+					if reason != "" {
+						return fmt.Errorf("aggregator %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
+					}
 					return err
-				}
+				})
+			}
 
-				byteConfig, err := cfg.MarshalJSON()
-				if err != nil {
+		} else {
+
+			for _, vector := range clusterVectorAggregators {
+				eg.Go(func() error {
+					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
+					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
+						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
+						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
+					}, pipelineCR)
+					if err != nil {
+						return fmt.Errorf("cluster aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
+					}
+					if err != nil {
+						return err
+					}
+
+					byteConfig, err := cfg.MarshalJSON()
+					if err != nil {
+						return err
+					}
+
+					vaCtrl.ConfigBytes = byteConfig
+					vaCtrl.Config = cfg
+
+					configCheck := configcheck.New(
+						vaCtrl.ConfigBytes,
+						vaCtrl.Client,
+						vaCtrl.ClientSet,
+						&vaCtrl.Spec.VectorCommon,
+						vaCtrl.Name,
+						vaCtrl.Namespace,
+						r.ConfigCheckTimeout,
+						configcheck.ConfigCheckInitiatorPipieline,
+					)
+
+					reason, err := configCheck.Run(ctx)
+					if reason != "" {
+						return fmt.Errorf("cluster aggregator %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
+					}
 					return err
-				}
-
-				vaCtrl.ConfigBytes = byteConfig
-				vaCtrl.Config = cfg
-
-				configCheck := configcheck.New(
-					vaCtrl.ConfigBytes,
-					vaCtrl.Client,
-					vaCtrl.ClientSet,
-					&vaCtrl.VectorAggregator.Spec.VectorCommon,
-					vaCtrl.VectorAggregator.Name,
-					vaCtrl.VectorAggregator.Namespace,
-					r.ConfigCheckTimeout,
-					configcheck.ConfigCheckInitiatorPipieline,
-				)
-
-				reason, err := configCheck.Run(ctx)
-				if reason != "" {
-					return fmt.Errorf("aggregator %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
-				}
-				return err
-			})
+				})
+			}
 		}
 
 	}
@@ -220,6 +275,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	for _, vector := range vectorAggregators {
 		r.VectorAggregatorsEventCh <- event.GenericEvent{Object: vector}
+	}
+	for _, vector := range clusterVectorAggregators {
+		r.ClusterVectorAggregatorsEventCh <- event.GenericEvent{Object: vector}
 	}
 
 	log.Info("finish Reconcile Pipeline")

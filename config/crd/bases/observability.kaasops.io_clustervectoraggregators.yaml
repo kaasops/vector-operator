@@ -4,15 +4,15 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.1
-  name: vectoraggregators.observability.kaasops.io
+  name: clustervectoraggregators.observability.kaasops.io
 spec:
   group: observability.kaasops.io
   names:
-    kind: VectorAggregator
-    listKind: VectorAggregatorList
-    plural: vectoraggregators
-    singular: vectoraggregator
-  scope: Namespaced
+    kind: ClusterVectorAggregator
+    listKind: ClusterVectorAggregatorList
+    plural: clustervectoraggregators
+    singular: clustervectoraggregator
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .metadata.creationTimestamp
@@ -24,7 +24,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: VectorAggregator is the Schema for the vectoraggregators API
+        description: ClusterVectorAggregator is the Schema for the clustervectoraggregators
+          API
         properties:
           apiVersion:
             description: |-
@@ -44,7 +45,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: VectorAggregatorSpec defines the desired state of VectorAggregator
+            description: ClusterVectorAggregatorSpec defines the desired state of
+              ClusterVectorAggregator
             properties:
               affinity:
                 description: Affinity If specified, the pod's scheduling constraints.
@@ -2997,6 +2999,10 @@ spec:
               replicas:
                 format: int32
                 type: integer
+              resourceNamespace:
+                description: ResourceNamespace specifies the namespace where the related
+                  resources, such as Deployments and Services, will be deployed.
+                type: string
               resources:
                 description: |-
                   Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -4944,7 +4950,8 @@ spec:
                 type: array
             type: object
           status:
-            description: VectorAggregatorStatus defines the observed state of VectorAggregator
+            description: ClusterVectorAggregatorStatus defines the observed state
+              of ClusterVectorAggregator
             properties:
               LastAppliedConfigHash:
                 format: int32

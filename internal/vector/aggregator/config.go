@@ -9,7 +9,7 @@ import (
 )
 
 func (ctrl *Controller) ensureVectorAggregatorConfig(ctx context.Context) error {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-secret", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-secret", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Secret")
 	vectorAggregatorSecret, err := ctrl.createVectorAggregatorConfig(ctx)
 	if err != nil {
@@ -19,19 +19,19 @@ func (ctrl *Controller) ensureVectorAggregatorConfig(ctx context.Context) error 
 }
 
 func (ctrl *Controller) createVectorAggregatorConfig(ctx context.Context) (*corev1.Secret, error) {
-	log := log.FromContext(ctx).WithValues("vector-aggregator-config", ctrl.VectorAggregator.Name)
+	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-config", ctrl.Name)
 	labels := ctrl.labelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 	data := ctrl.ConfigBytes
 
-	if ctrl.VectorAggregator.Spec.CompressConfigFile {
+	if ctrl.Spec.CompressConfigFile {
 		data = compression.Compress(ctrl.ConfigBytes, log)
 	}
 	config := map[string][]byte{
 		"config.json": data,
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.VectorAggregator.Namespace),
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Data:       config,
 	}
 	return secret, nil

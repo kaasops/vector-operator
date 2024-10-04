@@ -126,3 +126,16 @@ func (w *watcher) watchEvents(client rest.Interface) {
 func (w *watcher) close() {
 	close(w.stopCh)
 }
+
+func eventTimestamp(ev *corev1.Event) time.Time {
+	var ts time.Time
+	switch {
+	case ev.EventTime.Time != time.Time{}:
+		ts = ev.EventTime.Time
+	case ev.LastTimestamp.Time != time.Time{}:
+		ts = ev.LastTimestamp.Time
+	case ev.FirstTimestamp.Time != time.Time{}:
+		ts = ev.FirstTimestamp.Time
+	}
+	return ts
+}

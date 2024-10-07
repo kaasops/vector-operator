@@ -1,4 +1,4 @@
-# Secure credential
+# Logs from file
 
 If you want collect logs from file (like k8s-audit logs) you can use example.
 

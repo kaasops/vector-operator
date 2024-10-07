@@ -25,7 +25,7 @@ spec:
       type: boolean
     - jsonPath: .status.role
       name: Role
-      type: boolean
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:

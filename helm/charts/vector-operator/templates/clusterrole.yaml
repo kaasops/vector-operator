@@ -78,6 +78,8 @@ rules:
   - clustervectorpipelines
   - vectorpipelines
   - vectors
+  - clustervectoraggregators
+  - vectoraggregators
   verbs:
   - create
   - delete
@@ -93,6 +95,9 @@ rules:
   - vectorpipelines/status
   - vectors/status
   - vectors/finalizers
+  - clustervectoraggregators/status
+  - vectoraggregators/status
+  - vectoraggregators/finalizers
   verbs:
   - get
   - patch

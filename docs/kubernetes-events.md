@@ -78,20 +78,9 @@ spec:
       type: "kubernetes_events"
   sinks:
     sink-test:
+      type: "console"
+      encoding:
+        codec: "json"
       inputs:
         - source-test
-      type: "elasticsearch"
-      api_version: auto
-      endpoints:
-        - https://test-elastic-http.default:9200
-      mode: bulk
-      tls:
-        verify_certificate: false
-      bulk:
-        action: create
-        index: "test-%Y-%m-%d"
-      auth:
-        user: elastic
-        password: test-password
-        strategy: basic
 ```

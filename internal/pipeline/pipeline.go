@@ -79,7 +79,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 				if !vp.IsDeleted() &&
 					vp.IsValid() &&
 					vp.GetRole() == filter.Role &&
-					vp.Namespace == filter.Namespace &&
+					(filter.Scope == AllPipelines || vp.Namespace == filter.Namespace) &&
 					MatchLabels(matchLabels, vp.Labels) {
 					validPipelines = append(validPipelines, vp.DeepCopy())
 				}

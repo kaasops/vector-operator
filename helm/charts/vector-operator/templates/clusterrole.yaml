@@ -114,4 +114,5 @@ rules:
   - events
   verbs:
   - watch
+  - list
 {{- end -}}

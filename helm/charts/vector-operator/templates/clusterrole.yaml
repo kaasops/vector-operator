@@ -108,4 +108,10 @@ rules:
   - podmonitors
   verbs:
   - '*'
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - watch
 {{- end -}}

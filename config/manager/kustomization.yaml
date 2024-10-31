@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: localhost:5001/vector-operator
-  newTag: dev22
+  newTag: dev23

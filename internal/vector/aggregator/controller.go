@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -241,7 +242,7 @@ func (ctrl *Controller) setDefault() {
 		}
 	}
 	if ctrl.Spec.EventCollector.Image == "" {
-		ctrl.Spec.EventCollector.Image = "kaasops/event-collector:latest"
+		ctrl.Spec.EventCollector.Image = "kaasops/event-collector:" + buildinfo.Version
 	}
 	if ctrl.Spec.EventCollector.ImagePullPolicy == "" {
 		ctrl.Spec.EventCollector.ImagePullPolicy = corev1.PullIfNotPresent

@@ -128,7 +128,7 @@ func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 func (ctrl *Controller) eventCollectorContainer() *corev1.Container {
 	return &corev1.Container{
 		Name:            "event-collector",
-		Image:           ctrl.Spec.EventCollector.Image, // "localhost:5001/event-collector:dev20", // TODO: hardcode
+		Image:           ctrl.Spec.EventCollector.Image,
 		ImagePullPolicy: ctrl.Spec.EventCollector.ImagePullPolicy,
 		SecurityContext: ctrl.Spec.ContainerSecurityContext,
 		Args:            []string{},

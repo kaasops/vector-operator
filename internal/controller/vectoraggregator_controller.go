@@ -21,7 +21,6 @@ import (
 	"errors"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -55,7 +54,6 @@ type VectorAggregatorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	EventsCollector    *k8sevents.EventsCollector
 	Clientset          *kubernetes.Clientset
 	ConfigCheckTimeout time.Duration
 	EventChan          chan event.GenericEvent
@@ -113,7 +111,6 @@ func (r *VectorAggregatorReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	setAggregatorTypeMetaIfNeeded(vectorCR)
 
 	if vectorCR.IsBeingDeleted() {
-		r.EventsCollector.UnregisterByAggregatorID(req.String())
 		if controllerutil.ContainsFinalizer(vectorCR, aggregatorFinalizerName) {
 			if err := r.deleteVectorAggregator(ctx, vectorCR); err != nil {
 				if !api_errors.IsNotFound(err) {
@@ -152,6 +149,7 @@ func (r *VectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
+		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
 		Owns(&rbacv1.ClusterRoleBinding{})
@@ -181,7 +179,7 @@ func listVectorAggregators(ctx context.Context, client client.Client) (vectors [
 
 func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.VectorAggregator) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
-	vaCtrl := aggregator.NewController(v, client, clientset, r.EventsCollector)
+	vaCtrl := aggregator.NewController(v, client, clientset)
 
 	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
 		Scope:     pipeline.NamespacedPipeline,
@@ -194,6 +192,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	}
 
 	cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+		AggregatorName:    vaCtrl.Name,
 		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
@@ -268,7 +267,7 @@ func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Cont
 }
 
 func (r *VectorAggregatorReconciler) deleteVectorAggregator(ctx context.Context, v *v1alpha1.VectorAggregator) error {
-	return aggregator.NewController(v, r.Client, r.Clientset, r.EventsCollector).DeleteVectorAggregator(ctx)
+	return aggregator.NewController(v, r.Client, r.Clientset).DeleteVectorAggregator(ctx)
 }
 
 func setAggregatorTypeMetaIfNeeded(cr *v1alpha1.VectorAggregator) {

@@ -1,4 +1,4 @@
-package k8sevents
+package evcollector
 
 import (
 	"context"
@@ -12,33 +12,40 @@ import (
 	"time"
 )
 
-type watcher struct {
-	addr      string
-	namespace string
+type Logger interface {
+	Info(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
+}
+
+type Collector struct {
+	Addr      string
+	Namespace string
 	createdAt time.Time
 	stopCh    chan struct{}
 	logger    Logger
+	client    rest.Interface
 }
 
-func newWatcher(addr, namespace string, logger Logger) *watcher {
-	r := watcher{
-		addr:      addr,
+func New(addr, namespace string, logger Logger, client rest.Interface) *Collector {
+	c := Collector{
+		Addr:      addr,
 		createdAt: time.Now(),
 		logger:    logger,
-		namespace: namespace,
+		Namespace: namespace,
+		client:    client,
 	}
-	return &r
+	return &c
 }
 
-func (w *watcher) watchEvents(client rest.Interface) {
-	if w.stopCh != nil {
+func (c *Collector) Start() {
+	if c.stopCh != nil {
 		return
 	}
 
-	w.stopCh = make(chan struct{})
+	c.stopCh = make(chan struct{})
 	eventsCh := make(chan *corev1.Event)
 
-	watchList := cache.NewListWatchFromClient(client, "events", w.namespace, fields.Everything())
+	watchList := cache.NewListWatchFromClient(c.client, "events", c.Namespace, fields.Everything())
 	_, ctrl := cache.NewInformerWithOptions(cache.InformerOptions{
 		ListerWatcher: watchList,
 		ObjectType:    &corev1.Event{},
@@ -63,7 +70,7 @@ func (w *watcher) watchEvents(client rest.Interface) {
 
 		for {
 			select {
-			case <-w.stopCh:
+			case <-c.stopCh:
 				if conn != nil {
 					_ = conn.Close()
 				}
@@ -73,11 +80,11 @@ func (w *watcher) watchEvents(client rest.Interface) {
 				if !sending {
 					select {
 					case event = <-eventsCh:
-						if eventTimestamp(event).Before(w.createdAt) || event == nil {
+						if eventTimestamp(event).Before(c.createdAt) || event == nil {
 							continue
 						}
 						sending = true
-					case <-w.stopCh:
+					case <-c.stopCh:
 						if conn != nil {
 							_ = conn.Close()
 						}
@@ -87,11 +94,11 @@ func (w *watcher) watchEvents(client rest.Interface) {
 
 				if conn == nil {
 					for {
-						conn, err = grpc.NewClient(w.addr,
+						conn, err = grpc.NewClient(c.Addr,
 							grpc.WithTransportCredentials(insecure.NewCredentials()),
 						)
 						if err != nil {
-							w.logger.Error(err, "connect to address", "address", w.addr)
+							c.logger.Error("connect to address", "address", c.Addr, "error", err)
 							time.Sleep(5 * time.Second)
 							continue
 						}
@@ -108,7 +115,7 @@ func (w *watcher) watchEvents(client rest.Interface) {
 					}},
 				})
 				if err != nil {
-					w.logger.Error(err, "send event", "address", w.addr)
+					c.logger.Error("send event", "address", c.Addr, "error", err)
 					_ = conn.Close()
 					conn = nil
 					time.Sleep(5 * time.Second)
@@ -120,11 +127,11 @@ func (w *watcher) watchEvents(client rest.Interface) {
 		}
 
 	}()
-	go ctrl.Run(w.stopCh)
+	go ctrl.Run(c.stopCh)
 }
 
-func (w *watcher) close() {
-	close(w.stopCh)
+func (c *Collector) Stop() {
+	close(c.stopCh)
 }
 
 func eventTimestamp(ev *corev1.Event) time.Time {

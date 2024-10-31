@@ -24,8 +24,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/kaasops/vector-operator/internal/k8sevents"
-
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -212,8 +210,6 @@ func main() {
 	clusterVectorAggregatorsPipelineEventCh := make(chan event.GenericEvent, 10)
 	defer close(clusterVectorAggregatorsPipelineEventCh)
 
-	evCollector := k8sevents.NewEventsCollector(clientset, ctrl.Log.WithName("kubernetes-events-collector"))
-
 	if err = (&controller.PipelineReconciler{
 		Client:                          mgr.GetClient(),
 		Scheme:                          mgr.GetScheme(),
@@ -222,7 +218,6 @@ func main() {
 		VectorAgentEventCh:              vectorAgentsPipelineEventCh,
 		VectorAggregatorsEventCh:        vectorAggregatorsPipelineEventCh,
 		ClusterVectorAggregatorsEventCh: clusterVectorAggregatorsPipelineEventCh,
-		EventsCollector:                 evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
@@ -237,7 +232,6 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          vectorAggregatorsEventCh,
-		EventsCollector:    evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
@@ -252,7 +246,6 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          clusterVectorAggregatorsEventCh,
-		EventsCollector:    evCollector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterVectorAggregator")
 		os.Exit(1)

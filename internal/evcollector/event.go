@@ -1,4 +1,4 @@
-package k8sevents
+package evcollector
 
 import (
 	"github.com/kaasops/vector-operator/internal/vector/gen"
@@ -22,7 +22,7 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 							"firstTimestamp":    valueFromString(ev.FirstTimestamp.Format(time.RFC3339)),
 							"lastTimestamp":     valueFromString(ev.LastTimestamp.Format(time.RFC3339)),
 							"name":              valueFromString(ev.Name),
-							"namespace":         valueFromString(ev.Namespace),
+							"Namespace":         valueFromString(ev.Namespace),
 							"source": {Kind: &gen.Value_Map{
 								Map: &gen.ValueMap{Fields: map[string]*gen.Value{
 									"host":      valueFromString(ev.Source.Host),
@@ -34,7 +34,7 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 									"uid":             valueFromString(string(ev.InvolvedObject.UID)),
 									"kind":            valueFromString(ev.InvolvedObject.Kind),
 									"name":            valueFromString(ev.InvolvedObject.Name),
-									"namespace":       valueFromString(ev.InvolvedObject.Namespace),
+									"Namespace":       valueFromString(ev.InvolvedObject.Namespace),
 									"apiVersion":      valueFromString(ev.InvolvedObject.APIVersion),
 									"resourceVersion": valueFromString(ev.InvolvedObject.ResourceVersion),
 									"fieldPath":       valueFromString(ev.InvolvedObject.FieldPath),

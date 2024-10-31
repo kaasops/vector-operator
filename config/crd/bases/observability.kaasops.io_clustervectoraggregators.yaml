@@ -2416,6 +2416,15 @@ spec:
                   - name
                   type: object
                 type: array
+              eventCollector:
+                properties:
+                  image:
+                    type: string
+                  imagePullPolicy:
+                    description: PullPolicy describes a policy for if/when to pull
+                      a container image
+                    type: string
+                type: object
               host_aliases:
                 description: |-
                   HostAliases provides mapping between ip and hostnames,

@@ -10,39 +10,40 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (ctrl *Controller) ensureEventCollector(ctx context.Context) error {
-
-	// TODO: cleanup
-
 	cfg := ctrl.Config.GetEventCollectorConfig(ctrl.Namespace)
 	if cfg == nil {
 		return ctrl.cleanupEventCollector(ctx)
 	}
 
 	// config
-
 	eventCollectorConfig, err := ctrl.createEventCollectorConfig(cfg)
 	if err != nil {
 		return err
 	}
+
 	err = k8s.CreateOrUpdateResource(ctx, eventCollectorConfig, ctrl.Client)
 	if err != nil {
 		return err
 	}
 
 	// rbac
-
 	if err := ctrl.ensureEventCollectorRBAC(ctx); err != nil {
 		return err
 	}
 
+	// service
+	if err := k8s.CreateOrUpdateResource(ctx, ctrl.createEventCollectorService(), ctrl.Client); err != nil {
+		return err
+	}
+
 	// deployment
-	err = k8s.CreateOrUpdateResource(ctx, ctrl.createEventCollectorDeployment(), ctrl.Client)
-	if err != nil {
+	if err := k8s.CreateOrUpdateResource(ctx, ctrl.createEventCollectorDeployment(), ctrl.Client); err != nil {
 		return err
 	}
 
@@ -51,6 +52,9 @@ func (ctrl *Controller) ensureEventCollector(ctx context.Context) error {
 
 func (ctrl *Controller) cleanupEventCollector(ctx context.Context) error {
 	if err := ctrl.Delete(ctx, ctrl.createEventCollectorDeployment()); err != nil && !api_errors.IsNotFound(err) {
+		return err
+	}
+	if err := ctrl.Delete(ctx, ctrl.createEventCollectorService()); err != nil && !api_errors.IsNotFound(err) {
 		return err
 	}
 	if err := ctrl.Delete(ctx, ctrl.createEventCollectorClusterRoleBinding()); err != nil && !api_errors.IsNotFound(err) {
@@ -72,8 +76,29 @@ func (ctrl *Controller) cleanupEventCollector(ctx context.Context) error {
 	return nil
 }
 
+func (ctrl *Controller) createEventCollectorService() *corev1.Service {
+	labels := ctrl.labelsForEventCollector()
+	annotations := ctrl.annotationsForVectorAggregator()
+	svc := &corev1.Service{
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "metrics",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       8080,
+					TargetPort: intstr.FromInt32(8080),
+				},
+			},
+			Selector: labels,
+		},
+	}
+	svc.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	return svc
+}
+
 func (ctrl *Controller) createEventCollectorConfig(params *evcollector.Config) (*corev1.ConfigMap, error) {
-	labels := ctrl.labelsForVectorAggregator()
+	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
 	bytes, err := json.Marshal(params)
 	if err != nil {
@@ -91,7 +116,7 @@ func (ctrl *Controller) createEventCollectorConfig(params *evcollector.Config) (
 }
 
 func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
-	labels := ctrl.labelsForVectorAggregator()
+	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
 	containers := []corev1.Container{*ctrl.eventCollectorContainer()}
 
@@ -119,9 +144,7 @@ func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 			},
 		},
 	}
-
 	deployment.ObjectMeta.Name = ctrl.Name + "-event-collector"
-
 	return deployment
 }
 
@@ -186,7 +209,7 @@ func (ctrl *Controller) ensureEventCollectorClusterRoleBinding(ctx context.Conte
 }
 
 func (ctrl *Controller) createEventCollectorClusterRole() *rbacv1.ClusterRole {
-	labels := ctrl.labelsForVectorAggregator()
+	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	clusterRole := &rbacv1.ClusterRole{
@@ -205,7 +228,7 @@ func (ctrl *Controller) createEventCollectorClusterRole() *rbacv1.ClusterRole {
 }
 
 func (ctrl *Controller) createEventCollectorServiceAccount() *corev1.ServiceAccount {
-	labels := ctrl.labelsForVectorAggregator()
+	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	serviceAccount := &corev1.ServiceAccount{
@@ -218,7 +241,7 @@ func (ctrl *Controller) createEventCollectorServiceAccount() *corev1.ServiceAcco
 }
 
 func (ctrl *Controller) createEventCollectorClusterRoleBinding() *rbacv1.ClusterRoleBinding {
-	labels := ctrl.labelsForVectorAggregator()
+	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
@@ -236,8 +259,15 @@ func (ctrl *Controller) createEventCollectorClusterRoleBinding() *rbacv1.Cluster
 			},
 		},
 	}
-
 	clusterRoleBinding.ObjectMeta.Name = ctrl.Name + "-event-collector"
-
 	return clusterRoleBinding
+}
+
+func (ctrl *Controller) labelsForEventCollector() map[string]string {
+	return map[string]string{
+		k8s.ManagedByLabelKey: "vector-operator",
+		k8s.NameLabelKey:      "vector",
+		k8s.ComponentLabelKey: "EventCollector",
+		k8s.InstanceLabelKey:  ctrl.Name,
+	}
 }

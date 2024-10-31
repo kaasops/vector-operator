@@ -2,20 +2,26 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/kaasops/vector-operator/internal/evcollector"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"syscall"
 )
 
-const configPath = "/etc/event-collector/config.json"
+const (
+	configPath = "/etc/event-collector/config.json"
+	port       = "8080"
+)
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -99,6 +105,15 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err = http.ListenAndServe(net.JoinHostPort("", port), nil); err != nil && !errors.Is(http.ErrServerClosed, err) {
+			log.Error("failed to start http server", "error", err)
+			os.Exit(1)
+		}
+	}()
+	log.Info("starting http server on port " + port)
 
 	<-ctx.Done()
 	log.Info("shutting down")

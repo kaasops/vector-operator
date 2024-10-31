@@ -29,5 +29,6 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/collector .
 USER 65532:65532
+EXPOSE 8080
 
 ENTRYPOINT ["/collector"]

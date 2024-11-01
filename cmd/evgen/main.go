@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	numEvents := flag.Int("events", 100000, "Number of events to create")
+	numEvents := flag.Int("events", 10000, "Number of events to create")
 	namespace := flag.String("namespace", "default", "Namespace where the events will be created")
 	workers := flag.Int("workers", 50, "Number of workers to create")
 	flag.Parse()

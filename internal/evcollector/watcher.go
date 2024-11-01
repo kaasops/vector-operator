@@ -15,6 +15,7 @@ import (
 type Logger interface {
 	Info(msg string, keysAndValues ...any)
 	Error(msg string, keysAndValues ...any)
+	Debug(msg string, keysAndValues ...any)
 }
 
 type Collector struct {
@@ -25,6 +26,8 @@ type Collector struct {
 	logger    Logger
 	client    rest.Interface
 }
+
+const batchSize = 50 // TODO: hardcode
 
 func New(addr, namespace string, logger Logger, client rest.Interface) *Collector {
 	c := Collector{
@@ -65,8 +68,13 @@ func (c *Collector) Start() {
 		var conn *grpc.ClientConn
 		var vectorClient gen.VectorClient
 		var err error
-		var event *corev1.Event
 		var sending bool
+		var sentBatchCount int
+
+		batch := make([]*corev1.Event, 0, batchSize)
+
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
 
 		for {
 			select {
@@ -79,12 +87,24 @@ func (c *Collector) Start() {
 			default:
 				if !sending {
 					select {
-					case event = <-eventsCh:
+					case event := <-eventsCh:
 						if eventTimestamp(event).Before(c.createdAt) || event == nil {
+							eventsSkipped.WithLabelValues(c.Addr, c.Namespace).Inc()
 							continue
 						}
-						eventsHandled.Inc()
-						sending = true
+						eventsHandled.WithLabelValues(c.Addr, c.Namespace).Inc()
+						batch = append(batch, event)
+						if len(batch) == batchSize {
+							sending = true
+						} else {
+							continue
+						}
+					case <-ticker.C:
+						if len(batch) > 0 {
+							sending = true
+						} else {
+							continue
+						}
 					case <-c.stopCh:
 						if conn != nil {
 							_ = conn.Close()
@@ -108,13 +128,7 @@ func (c *Collector) Start() {
 					}
 				}
 
-				_, err = vectorClient.PushEvents(context.Background(), &gen.PushEventsRequest{
-					Events: []*gen.EventWrapper{{
-						Event: &gen.EventWrapper_Log{
-							Log: k8sEventToVectorLog(event),
-						},
-					}},
-				})
+				_, err = vectorClient.PushEvents(context.Background(), k8sEventsToVectorEvents(batch))
 				if err != nil {
 					c.logger.Error("send event", "address", c.Addr, "error", err)
 					_ = conn.Close()
@@ -122,8 +136,15 @@ func (c *Collector) Start() {
 					time.Sleep(5 * time.Second)
 					continue
 				}
-				eventsProcessed.WithLabelValues(c.Addr, c.Namespace).Inc()
-
+				sentBatchCount++
+				eventsProcessed.WithLabelValues(c.Addr, c.Namespace).Add(float64(len(batch)))
+				c.logger.Debug("batch sent",
+					"address", c.Addr,
+					"namespace", c.Namespace,
+					"count", len(batch),
+					"batch", sentBatchCount,
+				)
+				batch = batch[:0]
 				sending = false
 			}
 		}

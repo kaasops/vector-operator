@@ -6,11 +6,16 @@ import (
 )
 
 var (
-	eventsHandled = promauto.NewCounter(prometheus.CounterOpts{
+	eventsHandled = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "event_collector",
 		Name:      "handled_events_total",
 		Help:      "The total number of handled events",
-	})
+	}, []string{"service", "namespace"})
+	eventsSkipped = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "event_collector",
+		Name:      "skipped_events_total",
+		Help:      "The total number of skipped events",
+	}, []string{"service", "namespace"})
 	eventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "event_collector",
 		Name:      "processed_events_total",

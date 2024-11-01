@@ -48,6 +48,20 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 	}
 }
 
+func k8sEventsToVectorEvents(list []*corev1.Event) *gen.PushEventsRequest {
+	events := make([]*gen.EventWrapper, 0, len(list))
+	for _, event := range list {
+		events = append(events, &gen.EventWrapper{
+			Event: &gen.EventWrapper_Log{
+				Log: k8sEventToVectorLog(event),
+			},
+		})
+	}
+	return &gen.PushEventsRequest{
+		Events: events,
+	}
+}
+
 func valueFromString(s string) *gen.Value {
 	return &gen.Value{
 		Kind: &gen.Value_RawBytes{RawBytes: []byte(s)},

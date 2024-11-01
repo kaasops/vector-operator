@@ -66,7 +66,7 @@ func main() {
 			oldC.Stop()
 		}
 
-		c := evcollector.New(addr, watchedNamespace, log, clientset.CoreV1().RESTClient())
+		c := evcollector.New(addr, watchedNamespace, cfg.MaxBatchSize, log, clientset.CoreV1().RESTClient())
 		store[host] = c
 		c.Start()
 	}

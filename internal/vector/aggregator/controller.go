@@ -247,6 +247,9 @@ func (ctrl *Controller) setDefault() {
 	if ctrl.Spec.EventCollector.ImagePullPolicy == "" {
 		ctrl.Spec.EventCollector.ImagePullPolicy = corev1.PullIfNotPresent
 	}
+	if ctrl.Spec.EventCollector.MaxBatchSize <= 0 {
+		ctrl.Spec.EventCollector.MaxBatchSize = 250
+	}
 }
 
 func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash *uint32) error {

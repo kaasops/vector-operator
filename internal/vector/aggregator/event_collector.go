@@ -20,6 +20,7 @@ func (ctrl *Controller) ensureEventCollector(ctx context.Context) error {
 	if cfg == nil {
 		return ctrl.cleanupEventCollector(ctx)
 	}
+	cfg.MaxBatchSize = ctrl.Spec.EventCollector.MaxBatchSize
 
 	// config
 	eventCollectorConfig, err := ctrl.createEventCollectorConfig(cfg)

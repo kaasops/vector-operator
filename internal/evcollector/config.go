@@ -8,5 +8,6 @@ type ReceiverParams struct {
 }
 
 type Config struct {
-	Receivers []*ReceiverParams
+	MaxBatchSize int32
+	Receivers    []*ReceiverParams
 }

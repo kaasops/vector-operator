@@ -19,23 +19,23 @@ type Logger interface {
 }
 
 type Collector struct {
-	Addr      string
-	Namespace string
-	createdAt time.Time
-	stopCh    chan struct{}
-	logger    Logger
-	client    rest.Interface
+	Addr         string
+	Namespace    string
+	createdAt    time.Time
+	stopCh       chan struct{}
+	logger       Logger
+	client       rest.Interface
+	maxBatchSize int
 }
 
-const batchSize = 250 // TODO: hardcode
-
-func New(addr, namespace string, logger Logger, client rest.Interface) *Collector {
+func New(addr, namespace string, maxBatchSize int32, logger Logger, client rest.Interface) *Collector {
 	c := Collector{
-		Addr:      addr,
-		createdAt: time.Now(),
-		logger:    logger,
-		Namespace: namespace,
-		client:    client,
+		Addr:         addr,
+		createdAt:    time.Now(),
+		logger:       logger,
+		Namespace:    namespace,
+		client:       client,
+		maxBatchSize: int(maxBatchSize),
 	}
 	return &c
 }
@@ -71,7 +71,7 @@ func (c *Collector) Start() {
 		var sending bool
 		var sentBatchCount int
 
-		batch := make([]*corev1.Event, 0, batchSize)
+		batch := make([]*corev1.Event, 0, c.maxBatchSize)
 
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
@@ -94,7 +94,7 @@ func (c *Collector) Start() {
 						}
 						eventsHandled.WithLabelValues(c.Addr, c.Namespace).Inc()
 						batch = append(batch, event)
-						if len(batch) == batchSize {
+						if len(batch) == c.maxBatchSize {
 							sending = true
 						} else {
 							continue

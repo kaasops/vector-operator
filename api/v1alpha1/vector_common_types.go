@@ -144,4 +144,5 @@ type VectorAggregatorCommon struct {
 type EventCollector struct {
 	Image           string        `json:"image,omitempty"`
 	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	MaxBatchSize    int32         `json:"maxBatchSize,omitempty"`
 }

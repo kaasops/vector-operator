@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/rand"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	numEvents := flag.Int("events", 10000, "Number of events to create")
+	numEvents := flag.Int("events", 300, "Number of events to create")
 	namespace := flag.String("namespace", "default", "Namespace where the events will be created")
 	workers := flag.Int("workers", 50, "Number of workers to create")
 	flag.Parse()
@@ -30,8 +31,13 @@ func main() {
 
 	events := make(chan *corev1.Event)
 
+	wg := sync.WaitGroup{}
+
 	for i := 0; i < *workers; i++ {
 		go func() {
+			wg.Add(1)
+			defer wg.Done()
+
 			clientset, err := kubernetes.NewForConfig(config)
 			if err != nil {
 				panic(err)
@@ -78,4 +84,5 @@ func main() {
 
 	fmt.Printf("Event generation completed, elapsed time: %s", time.Since(start))
 	close(events)
+	wg.Wait()
 }

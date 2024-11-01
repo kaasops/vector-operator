@@ -27,7 +27,7 @@ type Collector struct {
 	client    rest.Interface
 }
 
-const batchSize = 50 // TODO: hardcode
+const batchSize = 250 // TODO: hardcode
 
 func New(addr, namespace string, logger Logger, client rest.Interface) *Collector {
 	c := Collector{

@@ -83,6 +83,7 @@ func (c *Collector) Start() {
 						if eventTimestamp(event).Before(c.createdAt) || event == nil {
 							continue
 						}
+						eventsHandled.Inc()
 						sending = true
 					case <-c.stopCh:
 						if conn != nil {
@@ -121,6 +122,7 @@ func (c *Collector) Start() {
 					time.Sleep(5 * time.Second)
 					continue
 				}
+				eventsProcessed.WithLabelValues(c.Addr, c.Namespace).Inc()
 
 				sending = false
 			}

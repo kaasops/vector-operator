@@ -118,6 +118,11 @@ func (ctrl *Controller) createEventCollectorConfig(params *evcollector.Config) (
 func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 	labels := ctrl.labelsForEventCollector()
 	annotations := ctrl.annotationsForVectorAggregator()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations["prometheus.io/scrape"] = "true" // TODO: hardcode
+	annotations["prometheus.io/port"] = "8080"
 	containers := []corev1.Container{*ctrl.eventCollectorContainer()}
 
 	deployment := &appsv1.Deployment{

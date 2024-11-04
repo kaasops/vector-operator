@@ -2,8 +2,6 @@ package aggregator
 
 import (
 	"context"
-	"fmt"
-	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
@@ -12,7 +10,6 @@ import (
 	"maps"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error {
@@ -31,20 +28,8 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 		if err := k8s.CreateOrUpdateResource(ctx, svc, ctrl.Client); err != nil {
 			return err
 		}
-		if svc.Annotations[common.AnnotationK8sEventsPort] != "" {
-			ctrl.EventsCollector.RegisterSubscriber(
-				ctrl.id,
-				svc.Name,
-				svc.Namespace,
-				svc.Annotations[common.AnnotationK8sEventsPort],
-				svc.Annotations[common.AnnotationK8sEventsNamespace],
-			)
-		}
 	}
 	for _, svc := range existing {
-		if svc.Annotations[common.AnnotationK8sEventsPort] != "" {
-			ctrl.EventsCollector.UnregisterSubscriber(ctrl.id, svc.Name, svc.Namespace)
-		}
 		if err := ctrl.Client.Delete(ctx, svc); err != nil {
 			return err
 		}
@@ -67,11 +52,6 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 
 		ports := make([]corev1.ServicePort, 0, len(list))
 		for _, sp := range list {
-			if sp.IsKubernetesEvents {
-				ann[common.AnnotationK8sEventsNamespace] = sp.Namespace
-				ann[common.AnnotationK8sEventsPort] = strconv.Itoa(int(sp.Port))
-			}
-
 			ports = append(ports, corev1.ServicePort{
 				Name:       strcase.KebabCase(sp.SourceName),
 				Protocol:   sp.Protocol,
@@ -86,11 +66,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 				Selector: labels,
 			},
 		}
-		name := group.ServiceName
-		if name == "" {
-			name = strcase.KebabCase(fmt.Sprintf("%s-%s", svc.ObjectMeta.Name, group.PipelineName))
-		}
-		svc.ObjectMeta.Name = name
+		svc.ObjectMeta.Name = group.ServiceName
 		svcList = append(svcList, svc)
 	}
 

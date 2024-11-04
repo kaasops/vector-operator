@@ -30,10 +30,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build image and push to Docker Hub
+      - name: Build operator image and push to Docker Hub
         uses: docker/build-push-action@v2
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ github.repository }}:${{ steps.tag.outputs.TAG }},${{ github.repository }}:latest
+          build-args: VERSION=${{ steps.tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
+
+      - name: Build event-collector image and push to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: event_collector.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/event-collector:latest

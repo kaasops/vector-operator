@@ -54,6 +54,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdateDaemonSet(ctx, o, c)
 	case *corev1.Secret:
 		return createOrUpdateSecret(ctx, o, c)
+	case *corev1.ConfigMap:
+		return createOrUpdateConfigMap(ctx, o, c)
 	case *corev1.Service:
 		return createOrUpdateService(ctx, o, c)
 	case *corev1.ServiceAccount:
@@ -130,6 +132,22 @@ func createOrUpdateSecret(ctx context.Context, desired *corev1.Secret, c client.
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update Secret: %w", err)
+	}
+	existing.DeepCopyInto(desired)
+	return nil
+}
+
+func createOrUpdateConfigMap(ctx context.Context, desired *corev1.ConfigMap, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
+		existing.OwnerReferences = desired.OwnerReferences
+		existing.Data = desired.Data
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update ConfigMap: %w", err)
 	}
 	existing.DeepCopyInto(desired)
 	return nil

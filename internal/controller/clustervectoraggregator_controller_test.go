@@ -72,7 +72,6 @@ var _ = Describe("ClusterVectorAggregator Controller", func() {
 			controllerReconciler := &ClusterVectorAggregatorReconciler{
 				Client:             k8sClient,
 				Scheme:             k8sClient.Scheme(),
-				EventsCollector:    k8sEventsCollector,
 				EventChan:          make(chan event.GenericEvent, 1),
 				ConfigCheckTimeout: configCheckTimeout,
 				Clientset:          clientset,

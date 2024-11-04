@@ -3,7 +3,9 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
 	"net"
 	"strconv"
@@ -52,6 +54,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 						Namespace:          pipeline.GetNamespace(),
 						SourceName:         k,
 						PipelineName:       pipeline.GetName(),
+						ServiceName:        getServiceName(pipeline.GetAnnotations()[common.AnnotationServiceName], params.AggregatorName, pipeline.GetName()),
 					})
 					if err != nil {
 						return nil, err
@@ -74,6 +77,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 								Namespace:    pipeline.GetNamespace(),
 								SourceName:   k,
 								PipelineName: pipeline.GetName(),
+								ServiceName:  getServiceName(pipeline.GetAnnotations()[common.AnnotationServiceName], params.AggregatorName, pipeline.GetName()),
 							})
 							if err != nil {
 								return nil, err
@@ -115,6 +119,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 			Namespace:    DefaultNamespace,
 			SourceName:   DefaultInternalMetricsSourceName,
 			PipelineName: DefaultPipelineName,
+			ServiceName:  getServiceName("", params.AggregatorName, DefaultPipelineName),
 		})
 		if err != nil {
 			return nil, err
@@ -143,4 +148,11 @@ func extractProtocol(opts map[string]any) corev1.Protocol {
 		}
 	}
 	return protocol
+}
+
+func getServiceName(nameFromAnnotations, aggregatorName, pipelineName string) string {
+	if nameFromAnnotations != "" {
+		return nameFromAnnotations
+	}
+	return strcase.KebabCase(fmt.Sprintf("%s-aggregator-%s", aggregatorName, pipelineName))
 }

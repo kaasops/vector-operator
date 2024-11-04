@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
@@ -50,7 +49,6 @@ type PipelineReconciler struct {
 	VectorAgentEventCh              chan event.GenericEvent
 	VectorAggregatorsEventCh        chan event.GenericEvent
 	ClusterVectorAggregatorsEventCh chan event.GenericEvent
-	EventsCollector                 *k8sevents.EventsCollector
 }
 
 var (
@@ -171,8 +169,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if pipelineCR.GetNamespace() != "" {
 			for _, vector := range vectorAggregators {
 				eg.Go(func() error {
-					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
+					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+						AggregatorName:    vaCtrl.Name,
 						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
@@ -215,8 +214,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			for _, vector := range clusterVectorAggregators {
 				eg.Go(func() error {
-					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset, r.EventsCollector)
+					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+						AggregatorName:    vaCtrl.Name,
 						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 						InternalMetrics:   vaCtrl.Spec.InternalMetrics,

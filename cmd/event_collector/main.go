@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/evcollector"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
@@ -15,16 +17,18 @@ import (
 	"os"
 	"os/signal"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"strings"
 	"syscall"
 )
 
-const (
-	configPath = "/etc/event-collector/config.json"
-	port       = "8080"
-)
-
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	configPath := flag.String("config", "/etc/event-collector/config.json", "path to config file")
+	port := flag.String("port", "8080", "port to listen on")
+	logLevel := flag.String("log-level", "info", "log level (debug, info, warn, error)")
+	flag.Parse()
+
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: parseLogLevel(*logLevel)}))
+	log.Info("build info", "version", buildinfo.Version)
 	log.Info("starting kubernetes-events-collector")
 
 	// kubernetes client
@@ -45,7 +49,7 @@ func main() {
 
 	// config
 	v := viper.New()
-	v.SetConfigFile(configPath)
+	v.SetConfigFile(*configPath)
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Error("failed to read config file", "error", err)
@@ -108,12 +112,12 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		if err = http.ListenAndServe(net.JoinHostPort("", port), nil); err != nil && !errors.Is(http.ErrServerClosed, err) {
+		if err = http.ListenAndServe(net.JoinHostPort("", *port), nil); err != nil && !errors.Is(http.ErrServerClosed, err) {
 			log.Error("failed to start http server", "error", err)
 			os.Exit(1)
 		}
 	}()
-	log.Info("starting http server on port " + port)
+	log.Info("starting http server on port " + *port)
 
 	<-ctx.Done()
 	log.Info("shutting down")
@@ -121,5 +125,18 @@ func main() {
 	for k := range store {
 		store[k].Stop()
 		delete(store, k)
+	}
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }

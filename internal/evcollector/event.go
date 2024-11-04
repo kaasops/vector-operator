@@ -22,7 +22,7 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 							"firstTimestamp":    valueFromString(ev.FirstTimestamp.Format(time.RFC3339)),
 							"lastTimestamp":     valueFromString(ev.LastTimestamp.Format(time.RFC3339)),
 							"name":              valueFromString(ev.Name),
-							"Namespace":         valueFromString(ev.Namespace),
+							"namespace":         valueFromString(ev.Namespace),
 							"source": {Kind: &gen.Value_Map{
 								Map: &gen.ValueMap{Fields: map[string]*gen.Value{
 									"host":      valueFromString(ev.Source.Host),

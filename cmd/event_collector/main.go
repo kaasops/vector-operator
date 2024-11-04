@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "/etc/event-collector/config.json", "path to config file")
+	configPath := flag.String("config", "/etc/event-collector/config.json", "path to config file") // data is taken from a ConfigMap created by the Vector operator
 	port := flag.String("port", "8080", "port to listen on")
 	logLevel := flag.String("log-level", "info", "log level (debug, info, warn, error)")
 	flag.Parse()
@@ -32,14 +32,14 @@ func main() {
 	log.Info("starting kubernetes-events-collector")
 
 	// kubernetes client
-	config, err := ctrl.GetConfig()
+	k8sCfg, err := ctrl.GetConfig()
 	if err != nil {
 		log.Error("unable to load kubernetes config", "error", err)
 		os.Exit(1)
 	}
 	log.Info("kubernetes config loaded")
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(k8sCfg)
 	if err != nil {
 		log.Error("unable to create clientset")
 		os.Exit(1)

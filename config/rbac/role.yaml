@@ -7,15 +7,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  - namespaces
-  - nodes
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
+  - configmaps
   - pods
   - secrets
   - serviceaccounts
@@ -27,6 +19,15 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  - namespaces
+  - nodes
+  verbs:
+  - list
   - watch
 - apiGroups:
   - ""

@@ -137,5 +137,12 @@ type VectorAggregatorCommon struct {
 	Replicas     int32 `json:"replicas,omitempty"`
 	// Selector defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
 	// If not specified, all pipelines will be selected.
-	Selector *VectorSelectorSpec `json:"selector,omitempty"`
+	Selector       *VectorSelectorSpec `json:"selector,omitempty"`
+	EventCollector EventCollector      `json:"eventCollector,omitempty"`
+}
+
+type EventCollector struct {
+	Image           string        `json:"image,omitempty"`
+	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	MaxBatchSize    int32         `json:"maxBatchSize,omitempty"`
 }

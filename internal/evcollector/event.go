@@ -1,4 +1,4 @@
-package k8sevents
+package evcollector
 
 import (
 	"github.com/kaasops/vector-operator/internal/vector/gen"
@@ -45,6 +45,20 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 				}},
 			},
 		},
+	}
+}
+
+func k8sEventsToVectorEvents(list []*corev1.Event) *gen.PushEventsRequest {
+	events := make([]*gen.EventWrapper, 0, len(list))
+	for _, event := range list {
+		events = append(events, &gen.EventWrapper{
+			Event: &gen.EventWrapper_Log{
+				Log: k8sEventToVectorLog(event),
+			},
+		})
+	}
+	return &gen.PushEventsRequest{
+		Events: events,
 	}
 }
 

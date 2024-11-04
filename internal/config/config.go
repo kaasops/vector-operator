@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/evcollector"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
@@ -35,6 +36,7 @@ var (
 )
 
 type VectorConfigParams struct {
+	AggregatorName    string
 	ApiEnabled        bool
 	PlaygroundEnabled bool
 	UseApiServerCache bool
@@ -150,4 +152,24 @@ func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
 		m[spg] = append(m[spg], s)
 	}
 	return m
+}
+
+func (c *VectorConfig) GetEventCollectorConfig(namespace string) *evcollector.Config {
+	items := make([]*evcollector.ReceiverParams, 0)
+	for _, s := range c.internal.servicePort {
+		if s.IsKubernetesEvents {
+			items = append(items, &evcollector.ReceiverParams{
+				ServiceNamespace: namespace,
+				ServiceName:      s.ServiceName,
+				WatchedNamespace: s.Namespace,
+				Port:             strconv.Itoa(int(s.Port)),
+			})
+		}
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return &evcollector.Config{
+		Receivers: items,
+	}
 }

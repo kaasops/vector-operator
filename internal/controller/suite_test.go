@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -53,7 +52,6 @@ var ctx context.Context
 var cancel context.CancelFunc
 var clientset *kubernetes.Clientset
 var configCheckTimeout time.Duration
-var k8sEventsCollector *k8sevents.EventsCollector
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -104,8 +102,6 @@ var _ = BeforeSuite(func() {
 	clientset, err = kubernetes.NewForConfig(cfg)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(clientset).NotTo(BeNil())
-
-	k8sEventsCollector = k8sevents.NewEventsCollector(clientset, &FakeLogger{})
 })
 
 var _ = AfterSuite(func() {
@@ -114,8 +110,3 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
-
-type FakeLogger struct{}
-
-func (l *FakeLogger) Info(msg string, keysAndValues ...any)             {}
-func (l *FakeLogger) Error(err error, msg string, keysAndValues ...any) {}

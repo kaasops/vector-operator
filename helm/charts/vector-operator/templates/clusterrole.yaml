@@ -18,6 +18,7 @@ rules:
   - ""
   resources:
   - secrets
+  - configmaps
   - pods
   - pods/log
   - serviceaccounts

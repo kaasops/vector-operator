@@ -21,7 +21,6 @@ import (
 	"errors"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/k8sevents"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -49,7 +48,6 @@ type ClusterVectorAggregatorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	EventsCollector    *k8sevents.EventsCollector
 	Clientset          *kubernetes.Clientset
 	ConfigCheckTimeout time.Duration
 	EventChan          chan event.GenericEvent
@@ -61,6 +59,7 @@ type ClusterVectorAggregatorReconciler struct {
 
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods/log,verbs=get;list
@@ -87,7 +86,6 @@ func (r *ClusterVectorAggregatorReconciler) Reconcile(ctx context.Context, req c
 	err := r.Get(ctx, req.NamespacedName, clusterAggregator)
 	if err != nil {
 		if api_errors.IsNotFound(err) {
-			r.EventsCollector.UnregisterByAggregatorID(req.String())
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -99,7 +97,7 @@ func (r *ClusterVectorAggregatorReconciler) Reconcile(ctx context.Context, req c
 
 func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.ClusterVectorAggregator) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
-	vaCtrl := aggregator.NewController(v, client, clientset, r.EventsCollector)
+	vaCtrl := aggregator.NewController(v, client, clientset)
 	if vaCtrl.Namespace == "" {
 		if err := vaCtrl.SetFailedStatus(ctx, "spec.resourceNamespace is empty"); err != nil {
 			return ctrl.Result{}, err
@@ -117,6 +115,7 @@ func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx c
 	}
 
 	cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
+		AggregatorName:    vaCtrl.Name,
 		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
@@ -187,6 +186,7 @@ func (r *ClusterVectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) e
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
+		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
 		Owns(&rbacv1.ClusterRoleBinding{})

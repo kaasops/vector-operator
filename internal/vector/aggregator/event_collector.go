@@ -122,7 +122,7 @@ func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	annotations["prometheus.io/scrape"] = "true" // TODO: hardcode
+	annotations["prometheus.io/scrape"] = "true"
 	annotations["prometheus.io/port"] = "8080"
 	containers := []corev1.Container{*ctrl.eventCollectorContainer()}
 

@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/evcollector"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -53,7 +52,6 @@ var ctx context.Context
 var cancel context.CancelFunc
 var clientset *kubernetes.Clientset
 var configCheckTimeout time.Duration
-var k8sEventsCollector *evcollector.EventsCollector
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)

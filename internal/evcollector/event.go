@@ -34,7 +34,7 @@ func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {
 									"uid":             valueFromString(string(ev.InvolvedObject.UID)),
 									"kind":            valueFromString(ev.InvolvedObject.Kind),
 									"name":            valueFromString(ev.InvolvedObject.Name),
-									"Namespace":       valueFromString(ev.InvolvedObject.Namespace),
+									"namespace":       valueFromString(ev.InvolvedObject.Namespace),
 									"apiVersion":      valueFromString(ev.InvolvedObject.APIVersion),
 									"resourceVersion": valueFromString(ev.InvolvedObject.ResourceVersion),
 									"fieldPath":       valueFromString(ev.InvolvedObject.FieldPath),

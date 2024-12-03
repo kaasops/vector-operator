@@ -1,3 +1,7 @@
+global:
+  image:
+    regisrty: null
+
 fullnameOverride: ""
 nameOverride: ""
 namespaceOverride: ""
@@ -5,6 +9,7 @@ namespaceOverride: ""
 replicaCount: 1
 
 image:
+  regisrty: docker.io
   repository: kaasops/vector-operator
   tag: "" # rewrites Chart.AppVersion
   pullPolicy: IfNotPresent
@@ -55,6 +60,7 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
+
 rbac:
   create: true
   annotations: {}
@@ -67,16 +73,19 @@ extraLabels: {}
 annotations: {}
 
 # Args to path to operator
-args:
-#  - "-watch-namespace=vector" # Namespace to filter the list of watched objects
+args: #  - "-watch-namespace=vector" # Namespace to filter the list of watched objects
+
 #  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
 
 vector:
   enable: false
   name: "vector"
   useApiServerCache: false
+  image:
+    registry: docker.io
+    repository: timberio/vector
+    tag: 0.24.0-distroless-libc
   # agent:
-  #   image: timberio/vector:0.24.0-distroless-libc
   #   env:
   #   - name: "testenv"
   #     value: "testvalues"

@@ -44,7 +44,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-      - image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+      - image: {{ include "vector.image" (dict "global" .Values.global.image "image" .Values.image "defaultTag" (default .Chart.AppVersion .Values.image.tag )) | quote }}
         {{- with .Values.args }}
         args:
           {{- toYaml . | nindent 10 }}

@@ -61,3 +61,17 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Base template for building docker image reference
+*/}}
+{{- define "vector.image" -}}
+{{- $registry := .global.registry | default .image.registry | default "" -}}
+{{- $repository := required "An image repository is required" .image.repository -}}
+{{- $tag := .defaultTag | default "latest" | toString -}}
+{{- if $registry -}}
+  {{- printf "%s/%s:%s" $registry $repository $tag -}}
+{{- else -}}
+  {{- printf "%s%s:%s" $registry $repository $tag -}}
+{{- end -}}
+{{- end -}}

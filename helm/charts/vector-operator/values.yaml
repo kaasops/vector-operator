@@ -1,6 +1,6 @@
 global:
   image:
-    regisrty: null
+    registry: null
 
 fullnameOverride: ""
 nameOverride: ""
@@ -9,7 +9,7 @@ namespaceOverride: ""
 replicaCount: 1
 
 image:
-  regisrty: docker.io
+  # registry: docker.io
   repository: kaasops/vector-operator
   tag: "" # rewrites Chart.AppVersion
   pullPolicy: IfNotPresent
@@ -77,13 +77,13 @@ args:
 #  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
 
 vector:
-  enable: false
+  enable: true
   name: "vector"
   useApiServerCache: false
-  image:
-    registry: docker.io
-    repository: timberio/vector
-    tag: 0.24.0-distroless-libc
+  # image:
+  #   registry: docker.io
+  #   repository: timberio/vector
+  #   tag: 0.24.0-distroless-libc
   # agent:
   #   env:
   #   - name: "testenv"

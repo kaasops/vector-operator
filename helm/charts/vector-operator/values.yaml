@@ -77,7 +77,7 @@ args:
 #  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
 
 vector:
-  enable: true
+  enable: false
   name: "vector"
   useApiServerCache: false
   # image:

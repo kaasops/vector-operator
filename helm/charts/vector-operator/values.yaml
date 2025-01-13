@@ -70,6 +70,8 @@ annotations: {}
 args:
 #  - "-watch-namespace=vector" # Namespace to filter the list of watched objects
 #  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
+#  - "-enable-reconciliation-invalid-pipelines=true" # Enable the reconciliation process for pipelines with invalid configurations
+#  - "-reconciliation-retry-delay=120s" # Specify the delay before retrying the reconciliation process for pipelines
 
 vector:
   enable: false

@@ -24,7 +24,9 @@ import (
 	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
@@ -44,11 +46,13 @@ type PipelineReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset                       *kubernetes.Clientset
-	ConfigCheckTimeout              time.Duration
-	VectorAgentEventCh              chan event.GenericEvent
-	VectorAggregatorsEventCh        chan event.GenericEvent
-	ClusterVectorAggregatorsEventCh chan event.GenericEvent
+	Clientset                                *kubernetes.Clientset
+	ConfigCheckTimeout                       time.Duration
+	VectorAgentEventCh                       chan event.GenericEvent
+	VectorAggregatorsEventCh                 chan event.GenericEvent
+	ClusterVectorAggregatorsEventCh          chan event.GenericEvent
+	EnableReconciliationInvalidPipelines     bool
+	ReconciliationInvalidPipelinesRetryDelay time.Duration
 }
 
 var (
@@ -103,13 +107,15 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	notChanged, err := pipeline.IsPipelineChanged(pipelineCR)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if notChanged {
-		log.Info("Pipeline has no changes. Finish Reconcile Pipeline")
-		return ctrl.Result{}, nil
+	if !r.EnableReconciliationInvalidPipelines || pipelineCR.IsValid() {
+		notChanged, err := pipeline.IsPipelineChanged(pipelineCR)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if notChanged {
+			log.Info("Pipeline has no changes. Finish Reconcile Pipeline")
+			return ctrl.Result{}, nil
+		}
 	}
 
 	p := &config.PipelineConfig{}
@@ -263,7 +269,13 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, IgnoreBuildConfigFailed(err)
+		if errors.Is(err, ErrBuildConfigFailed) {
+			return ctrl.Result{}, nil
+		}
+		if r.EnableReconciliationInvalidPipelines {
+			return ctrl.Result{RequeueAfter: r.ReconciliationInvalidPipelinesRetryDelay}, nil
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if err = pipeline.SetSuccessStatus(ctx, r.Client, pipelineCR); err != nil {
@@ -307,12 +319,23 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha1.VectorPipeline{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 20}).
 		Watches(&v1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
+		WithEventFilter(specAndAnnotationsPredicate).
 		Complete(r)
 }
 
-func IgnoreBuildConfigFailed(err error) error {
-	if errors.Is(err, ErrBuildConfigFailed) {
-		return nil
-	}
-	return err
+var specAndAnnotationsPredicate = predicate.Funcs{
+	UpdateFunc: func(e event.UpdateEvent) bool {
+		oldObject := e.ObjectOld.(client.Object)
+		newObject := e.ObjectNew.(client.Object)
+
+		if oldObject.GetGeneration() != newObject.GetGeneration() {
+			return true
+		}
+
+		if !reflect.DeepEqual(oldObject.GetAnnotations(), newObject.GetAnnotations()) {
+			return true
+		}
+
+		return false
+	},
 }

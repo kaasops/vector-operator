@@ -79,6 +79,8 @@ func main() {
 	var watchNamespace string
 	var watchLabel string
 	var configCheckTimeout time.Duration
+	var enableReconciliationInvalidPipelines bool
+	var reconciliationRetryDelay time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -93,6 +95,10 @@ func main() {
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
 	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
 	flag.DurationVar(&configCheckTimeout, "configcheck-timeout", 300*time.Second, "configcheck timeout")
+	flag.BoolVar(&enableReconciliationInvalidPipelines, "enable-reconciliation-invalid-pipelines", false,
+		"Enable the reconciliation process for pipelines with invalid configurations")
+	flag.DurationVar(&reconciliationRetryDelay, "reconciliation-retry-delay", 30*time.Second, "Specify the delay before retrying the reconciliation process for pipelines")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -213,13 +219,15 @@ func main() {
 	defer close(clusterVectorAggregatorsPipelineEventCh)
 
 	if err = (&controller.PipelineReconciler{
-		Client:                          mgr.GetClient(),
-		Scheme:                          mgr.GetScheme(),
-		Clientset:                       clientset,
-		ConfigCheckTimeout:              configCheckTimeout,
-		VectorAgentEventCh:              vectorAgentsPipelineEventCh,
-		VectorAggregatorsEventCh:        vectorAggregatorsPipelineEventCh,
-		ClusterVectorAggregatorsEventCh: clusterVectorAggregatorsPipelineEventCh,
+		Client:                                   mgr.GetClient(),
+		Scheme:                                   mgr.GetScheme(),
+		Clientset:                                clientset,
+		ConfigCheckTimeout:                       configCheckTimeout,
+		VectorAgentEventCh:                       vectorAgentsPipelineEventCh,
+		VectorAggregatorsEventCh:                 vectorAggregatorsPipelineEventCh,
+		ClusterVectorAggregatorsEventCh:          clusterVectorAggregatorsPipelineEventCh,
+		EnableReconciliationInvalidPipelines:     enableReconciliationInvalidPipelines,
+		ReconciliationInvalidPipelinesRetryDelay: reconciliationRetryDelay,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)

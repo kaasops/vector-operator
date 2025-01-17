@@ -18,14 +18,16 @@ package config
 
 import (
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
 type VectorConfig struct {
-	DataDir        string   `yaml:"data_dir"`
-	Api            *ApiSpec `yaml:"api"`
-	PipelineConfig `yaml:",inline"`
-	internal       internalConfig `yaml:"-"`
+	DataDir           string          `yaml:"data_dir"`
+	ExpireMetricsSecs int             `yaml:"expire_metrics_secs"`
+	Api               *ApiSpec        `yaml:"api"`
+	PipelineConfig                    `yaml:",inline"`
+	internal           internalConfig `yaml:"-"`
 }
 
 type PipelineConfig struct {

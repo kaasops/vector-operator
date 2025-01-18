@@ -6,11 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   useApiServerCache: {{ .Values.vector.useApiServerCache }}
-{{- with .Values.vector.image }}
-  image: {{ include "vector.image" (dict "global" $.Values.global.image "image" . "defaultTag" .tag ) | quote }}
-{{- end }}
-{{- with .Values.vector.agent }}
+{{- if or .Values.vector.agent .Values.vector.image }}
   agent:
+{{- with .Values.vector.agent }}
 {{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.vector.image }}
+    image: {{ include "vector.image" (dict "global" $.Values.global.image "image" . "defaultTag" .tag ) | quote }}
+{{- end }}
 {{- end }}
 {{- end }}

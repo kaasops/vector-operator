@@ -19,6 +19,10 @@
         <td><a href="https://vector.dev/docs/reference/configuration/global-options/#data_dir">DataDir</a> for Vector Agent. `/vector-data-dir` by default</td>
     </tr>
     <tr>
+        <td>expireMetricsSecs</td>
+        <td><a href="https://vector.dev/docs/reference/configuration/global-options/#expire_metrics_secs">ExpireMetricsSecs</a> 300 by default</td>
+    </tr>
+    <tr>
         <td><a href="https://vector.dev/docs/reference/api/">api</a></td>
         <td><a href="https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#api-spec">ApiSpec</a></td>
     </tr>

@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"context"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/config"
@@ -142,6 +143,10 @@ func (ctrl *Controller) setDefault() {
 
 	if ctrl.Spec.DataDir == "" {
 		ctrl.Spec.DataDir = "/var/lib/vector"
+	}
+
+	if ctrl.Spec.ExpireMetricsSecs == 0 {
+		ctrl.Spec.ExpireMetricsSecs = 300
 	}
 
 	if ctrl.Spec.Volumes == nil {

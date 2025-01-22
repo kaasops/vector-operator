@@ -9,10 +9,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
+func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, globalOptsChanged bool) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-deployment", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Deployment")
-	return k8s.CreateOrUpdateResource(ctx, ctrl.createVectorAggregatorDeployment(), ctrl.Client)
+	deployment := ctrl.createVectorAggregatorDeployment()
+	if globalOptsChanged {
+		// restart pods
+		var replicas int32 = 0
+		deployment.Spec.Replicas = &replicas
+		_ = k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
+		deployment.Spec.Replicas = &ctrl.Spec.Replicas
+	}
+	return k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
 }
 
 func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {

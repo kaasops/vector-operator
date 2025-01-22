@@ -71,7 +71,7 @@ type VectorCommon struct {
 	DataDir string `json:"dataDir,omitempty"`
 	// Vector will expire internal metrics that haven’t been emitted/updated in the configured interval (default 300 seconds).
 	// https://vector.dev/docs/reference/configuration/global-options/#expire_metrics_secs
-	ExpireMetricsSecs int `json:"expireMetricsSecs,omitempty"`
+	ExpireMetricsSecs *int `json:"expireMetricsSecs,omitempty"`
 	// Vector API params. Allows to interact with a running Vector instance.
 	// https://vector.dev/docs/reference/api/
 	Api ApiSpec `json:"api,omitempty"`

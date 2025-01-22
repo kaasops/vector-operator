@@ -84,7 +84,8 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
-	if err := ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+	globalOptsChanged, err := ctrl.ensureVectorAggregatorConfig(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -102,7 +103,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
+	if err := ctrl.ensureVectorAggregatorDeployment(ctx, globalOptsChanged); err != nil {
 		return err
 	}
 
@@ -143,10 +144,6 @@ func (ctrl *Controller) setDefault() {
 
 	if ctrl.Spec.DataDir == "" {
 		ctrl.Spec.DataDir = "/var/lib/vector"
-	}
-
-	if ctrl.Spec.ExpireMetricsSecs == 0 {
-		ctrl.Spec.ExpireMetricsSecs = 300
 	}
 
 	if ctrl.Spec.Volumes == nil {

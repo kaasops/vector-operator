@@ -48,10 +48,6 @@ func (ctrl *Controller) SetDefault() {
 		ctrl.Vector.Spec.Agent.DataDir = "/var/lib/vector"
 	}
 
-	if ctrl.Vector.Spec.Agent.ExpireMetricsSecs == 0 {
-		ctrl.Vector.Spec.Agent.ExpireMetricsSecs = 300
-	}
-
 	if ctrl.Vector.Spec.Agent.Volumes == nil {
 		ctrl.Vector.Spec.Agent.Volumes = []corev1.Volume{
 			{

@@ -23,11 +23,11 @@ import (
 )
 
 type VectorConfig struct {
-	DataDir           string          `yaml:"data_dir"`
-	ExpireMetricsSecs int             `yaml:"expire_metrics_secs"`
-	Api               *ApiSpec        `yaml:"api"`
-	PipelineConfig                    `yaml:",inline"`
-	internal           internalConfig `yaml:"-"`
+	DataDir           string   `yaml:"data_dir"`
+	ExpireMetricsSecs *int     `yaml:"expire_metrics_secs,omitempty"`
+	Api               *ApiSpec `yaml:"api"`
+	PipelineConfig    `yaml:",inline"`
+	internal          internalConfig `yaml:"-"`
 }
 
 type PipelineConfig struct {

@@ -18,17 +18,17 @@ package vectoragent
 
 import (
 	"context"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/compression"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
 
 type globalOptions struct {
@@ -65,28 +65,9 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			}
 		}
 
-		if err := ctrl.ensureVectorAgentDaemonSet(ctx); err != nil {
+		if err := ctrl.ensureVectorAgentDaemonSet(ctx, globalOptsChanged); err != nil {
 			return err
 		}
-	}
-	if globalOptsChanged {
-		var pods corev1.PodList
-		listOpts := &client.ListOptions{
-			Namespace:     ctrl.Vector.Namespace,
-			LabelSelector: labels.Set(ctrl.labelsForVectorAgent()).AsSelector(),
-		}
-		if err = ctrl.List(ctx, &pods, listOpts); err != nil {
-			return err
-		}
-		for _, pod := range pods.Items {
-			if pod.DeletionTimestamp == nil {
-				err = ctrl.Client.Delete(ctx, &pod)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		log.Info("Global options changed, restarting all Vector Agents")
 	}
 	return nil
 }
@@ -181,12 +162,18 @@ func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) (bool, erro
 	return globalOptionsChanged, k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
+func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context, globalOptsChanged bool) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent DaemonSet")
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
+	if globalOptsChanged {
+		if vectorAgentDaemonSet.Spec.Template.Annotations == nil {
+			vectorAgentDaemonSet.Spec.Template.Annotations = make(map[string]string)
+		}
+		vectorAgentDaemonSet.Spec.Template.Annotations[common.AnnotationRestartedAt] = time.Now().Format(time.RFC3339)
+	}
 
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentDaemonSet, ctrl.Client)
 }

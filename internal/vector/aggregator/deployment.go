@@ -2,11 +2,13 @@ package aggregator
 
 import (
 	"context"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, globalOptsChanged bool) error {
@@ -15,10 +17,10 @@ func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, gl
 	deployment := ctrl.createVectorAggregatorDeployment()
 	if globalOptsChanged {
 		// restart pods
-		var replicas int32 = 0
-		deployment.Spec.Replicas = &replicas
-		_ = k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
-		deployment.Spec.Replicas = &ctrl.Spec.Replicas
+		if deployment.Spec.Template.Annotations == nil {
+			deployment.Spec.Template.Annotations = make(map[string]string)
+		}
+		deployment.Spec.Template.Annotations[common.AnnotationRestartedAt] = time.Now().Format(time.RFC3339)
 	}
 	return k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
 }

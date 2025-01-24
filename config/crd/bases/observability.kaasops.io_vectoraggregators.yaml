@@ -2426,6 +2426,11 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              expireMetricsSecs:
+                description: |-
+                  Vector will expire internal metrics that haven’t been emitted/updated in the configured interval (default 300 seconds).
+                  https://vector.dev/docs/reference/configuration/global-options/#expire_metrics_secs
+                type: integer
               host_aliases:
                 description: |-
                   HostAliases provides mapping between ip and hostnames,

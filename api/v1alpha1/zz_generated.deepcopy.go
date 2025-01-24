@@ -466,6 +466,11 @@ func (in *VectorCommon) DeepCopyInto(out *VectorCommon) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ExpireMetricsSecs != nil {
+		in, out := &in.ExpireMetricsSecs, &out.ExpireMetricsSecs
+		*out = new(int)
+		**out = **in
+	}
 	out.Api = in.Api
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes

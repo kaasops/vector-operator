@@ -196,6 +196,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
+		ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
 	}, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {

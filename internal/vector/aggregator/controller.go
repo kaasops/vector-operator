@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"context"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/config"
@@ -83,7 +84,8 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
-	if err := ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+	globalOptsChanged, err := ctrl.ensureVectorAggregatorConfig(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -101,7 +103,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
+	if err := ctrl.ensureVectorAggregatorDeployment(ctx, globalOptsChanged); err != nil {
 		return err
 	}
 

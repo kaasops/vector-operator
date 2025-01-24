@@ -38,6 +38,7 @@ const (
 	SocketType                = "socket"
 	SplunkHECType             = "splunk_hec"
 	StatsDType                = "statsd"
+	SyslogType                = "syslog"
 	VectorType                = "vector"
 	kubernetesEventsType      = "kubernetes_events"
 )
@@ -64,6 +65,7 @@ var aggregatorTypes = map[string]struct{}{
 	SocketType:             {},
 	SplunkHECType:          {},
 	StatsDType:             {},
+	SyslogType:             {},
 	VectorType:             {},
 	kubernetesEventsType:   {},
 }

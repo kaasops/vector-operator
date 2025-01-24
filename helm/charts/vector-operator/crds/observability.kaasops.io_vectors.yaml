@@ -2314,11 +2314,6 @@ spec:
                       The directory used for persisting Vector state, such as on-disk buffers, file checkpoints, and more. Please make sure the Vector project has write permissions to this directory.
                       https://vector.dev/docs/reference/configuration/global-options/#data_dir
                     type: string
-                  expireMetricsSecs:
-                    description: |-
-                      Vector will expire internal metrics that haven’t been emitted/updated in the configured interval (default 300 seconds).
-                      https://vector.dev/docs/reference/configuration/global-options/#expire_metrics_secs
-                    type: integer
                   env:
                     description: Env that will be added to Vector pod
                     items:
@@ -2439,6 +2434,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  expireMetricsSecs:
+                    description: |-
+                      Vector will expire internal metrics that haven’t been emitted/updated in the configured interval (default 300 seconds).
+                      https://vector.dev/docs/reference/configuration/global-options/#expire_metrics_secs
+                    type: integer
                   host_aliases:
                     description: |-
                       HostAliases provides mapping between ip and hostnames,
@@ -4983,6 +4983,9 @@ spec:
             description: VectorStatus defines the observed state of Vector
             properties:
               LastAppliedConfigHash:
+                format: int32
+                type: integer
+              LastAppliedGlobalConfigHash:
                 format: int32
                 type: integer
               configCheckResult:

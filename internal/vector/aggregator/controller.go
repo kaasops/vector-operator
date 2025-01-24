@@ -102,7 +102,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx, ctrl.globalConfigChanged()); err != nil {
+	if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
 		return err
 	}
 

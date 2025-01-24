@@ -8,10 +8,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type globalOptions struct {
-	ExpireMetricsSecs *int `yaml:"expire_metrics_secs,omitempty"`
-}
-
 func (ctrl *Controller) ensureVectorAggregatorConfig(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-secret", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Secret")

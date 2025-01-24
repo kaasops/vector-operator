@@ -244,7 +244,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash); err != nil {
+	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, vaCtrl.Config.GetGlobalConfigHash()); err != nil {
 		return ctrl.Result{}, err
 	}
 

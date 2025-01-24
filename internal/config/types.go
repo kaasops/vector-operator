@@ -17,10 +17,16 @@ limitations under the License.
 package config
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/kaasops/vector-operator/internal/utils/hash"
 
 	corev1 "k8s.io/api/core/v1"
 )
+
+type globalOptions struct {
+	ExpireMetricsSecs *int `yaml:"expire_metrics_secs,omitempty"`
+}
 
 type VectorConfig struct {
 	DataDir           string   `yaml:"data_dir"`
@@ -95,4 +101,12 @@ func (c *internalConfig) addServicePort(port *ServicePort) error {
 		return fmt.Errorf("duplicate port %s in %s and %s", key, v.PipelineName, port.PipelineName)
 	}
 	return nil
+}
+
+func (c *VectorConfig) GetGlobalConfigHash() *uint32 {
+	bytes, _ := json.Marshal(globalOptions{
+		ExpireMetricsSecs: c.ExpireMetricsSecs,
+	})
+	gHash := hash.Get(bytes)
+	return &gHash
 }

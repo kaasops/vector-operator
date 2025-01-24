@@ -84,8 +84,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
-	globalOptsChanged, err := ctrl.ensureVectorAggregatorConfig(ctx)
-	if err != nil {
+	if err = ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
 		return err
 	}
 
@@ -103,7 +102,7 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx, globalOptsChanged); err != nil {
+	if err := ctrl.ensureVectorAggregatorDeployment(ctx, ctrl.globalConfigChanged()); err != nil {
 		return err
 	}
 
@@ -254,11 +253,12 @@ func (ctrl *Controller) setDefault() {
 	}
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash *uint32) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *uint32) error {
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = nil
 	ctrl.Status.LastAppliedConfigHash = hash
+	ctrl.Status.LastAppliedGlobalConfigHash = globCfgHash
 	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
 }
 
@@ -319,4 +319,12 @@ func (ctrl *Controller) prefix() string {
 		return "cluster-"
 	}
 	return ""
+}
+
+func (ctrl *Controller) globalConfigChanged() bool {
+	globalCfgHash := ctrl.Config.GetGlobalConfigHash()
+	if ctrl.Status.LastAppliedGlobalConfigHash == nil {
+		return false
+	}
+	return *ctrl.Status.LastAppliedGlobalConfigHash != *globalCfgHash
 }

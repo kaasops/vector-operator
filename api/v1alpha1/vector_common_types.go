@@ -3,9 +3,10 @@ package v1alpha1
 import v1 "k8s.io/api/core/v1"
 
 type VectorCommonStatus struct {
-	ConfigCheckResult     *bool   `json:"configCheckResult,omitempty"`
-	Reason                *string `json:"reason,omitempty"`
-	LastAppliedConfigHash *uint32 `json:"LastAppliedConfigHash,omitempty"`
+	ConfigCheckResult           *bool   `json:"configCheckResult,omitempty"`
+	Reason                      *string `json:"reason,omitempty"`
+	LastAppliedConfigHash       *uint32 `json:"LastAppliedConfigHash,omitempty"`
+	LastAppliedGlobalConfigHash *uint32 `json:"LastAppliedGlobalConfigHash,omitempty"`
 }
 
 type VectorCommon struct {

@@ -104,9 +104,7 @@ func (c *internalConfig) addServicePort(port *ServicePort) error {
 }
 
 func (c *VectorConfig) GetGlobalConfigHash() *uint32 {
-	bytes, _ := json.Marshal(globalOptions{
-		ExpireMetricsSecs: c.ExpireMetricsSecs,
-	})
+	bytes, _ := json.Marshal(c.globalOptions)
 	gHash := hash.Get(bytes)
 	return &gHash
 }

@@ -54,7 +54,7 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 		Playground: p.PlaygroundEnabled,
 	}
 
-	vCfg := &VectorConfig{
+	return &VectorConfig{
 		DataDir: "/vector-data-dir",
 		Api:     api,
 		PipelineConfig: PipelineConfig{
@@ -62,9 +62,10 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 			Transforms: transforms,
 			Sinks:      sinks,
 		},
+		globalOptions: globalOptions{
+			ExpireMetricsSecs: p.ExpireMetricsSecs,
+		},
 	}
-	vCfg.ExpireMetricsSecs = p.ExpireMetricsSecs
-	return vCfg
 }
 
 func UnmarshalJson(spec vectorv1alpha1.VectorPipelineSpec, p *PipelineConfig) error {

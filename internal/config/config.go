@@ -41,6 +41,7 @@ type VectorConfigParams struct {
 	PlaygroundEnabled bool
 	UseApiServerCache bool
 	InternalMetrics   bool
+	ExpireMetricsSecs *int
 }
 
 func newVectorConfig(p VectorConfigParams) *VectorConfig {
@@ -62,6 +63,7 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 			Transforms: transforms,
 			Sinks:      sinks,
 		},
+		ExpireMetricsSecs: p.ExpireMetricsSecs,
 	}
 }
 

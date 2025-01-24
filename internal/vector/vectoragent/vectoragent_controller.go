@@ -18,13 +18,22 @@ package vectoragent
 
 import (
 	"context"
-	"k8s.io/utils/ptr"
-
+	"github.com/kaasops/vector-operator/internal/common"
+	"github.com/kaasops/vector-operator/internal/utils/compression"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
+
+type globalOptions struct {
+	ExpireMetricsSecs *int `yaml:"expire_metrics_secs,omitempty"`
+}
 
 func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) error {
 	log := log.FromContext(ctx).WithValues("vector-agent", ctrl.Vector.Name)
@@ -35,7 +44,8 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 		return err
 	}
 
-	if err := ctrl.ensureVectorAgentConfig(ctx); err != nil {
+	globalOptsChanged, err := ctrl.ensureVectorAgentConfig(ctx)
+	if err != nil {
 		return err
 	}
 	if !configOnly {
@@ -55,7 +65,7 @@ func (ctrl *Controller) EnsureVectorAgent(ctx context.Context, configOnly bool) 
 			}
 		}
 
-		if err := ctrl.ensureVectorAgentDaemonSet(ctx); err != nil {
+		if err := ctrl.ensureVectorAgentDaemonSet(ctx, globalOptsChanged); err != nil {
 			return err
 		}
 	}
@@ -108,25 +118,62 @@ func (ctrl *Controller) ensureVectorAgentService(ctx context.Context) error {
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentService, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
+func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) (bool, error) {
 	log := log.FromContext(ctx).WithValues("vector-agent-secret", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent Secret")
 
 	vectorAgentSecret, err := ctrl.createVectorAgentConfig(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client)
+	globalOptionsChanged := false
+
+	var prevSecret corev1.Secret
+	key := types.NamespacedName{Namespace: vectorAgentSecret.Namespace, Name: vectorAgentSecret.Name}
+	if err = ctrl.Get(ctx, key, &prevSecret); err == nil {
+		// check that the global settings have not been changed
+		var prevConfig globalOptions
+		data := prevSecret.Data["agent.json"]
+		if ctrl.Vector.Spec.Agent.CompressConfigFile {
+			data = compression.Decompress(data, log)
+		}
+		err = yaml.Unmarshal(data, &prevConfig)
+		if err == nil {
+			var actualConfig globalOptions
+			err = yaml.Unmarshal(ctrl.Config, &actualConfig)
+			if err == nil {
+				if actualConfig.ExpireMetricsSecs == nil && prevConfig.ExpireMetricsSecs != nil {
+					globalOptionsChanged = true
+				}
+				if actualConfig.ExpireMetricsSecs != nil && prevConfig.ExpireMetricsSecs == nil {
+					globalOptionsChanged = true
+				}
+				if actualConfig.ExpireMetricsSecs != nil &&
+					prevConfig.ExpireMetricsSecs != nil &&
+					*actualConfig.ExpireMetricsSecs != *prevConfig.ExpireMetricsSecs {
+					globalOptionsChanged = true
+				}
+			}
+		}
+	}
+
+	return globalOptionsChanged, k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client)
 }
 
-func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
+func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context, globalOptsChanged bool) error {
 	log := log.FromContext(ctx).WithValues("vector-agent-daemon-set", ctrl.Vector.Name)
 
 	log.Info("start Reconcile Vector Agent DaemonSet")
 
 	vectorAgentDaemonSet := ctrl.createVectorAgentDaemonSet()
+	if globalOptsChanged {
+		if vectorAgentDaemonSet.Spec.Template.Annotations == nil {
+			vectorAgentDaemonSet.Spec.Template.Annotations = make(map[string]string)
+		}
+		vectorAgentDaemonSet.Spec.Template.Annotations[common.AnnotationRestartedAt] = time.Now().Format(time.RFC3339)
+	}
 
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentDaemonSet, ctrl.Client)
 }

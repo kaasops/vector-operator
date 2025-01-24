@@ -2,17 +2,27 @@ package aggregator
 
 import (
 	"context"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
 
-func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
+func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, globalOptsChanged bool) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-deployment", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Deployment")
-	return k8s.CreateOrUpdateResource(ctx, ctrl.createVectorAggregatorDeployment(), ctrl.Client)
+	deployment := ctrl.createVectorAggregatorDeployment()
+	if globalOptsChanged {
+		// restart pods
+		if deployment.Spec.Template.Annotations == nil {
+			deployment.Spec.Template.Annotations = make(map[string]string)
+		}
+		deployment.Spec.Template.Annotations[common.AnnotationRestartedAt] = time.Now().Format(time.RFC3339)
+	}
+	return k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
 }
 
 func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {

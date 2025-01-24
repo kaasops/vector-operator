@@ -145,6 +145,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
 					UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 					InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
+					ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
 				}, pipelineCR)
 				if err != nil {
 					return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
@@ -181,6 +182,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
+						ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
 					}, pipelineCR)
 					if err != nil {
 						return fmt.Errorf("aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
@@ -226,6 +228,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
 						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
 						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
+						ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
 					}, pipelineCR)
 					if err != nil {
 						return fmt.Errorf("cluster aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)

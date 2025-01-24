@@ -22,7 +22,6 @@ import (
 	"fmt"
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/evcollector"
-	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
 	"net"
@@ -50,7 +49,7 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 	sinks := make(map[string]*Sink)
 
 	api := &ApiSpec{
-		Address:    net.JoinHostPort("0.0.0.0", strconv.Itoa(vectoragent.ApiPort)),
+		Address:    net.JoinHostPort("0.0.0.0", strconv.Itoa(AgentApiPort)),
 		Enabled:    p.ApiEnabled,
 		Playground: p.PlaygroundEnabled,
 	}
@@ -63,7 +62,9 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 			Transforms: transforms,
 			Sinks:      sinks,
 		},
-		ExpireMetricsSecs: p.ExpireMetricsSecs,
+		globalOptions: globalOptions{
+			ExpireMetricsSecs: p.ExpireMetricsSecs,
+		},
 	}
 }
 

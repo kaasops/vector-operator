@@ -18,8 +18,8 @@ package vectoragent
 
 import (
 	"context"
-
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +29,8 @@ type Controller struct {
 	client.Client
 	Vector *vectorv1alpha1.Vector
 
-	Config []byte
+	ByteConfig []byte
+	Config     *config.VectorConfig
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
 	ClientSet *kubernetes.Clientset
 }
@@ -44,11 +45,12 @@ func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Cli
 	return ctrl
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash *uint32) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, cfgHash, globCfgHash *uint32) error {
 	var status = true
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = nil
-	ctrl.Vector.Status.LastAppliedConfigHash = hash
+	ctrl.Vector.Status.LastAppliedConfigHash = cfgHash
+	ctrl.Vector.Status.LastAppliedGlobalConfigHash = globCfgHash
 
 	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
 }

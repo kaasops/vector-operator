@@ -4985,6 +4985,9 @@ spec:
               LastAppliedConfigHash:
                 format: int32
                 type: integer
+              LastAppliedGlobalConfigHash:
+                format: int32
+                type: integer
               configCheckResult:
                 type: boolean
               reason:

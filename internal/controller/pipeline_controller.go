@@ -140,7 +140,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		for _, vector := range vectorAgents {
 			eg.Go(func() error {
 				vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
-				byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
+				cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
 					ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
 					PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
 					UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
@@ -151,9 +151,11 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
 				}
 
-				vaCtrl.Config = byteConfig
+				vaCtrl.Config = cfg
+				vaCtrl.ByteConfig = byteConfig
+
 				configCheck := configcheck.New(
-					vaCtrl.Config,
+					vaCtrl.ByteConfig,
 					vaCtrl.Client,
 					vaCtrl.ClientSet,
 					&vaCtrl.Vector.Spec.Agent.VectorCommon,

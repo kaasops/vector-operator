@@ -28,10 +28,10 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 	labels := ctrl.labelsForVectorAgent()
 	annotations := ctrl.annotationsForVectorAgent()
-	var data = ctrl.Config
+	var data = ctrl.ByteConfig
 
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
-		data = compression.Compress(ctrl.Config, log)
+		data = compression.Compress(data, log)
 	}
 	config := map[string][]byte{
 		"agent.json": data,

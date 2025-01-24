@@ -17,13 +17,10 @@ limitations under the License.
 package vectoragent
 
 import (
+	"github.com/kaasops/vector-operator/internal/config"
 	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
-)
-
-const (
-	ApiPort = 8686
 )
 
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
@@ -36,9 +33,9 @@ func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "api",
-					Protocol:   corev1.Protocol("TCP"),
-					Port:       ApiPort,
-					TargetPort: intstr.FromInt(ApiPort),
+					Protocol:   "TCP",
+					Port:       config.AgentApiPort,
+					TargetPort: intstr.FromInt(config.AgentApiPort),
 				},
 			},
 			Selector: labels,

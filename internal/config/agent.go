@@ -10,20 +10,24 @@ import (
 	goyaml "sigs.k8s.io/yaml"
 )
 
-func BuildAgentConfig(p VectorConfigParams, pipelines ...pipeline.Pipeline) ([]byte, error) {
+const (
+	AgentApiPort = 8686
+)
+
+func BuildAgentConfig(p VectorConfigParams, pipelines ...pipeline.Pipeline) (*VectorConfig, []byte, error) {
 	cfg, err := buildAgentConfig(p, pipelines...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	yamlBytes, err := yaml.Marshal(cfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	jsonBytes, err := goyaml.YAMLToJSON(yamlBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return jsonBytes, nil
+	return cfg, jsonBytes, nil
 }
 
 func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline) (*VectorConfig, error) {

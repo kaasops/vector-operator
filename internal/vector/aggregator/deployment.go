@@ -11,11 +11,11 @@ import (
 	"time"
 )
 
-func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, globalOptsChanged bool) error {
+func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-deployment", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Deployment")
 	deployment := ctrl.createVectorAggregatorDeployment()
-	if globalOptsChanged {
+	if ctrl.globalConfigChanged() {
 		// restart pods
 		if deployment.Spec.Template.Annotations == nil {
 			deployment.Spec.Template.Annotations = make(map[string]string)

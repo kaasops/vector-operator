@@ -167,7 +167,7 @@ func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx c
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash); err != nil {
+	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, vaCtrl.Config.GetGlobalConfigHash()); err != nil {
 		return ctrl.Result{}, err
 	}
 

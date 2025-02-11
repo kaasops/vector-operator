@@ -67,6 +67,8 @@ type VectorCommon struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 	// Env that will be added to Vector pod
 	Env []v1.EnvVar `json:"env,omitempty"`
+	// Env that will be added to Vector pod from ConfigMap or Secret sources
+	EnvFrom []v1.EnvFromSource `json:"envFrom,omitempty"`
 	// The directory used for persisting Vector state, such as on-disk buffers, file checkpoints, and more. Please make sure the Vector project has write permissions to this directory.
 	// https://vector.dev/docs/reference/configuration/global-options/#data_dir
 	DataDir string `json:"dataDir,omitempty"`

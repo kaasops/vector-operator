@@ -202,7 +202,7 @@ func (ctrl *Controller) generateVectorAgentEnvs() []corev1.EnvVar {
 }
 
 func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
-	return &corev1.Container{
+	container := &corev1.Container{
 		Name:  ctrl.getNameVectorAgent(),
 		Image: ctrl.Vector.Spec.Agent.Image,
 		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
@@ -221,6 +221,13 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
 		ImagePullPolicy: ctrl.Vector.Spec.Agent.ImagePullPolicy,
 	}
+
+	// Check if envFrom is provided and set it
+	if ctrl.Vector.Spec.Agent.EnvFrom != nil {
+		container.EnvFrom = ctrl.Vector.Spec.Agent.EnvFrom
+	}
+
+	return container
 }
 
 func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {

@@ -91,7 +91,7 @@ func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 	}
 
 	// Check if envFrom is provided and set it
-	if ctrl.Spec.EnvFrom != nil {
+	if len(ctrl.Spec.EnvFrom) > 0 {
 		container.EnvFrom = ctrl.Spec.EnvFrom
 	}
 

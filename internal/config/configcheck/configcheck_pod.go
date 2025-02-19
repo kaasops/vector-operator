@@ -30,6 +30,20 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 		initContainers = append(initContainers, *cc.ConfigReloaderInitContainer())
 	}
 
+	container := corev1.Container{
+		Name:            "config-check",
+		Image:           cc.Image,
+		Resources:       cc.Resources,
+		Args:            []string{"--require-healthy=false", "validate", "/etc/vector/*.json"},
+		Env:             cc.generateVectorConfigCheckEnvs(),
+		SecurityContext: cc.ContainerSecurityContext,
+		VolumeMounts:    cc.generateVectorConfigCheckVolumeMounts(),
+	}
+
+	if len(cc.EnvFrom) > 0 {
+		container.EnvFrom = cc.EnvFrom
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cc.getNameVectorConfigCheck(),
@@ -45,15 +59,7 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 			Tolerations:        cc.Tolerations,
 			InitContainers:     initContainers,
 			Containers: []corev1.Container{
-				{
-					Name:            "config-check",
-					Image:           cc.Image,
-					Resources:       cc.Resources,
-					Args:            []string{"--require-healthy=false", "validate", "/etc/vector/*.json"},
-					Env:             cc.generateVectorConfigCheckEnvs(),
-					SecurityContext: cc.ContainerSecurityContext,
-					VolumeMounts:    cc.generateVectorConfigCheckVolumeMounts(),
-				},
+				container,
 			},
 			RestartPolicy: "Never",
 		},

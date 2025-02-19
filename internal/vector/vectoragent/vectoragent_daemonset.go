@@ -223,7 +223,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 	}
 
 	// Check if envFrom is provided and set it
-	if ctrl.Vector.Spec.Agent.EnvFrom != nil {
+	if len(ctrl.Vector.Spec.Agent.EnvFrom) > 0 {
 		container.EnvFrom = ctrl.Vector.Spec.Agent.EnvFrom
 	}
 

@@ -51,6 +51,7 @@ type ConfigCheck struct {
 	ImagePullPolicy          corev1.PullPolicy
 	ImagePullSecrets         []corev1.LocalObjectReference
 	Envs                     []corev1.EnvVar
+	EnvFrom                  []corev1.EnvFromSource
 	Hash                     string
 	Tolerations              []corev1.Toleration
 	Resources                corev1.ResourceRequirements
@@ -99,6 +100,7 @@ func New(
 		ImagePullPolicy:          vc.ImagePullPolicy,
 		ImagePullSecrets:         vc.ImagePullSecrets,
 		Envs:                     env,
+		EnvFrom:                  vc.EnvFrom,
 		Tolerations:              tolerations,
 		Resources:                resources,
 		SecurityContext:          vc.SecurityContext,

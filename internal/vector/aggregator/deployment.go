@@ -70,7 +70,7 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 }
 
 func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
-	return &corev1.Container{
+	container := &corev1.Container{
 		Name:  ctrl.getNameVectorAggregator(),
 		Image: ctrl.Spec.Image,
 		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
@@ -89,6 +89,13 @@ func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 		SecurityContext: ctrl.Spec.ContainerSecurityContext,
 		ImagePullPolicy: ctrl.Spec.ImagePullPolicy,
 	}
+
+	// Check if envFrom is provided and set it
+	if len(ctrl.Spec.EnvFrom) > 0 {
+		container.EnvFrom = ctrl.Spec.EnvFrom
+	}
+
+	return container
 }
 
 func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {

@@ -32,7 +32,7 @@ spec:
   agent:
     envFrom:
       - secretRef:
-        name: mysecret
+          name: mysecret
 ...
 ```
 

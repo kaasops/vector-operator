@@ -24,6 +24,7 @@ import (
 
 func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 	labels := ctrl.labelsForVectorAgent()
+	matchLabels := ctrl.matchLabelsForVectorAgent()
 	annotations := ctrl.annotationsForVectorAgent()
 	var initContainers []corev1.Container
 	var containers []corev1.Container
@@ -40,7 +41,7 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 	daemonset := &appsv1.DaemonSet{
 		ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
 		Spec: appsv1.DaemonSetSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Selector: &metav1.LabelSelector{MatchLabels: matchLabels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
 				Spec: corev1.PodSpec{

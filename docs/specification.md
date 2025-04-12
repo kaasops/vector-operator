@@ -10,7 +10,7 @@
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="23">agent</td>
+      <td rowspan="25">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.24.0-distroless-libc</code> by default</td>
     </tr>
@@ -101,6 +101,14 @@
     <tr>
         <td>envFrom</td>
         <td>envFrom that will be added to Vector pod. By default - not set</td>
+    </tr>
+    <tr>
+        <td>annotations</td>
+        <td>Annotations that will be added to Vector pod, service, podmonitor, etc. By default - not set</td>
+    </tr>
+    <tr>
+        <td>labels</td>
+        <td>Additional labels that will be added to Vector pod, service, podmonitor, etc. By default - not set</td>
     </tr>
 </table>
 

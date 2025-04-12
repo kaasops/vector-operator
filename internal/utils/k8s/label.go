@@ -37,3 +37,23 @@ const (
 	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-selector
 	PodName string = "statefulset.kubernetes.io/pod-name"
 )
+
+// MergeLabels merges two sets of Kubernetes labels, with the source (src) labels
+// being merged into the destination (dst) labels. If a key exists in both maps,
+// the destination value is preserved.
+func MergeLabels(dst, src map[string]string) map[string]string {
+    if dst == nil {
+		dst = make(map[string]string)
+    }
+
+    if src == nil {
+        return dst
+    }
+
+    for k, v := range src {
+        if _, ok := dst[k]; !ok {
+            dst[k] = v
+        }
+    }
+    return dst
+}

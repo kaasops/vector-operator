@@ -8,6 +8,7 @@ import (
 
 func (ctrl *Controller) createVectorAgentPodMonitor() *monitorv1.PodMonitor {
 	labels := ctrl.labelsForVectorAgent()
+	matchLabels := ctrl.matchLabelsForVectorAgent()
 	annotations := ctrl.annotationsForVectorAgent()
 
 	podmonitor := &monitorv1.PodMonitor{
@@ -20,7 +21,7 @@ func (ctrl *Controller) createVectorAgentPodMonitor() *monitorv1.PodMonitor {
 				},
 			},
 			Selector: metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: matchLabels,
 			},
 		},
 	}

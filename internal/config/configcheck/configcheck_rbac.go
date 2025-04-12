@@ -22,7 +22,7 @@ import (
 )
 
 func (cc *ConfigCheck) createVectorConfigCheckServiceAccount() *corev1.ServiceAccount {
-	labels := labelsForVectorConfigCheck()
+	labels := cc.labelsForVectorConfigCheck()
 
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{

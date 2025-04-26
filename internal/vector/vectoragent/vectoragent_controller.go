@@ -18,13 +18,16 @@ package vectoragent
 
 import (
 	"context"
+	"time"
+
+	"time"
+
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 )
 
 func (ctrl *Controller) EnsureVectorAgent(ctx context.Context) error {
@@ -148,13 +151,22 @@ func (ctrl *Controller) ensureVectorAgentPodMonitor(ctx context.Context) error {
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentPodMonitor, ctrl.Client)
 }
 
-func (ctrl *Controller) labelsForVectorAgent() map[string]string {
+func (ctrl *Controller) matchLabelsForVectorAgent() map[string]string {
 	return map[string]string{
 		k8s.ManagedByLabelKey: "vector-operator",
 		k8s.NameLabelKey:      "vector",
 		k8s.ComponentLabelKey: "Agent",
 		k8s.InstanceLabelKey:  ctrl.Vector.Name,
 	}
+}
+
+func (ctrl *Controller) labelsForVectorAgent() map[string]string {
+	basicLabels := ctrl.matchLabelsForVectorAgent()
+
+
+	labels := k8s.MergeLabels(basicLabels, ctrl.Vector.Spec.Agent.Labels)
+
+	return labels
 }
 
 func (ctrl *Controller) annotationsForVectorAgent() map[string]string {

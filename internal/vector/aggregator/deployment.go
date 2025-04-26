@@ -2,13 +2,14 @@ package aggregator
 
 import (
 	"context"
+	"time"
+
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
@@ -27,6 +28,7 @@ func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) er
 
 func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 	labels := ctrl.labelsForVectorAggregator()
+	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 	var initContainers []corev1.Container
 	var containers []corev1.Container
@@ -43,7 +45,7 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 	deployment := &appsv1.Deployment{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Selector: &metav1.LabelSelector{MatchLabels: matchLabels},
 			Replicas: &ctrl.Spec.Replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),

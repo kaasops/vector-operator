@@ -1938,6 +1938,12 @@ spec:
                       Image - docker image settings for Vector Agent
                       if no specified operator uses default config version
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: 'Labels is additional labels that will be added to
+                      ConfigCheck pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
+                    type: object
                   resources:
                     description: |-
                       Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -2539,6 +2545,12 @@ spec:
               internalMetrics:
                 description: Enable internal metrics exporter
                 type: boolean
+              labels:
+                additionalProperties:
+                  type: string
+                description: 'Labels is additional labels that will be added to Vector
+                  pod, service, podmonitor, etc. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
+                type: object
               livenessProbe:
                 description: Periodic probe of container liveness. Container will
                   be restarted if the probe fails.

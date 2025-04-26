@@ -27,7 +27,7 @@ import (
 
 func (cc *ConfigCheck) createVectorConfigCheckConfig(ctx context.Context) (*corev1.Secret, error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
-	labels := labelsForVectorConfigCheck()
+	labels := cc.labelsForVectorConfigCheck()
 	var data = cc.Config
 
 	if cc.CompressedConfig {

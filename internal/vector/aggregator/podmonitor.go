@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"context"
+
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,7 @@ func (ctrl *Controller) ensureVectorAggregatorPodMonitor(ctx context.Context) er
 
 func (ctrl *Controller) createVectorAggregatorPodMonitor() *monitorv1.PodMonitor {
 	labels := ctrl.labelsForVectorAggregator()
+	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 
 	podmonitor := &monitorv1.PodMonitor{
@@ -29,7 +31,7 @@ func (ctrl *Controller) createVectorAggregatorPodMonitor() *monitorv1.PodMonitor
 				},
 			},
 			Selector: metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: matchLabels,
 			},
 		},
 	}

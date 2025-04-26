@@ -19,9 +19,10 @@ package configcheck
 import (
 	"context"
 	"errors"
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"math/rand"
 	"time"
+
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -62,6 +63,7 @@ type ConfigCheck struct {
 	ConfigReloaderResources  corev1.ResourceRequirements
 	ConfigCheckTimeout       time.Duration
 	Annotations              map[string]string
+	Labels                   map[string]string
 }
 
 func New(
@@ -110,6 +112,7 @@ func New(
 		ConfigReloaderResources:  vc.ConfigReloaderResources,
 		ConfigCheckTimeout:       timeout,
 		Annotations:              vc.ConfigCheck.Annotations,
+		Labels:                   vc.ConfigCheck.Labels,
 		Initiator:                initiator,
 	}
 }
@@ -170,12 +173,15 @@ func (cc *ConfigCheck) ensureVectorConfigCheckServiceAccount(ctx context.Context
 	return k8s.CreateOrUpdateResource(ctx, vectorAgentServiceAccount, cc.Client)
 }
 
-func labelsForVectorConfigCheck() map[string]string {
-	return map[string]string{
+func (cc *ConfigCheck) labelsForVectorConfigCheck() map[string]string {
+	basicLabels := map[string]string{
 		k8s.ManagedByLabelKey: "vector-operator",
 		k8s.NameLabelKey:      "vector-configcheck",
 		k8s.ComponentLabelKey: "ConfigCheck",
 	}
+	labels := k8s.MergeLabels(basicLabels, cc.Labels)
+
+	return labels
 }
 
 func (cc *ConfigCheck) annotationsForVectorConfigCheck() map[string]string {
@@ -286,7 +292,7 @@ func (cc *ConfigCheck) CleanAll(ctx context.Context) error {
 }
 
 func (cc *ConfigCheck) configCheckListOpts() (client.ListOptions, error) {
-	configCheckLabels := labelsForVectorConfigCheck()
+	configCheckLabels := cc.labelsForVectorConfigCheck()
 	var requirements []labels.Requirement
 	for k, v := range configCheckLabels {
 		r, err := labels.NewRequirement(k, "==", []string{v})

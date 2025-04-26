@@ -269,13 +269,21 @@ func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) erro
 	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
 }
 
-func (ctrl *Controller) labelsForVectorAggregator() map[string]string {
+func (ctrl *Controller) matchLabelsForVectorAggregator() map[string]string {
 	return map[string]string{
 		k8s.ManagedByLabelKey: "vector-operator",
 		k8s.NameLabelKey:      "vector",
 		k8s.ComponentLabelKey: "Aggregator",
 		k8s.InstanceLabelKey:  ctrl.Name,
 	}
+}
+
+func (ctrl *Controller) labelsForVectorAggregator() map[string]string {
+	basicLabels := ctrl.matchLabelsForVectorAggregator()
+
+	labels := k8s.MergeLabels(basicLabels, ctrl.Spec.Labels)
+
+	return labels
 }
 
 func (ctrl *Controller) annotationsForVectorAggregator() map[string]string {

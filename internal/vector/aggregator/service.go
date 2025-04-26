@@ -2,12 +2,13 @@ package aggregator
 
 import (
 	"context"
+	"maps"
+
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"maps"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -39,6 +40,7 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 
 func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, error) {
 	labels := ctrl.labelsForVectorAggregator()
+	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 	if annotations == nil {
 		annotations = make(map[string]string)
@@ -63,7 +65,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, ann, ctrl.Namespace),
 			Spec: corev1.ServiceSpec{
 				Ports:    ports,
-				Selector: labels,
+				Selector: matchLabels,
 			},
 		}
 		svc.ObjectMeta.Name = group.ServiceName
@@ -94,7 +96,7 @@ func (ctrl *Controller) getExistingServices(ctx context.Context) (map[string]*co
 	svcList := corev1.ServiceList{}
 	opts := &client.ListOptions{
 		Namespace:     ctrl.Namespace,
-		LabelSelector: labels.Set(ctrl.labelsForVectorAggregator()).AsSelector(),
+		LabelSelector: labels.Set(ctrl.matchLabelsForVectorAggregator()).AsSelector(),
 	}
 	err := ctrl.Client.List(ctx, &svcList, opts)
 	if err != nil {

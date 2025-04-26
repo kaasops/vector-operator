@@ -25,6 +25,7 @@ import (
 
 func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 	labels := ctrl.labelsForVectorAgent()
+	matchLabels := ctrl.matchLabelsForVectorAgent()
 	annotations := ctrl.annotationsForVectorAgent()
 
 	return &corev1.Service{
@@ -38,7 +39,7 @@ func (ctrl *Controller) createVectorAgentService() *corev1.Service {
 					TargetPort: intstr.FromInt(config.AgentApiPort),
 				},
 			},
-			Selector: labels,
+			Selector: matchLabels,
 		},
 	}
 }

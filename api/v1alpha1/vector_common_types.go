@@ -24,6 +24,9 @@ type VectorCommon struct {
 	// Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// Labels is additional labels that will be added to Vector pod, service, podmonitor, etc. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not specified - default setting will be used
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
@@ -132,6 +135,9 @@ type ConfigCheck struct {
 	// Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+	// Labels is additional labels that will be added to ConfigCheck pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type VectorSelectorSpec struct {

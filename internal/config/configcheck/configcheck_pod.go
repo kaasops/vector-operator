@@ -22,7 +22,7 @@ import (
 )
 
 func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
-	labels := labelsForVectorConfigCheck()
+	labels := cc.labelsForVectorConfigCheck()
 	annotations := cc.annotationsForVectorConfigCheck()
 	var initContainers []corev1.Container
 

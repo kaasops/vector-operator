@@ -38,7 +38,7 @@ Connect us in Telegram - https://t.me/+Y0PzGa1d5DFiYThi
 - Collect journald services logs [doc](https://github.com/kaasops/vector-operator/blob/main/docs/journald-logs.md)
 
 
-## Configuration Examples 
+## Configuration Examples
 Configuration for CR Vector:
 ```yaml
 apiVersion: observability.kaasops.io/v1alpha1
@@ -49,7 +49,7 @@ metadata:
 spec:
   agent:
     service: true
-    image: "timberio/vector:0.24.0-distroless-libc"
+    image: "timberio/vector:0.47.0-distroless-libc"
 ```
 
 Configuration for CR VectorPipeline:
@@ -98,8 +98,8 @@ spec:
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
+It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
+which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster
 
 ### Test It Out
 1. Install the CRDs into the cluster:

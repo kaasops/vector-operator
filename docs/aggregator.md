@@ -1,6 +1,6 @@
 # Aggregator
 
-The operator allows deploying Vector in the cluster as an aggregator for remote processing, [more details about this](https://vector.dev/docs/setup/going-to-prod/arch/aggregator/). 
+The operator allows deploying Vector in the cluster as an aggregator for remote processing, [more details about this](https://vector.dev/docs/setup/going-to-prod/arch/aggregator/).
 Two types of resources are available for deploying aggregators in the cluster:
 - VectorAggregator
 - ClusterVectorAggregator
@@ -17,7 +17,7 @@ metadata:
   name: vectorAggregator1
   namespace: vector
 spec:
-  image: timberio/vector:0.40.0-debian
+  image: timberio/vector:0.47.0-debian
   api:
     enabled: true
   replicas: 1
@@ -62,7 +62,7 @@ kind: ClusterVectorAggregator
 metadata:
   name: clusterVectorAggregator1
 spec:
-  image: timberio/vector:0.40.0-debian
+  image: timberio/vector:0.47.0-debian
   resourceNamespace: default
   api:
     enabled: true

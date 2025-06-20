@@ -12,7 +12,7 @@
     <tr>
       <td rowspan="25">agent</td>
       <td>image</td>
-      <td>Image for Vector agent. <code>timberio/vector:0.24.0-distroless-libc</code> by default</td>
+      <td>Image for Vector agent. <code>timberio/vector:0.47.0-distroless-libc</code> by default</td>
     </tr>
     <tr>
         <td>dataDir</td>

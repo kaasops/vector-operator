@@ -17,6 +17,7 @@ limitations under the License.
 package vectoragent
 
 import (
+	"github.com/kaasops/vector-operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -210,7 +211,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "prom-exporter",
-				ContainerPort: 9598,
+				ContainerPort: config.DefaultInternalMetricsSinkPort,
 				Protocol:      "TCP",
 			},
 		},

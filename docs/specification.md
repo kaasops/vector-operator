@@ -111,7 +111,7 @@
     </tr>
     <tr>
         <td>address</td>
-        <td>The network address to which the API should bind. If you’re running Vector in a Docker container, make sure to bind to <code>0.0.0.0</code>. Otherwise the API will not be exposed outside the container. By default - <code>0.0.0.0:8686</code></td>
+        <td>The network address to which the API should bind. Uses dual-stack IPv6/IPv4 binding (<code>::</code>) by default, which accepts connections on both IPv4 and IPv6. By default - <code>[::]:8686</code></td>
     </tr>
     <tr>
         <td>enabled</td>

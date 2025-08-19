@@ -4,7 +4,7 @@ If you want collect service journald logs from node you can use example.
 
 > Type `journald` in source block work only in ClusterVectorPipeline. In VectorPipeline can use only `kubernetes_logs` type
 
-> If you want collect journald logs, needs to use vector-agent container with journalctl. `timberio/vector:0.26.0-debian` - for example
+> If you want collect journald logs, needs to use vector-agent container with journalctl. `timberio/vector:0.47.0-debian` - for example
 
 
 ```yaml

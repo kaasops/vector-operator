@@ -28,7 +28,7 @@ func (ctrl *Controller) SetDefault() {
 		ctrl.Vector.Spec.Agent = new(v1alpha1.VectorAgent)
 	}
 	if ctrl.Vector.Spec.Agent.Image == "" {
-		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.28.1-distroless-libc"
+		ctrl.Vector.Spec.Agent.Image = "timberio/vector:0.47.0-distroless-libc"
 	}
 
 	if ctrl.Vector.Spec.Agent.Resources.Requests == nil {

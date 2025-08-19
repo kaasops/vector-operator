@@ -1,7 +1,7 @@
 # [EXPERIMENTAL] Kubernetes events
 
 The operator allows organizing the collection of events from the Kubernetes cluster in which it is deployed.
-To do this, you need to deploy an aggregator and a pipeline. 
+To do this, you need to deploy an aggregator and a pipeline.
 The operator allows collecting events from the entire cluster or from a specific namespace.
 
 ## Namespace event collection
@@ -13,7 +13,7 @@ metadata:
   name: vectorAggregator1
   namespace: vector
 spec:
-  image: timberio/vector:0.40.0-debian
+  image: timberio/vector:0.47.0-debian
   api:
     enabled: true
   replicas: 1
@@ -53,7 +53,7 @@ kind: ClusterVectorAggregator
 metadata:
   name: clusterVectorAggregator1
 spec:
-  image: timberio/vector:0.40.0-debian
+  image: timberio/vector:0.47.0-debian
   resourceNamespace: default
   api:
     enabled: true

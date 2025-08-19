@@ -125,7 +125,7 @@ func (ctrl *Controller) DeleteVectorAggregator(ctx context.Context) error {
 
 func (ctrl *Controller) setDefault() {
 	if ctrl.Spec.Image == "" {
-		ctrl.Spec.Image = "timberio/vector:0.28.1-distroless-libc"
+		ctrl.Spec.Image = "timberio/vector:0.47.0-distroless-libc"
 	}
 
 	if ctrl.Spec.Resources.Requests == nil {

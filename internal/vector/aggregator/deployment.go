@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kaasops/vector-operator/internal/common"
+	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -80,7 +81,7 @@ func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "prom-exporter",
-				ContainerPort: 9598,
+				ContainerPort: config.DefaultInternalMetricsSinkPort,
 				Protocol:      "TCP",
 			},
 		},

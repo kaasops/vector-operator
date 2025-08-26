@@ -135,7 +135,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	eg := errgroup.Group{}
 
-	if *pipelineVectorRole == v1alpha1.VectorPipelineRoleAgent {
+	if *pipelineVectorRole == v1alpha1.VectorPipelineRoleAgent || *pipelineVectorRole == v1alpha1.VectorPipelineRoleMixed {
 
 		for _, vector := range vectorAgents {
 			eg.Go(func() error {

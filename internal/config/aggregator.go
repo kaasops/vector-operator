@@ -3,13 +3,14 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
+
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
-	"net"
-	"strconv"
-	"strings"
 )
 
 func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline) (*VectorConfig, error) {
@@ -87,20 +88,20 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 				}
 			}
 
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			cfg.Sources[v.Name] = settings
 		}
 		for k, v := range p.Transforms {
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			for i, inputName := range v.Inputs {
-				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName, pipeline.SkipPrefix())
 			}
 			cfg.Transforms[v.Name] = v
 		}
 		for k, v := range p.Sinks {
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			for i, inputName := range v.Inputs {
-				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName, pipeline.SkipPrefix())
 			}
 			cfg.Sinks[v.Name] = v
 		}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -62,20 +63,20 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 			if v.Type == KubernetesLogsType && params.UseApiServerCache {
 				v.UseApiServerCache = true
 			}
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			cfg.Sources[v.Name] = v
 		}
 		for k, v := range p.Transforms {
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			for i, inputName := range v.Inputs {
-				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName, pipeline.SkipPrefix())
 			}
 			cfg.Transforms[v.Name] = v
 		}
 		for k, v := range p.Sinks {
-			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
+			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k, pipeline.SkipPrefix())
 			for i, inputName := range v.Inputs {
-				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
+				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName, pipeline.SkipPrefix())
 			}
 			cfg.Sinks[v.Name] = v
 		}

@@ -101,3 +101,14 @@ func isAgent(name string) bool {
 	_, ok := agentTypes[name]
 	return ok
 }
+
+func isAgentAndAggregator(name string) bool {
+	_, isAgent := agentTypes[name]
+	_, isAggregator := aggregatorTypes[name]
+
+	if isAgent && isAggregator {
+		return true
+	}
+
+	return false
+}

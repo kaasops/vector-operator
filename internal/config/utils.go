@@ -1,6 +1,9 @@
 package config
 
-func addPrefix(Namespace, Name, componentName string) string {
+func addPrefix(Namespace, Name, componentName string, skipPrefix bool) string {
+	if skipPrefix {
+		return componentName
+	}
 	return generateName(Namespace, Name) + "-" + componentName
 }
 

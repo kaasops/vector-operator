@@ -20,13 +20,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/evcollector"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
-	"net"
 	goyaml "sigs.k8s.io/yaml"
-	"strconv"
 )
 
 var (
@@ -118,9 +119,11 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 	aggregatorCount := 0
 	for _, s := range c.Sources {
 		switch {
+		case isAgentAndAggregator(s.Type):
+			agentCount++
+			aggregatorCount++
 		case isAgent(s.Type):
 			agentCount++
-			fallthrough // some types can be both an agent and an aggregator at the same time
 		case isAggregator(s.Type):
 			aggregatorCount++
 		default:
@@ -128,10 +131,13 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 		}
 	}
 	switch {
-	case len(c.Sources) == agentCount:
+	case agentCount > 0 && aggregatorCount > 0:
+		role := vectorv1alpha1.VectorPipelineRoleMixed
+		return &role, nil
+	case agentCount > 0:
 		role := vectorv1alpha1.VectorPipelineRoleAgent
 		return &role, nil
-	case len(c.Sources) == aggregatorCount:
+	case aggregatorCount > 0:
 		role := vectorv1alpha1.VectorPipelineRoleAggregator
 		return &role, nil
 	}

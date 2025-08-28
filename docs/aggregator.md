@@ -17,7 +17,7 @@ metadata:
   name: vectorAggregator1
   namespace: vector
 spec:
-  image: timberio/vector:0.47.0-debian
+  image: timberio/vector:0.48.0-debian
   api:
     enabled: true
   replicas: 1
@@ -62,7 +62,7 @@ kind: ClusterVectorAggregator
 metadata:
   name: clusterVectorAggregator1
 spec:
-  image: timberio/vector:0.47.0-debian
+  image: timberio/vector:0.48.0-debian
   resourceNamespace: default
   api:
     enabled: true

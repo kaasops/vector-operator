@@ -78,7 +78,7 @@ vector:
   name: "vector"
   useApiServerCache: false
   # agent:
-  #   image: timberio/vector:0.47.0-distroless-libc
+  #   image: timberio/vector:0.48.0-distroless-libc
   #   env:
   #   - name: "testenv"
   #     value: "testvalues"

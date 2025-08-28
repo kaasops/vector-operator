@@ -49,7 +49,7 @@ metadata:
 spec:
   agent:
     service: true
-    image: "timberio/vector:0.47.0-distroless-libc"
+    image: "timberio/vector:0.48.0-distroless-libc"
 ```
 
 Configuration for CR VectorPipeline:

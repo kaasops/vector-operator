@@ -1,0 +1,1 @@
+Enhancement of the vector-operator functionality. This operator manages the configuration and deployment of Vector in Kubernetes. It is necessary to add the construction of the VectorAggregator configuration from VectorPipeline manifests.

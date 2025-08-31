@@ -53,7 +53,7 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 					RuntimeClassName:   ctrl.Vector.Spec.Agent.RuntimeClassName,
 					SchedulerName:      ctrl.Vector.Spec.Agent.SchedulerName,
 					Tolerations:        ctrl.Vector.Spec.Agent.Tolerations,
-					PriorityClassName:  ctrl.Vector.Spec.Agent.PodSecurityPolicyName,
+					PriorityClassName:  ctrl.Vector.Spec.Agent.PriorityClassName,
 					HostNetwork:        ctrl.Vector.Spec.Agent.HostNetwork,
 					HostAliases:        ctrl.Vector.Spec.Agent.HostAliases,
 					InitContainers:     initContainers,

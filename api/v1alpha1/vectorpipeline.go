@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -14,6 +15,7 @@ const (
 	VectorPipelineRoleUnknown    VectorPipelineRole = "unknown"
 	VectorPipelineRoleAgent      VectorPipelineRole = "agent"
 	VectorPipelineRoleAggregator VectorPipelineRole = "aggregator"
+	VectorPipelineRoleMixed      VectorPipelineRole = "mixed"
 )
 
 func (vp *VectorPipeline) GetSpec() VectorPipelineSpec {
@@ -68,4 +70,8 @@ func (vp *VectorPipeline) SetRole(role *VectorPipelineRole) {
 
 func (vp *VectorPipeline) GetTypeMeta() metav1.TypeMeta {
 	return vp.TypeMeta
+}
+
+func (vp *VectorPipeline) SkipPrefix() bool {
+	return vp.GetSpec().SkipPrefix
 }

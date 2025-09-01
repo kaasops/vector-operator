@@ -19,6 +19,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
@@ -30,6 +31,7 @@ type Pipeline interface {
 	GetSpec() v1alpha1.VectorPipelineSpec
 	SetConfigCheck(bool)
 	SetReason(*string)
+	SkipPrefix() bool
 	GetLastAppliedPipeline() *uint32
 	SetLastAppliedPipeline(*uint32)
 	GetConfigCheckResult() *bool
@@ -78,7 +80,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 			for _, vp := range vps {
 				if !vp.IsDeleted() &&
 					vp.IsValid() &&
-					vp.GetRole() == filter.Role &&
+					(vp.GetRole() == filter.Role || vp.GetRole() == v1alpha1.VectorPipelineRoleMixed) &&
 					(filter.Scope == AllPipelines || vp.Namespace == filter.Namespace) &&
 					MatchLabels(matchLabels, vp.Labels) {
 					validPipelines = append(validPipelines, vp.DeepCopy())
@@ -96,7 +98,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 			for _, cvp := range cvps {
 				if !cvp.IsDeleted() &&
 					cvp.IsValid() &&
-					cvp.GetRole() == filter.Role &&
+					(cvp.GetRole() == filter.Role || cvp.GetRole() == v1alpha1.VectorPipelineRoleMixed) &&
 					MatchLabels(matchLabels, cvp.Labels) {
 					validPipelines = append(validPipelines, cvp.DeepCopy())
 				}

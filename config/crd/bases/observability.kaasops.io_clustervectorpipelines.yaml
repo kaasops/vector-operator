@@ -55,6 +55,10 @@ spec:
               sinks:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              skipPrefix:
+                default: false
+                description: Controls whether prefix logic should be applied
+                type: boolean
               sources:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true

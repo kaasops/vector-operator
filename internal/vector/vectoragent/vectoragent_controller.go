@@ -162,7 +162,6 @@ func (ctrl *Controller) matchLabelsForVectorAgent() map[string]string {
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 	basicLabels := ctrl.matchLabelsForVectorAgent()
 
-
 	labels := k8s.MergeLabels(basicLabels, ctrl.Vector.Spec.Agent.Labels)
 
 	return labels

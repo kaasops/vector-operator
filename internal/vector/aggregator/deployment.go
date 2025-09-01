@@ -58,7 +58,7 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 					RuntimeClassName:   ctrl.Spec.RuntimeClassName,
 					SchedulerName:      ctrl.Spec.SchedulerName,
 					Tolerations:        ctrl.Spec.Tolerations,
-					PriorityClassName:  ctrl.Spec.PodSecurityPolicyName,
+					PriorityClassName:  ctrl.Spec.PriorityClassName,
 					HostNetwork:        ctrl.Spec.HostNetwork,
 					HostAliases:        ctrl.Spec.HostAliases,
 					InitContainers:     initContainers,

@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/kaasops/vector-operator/internal/evcollector"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
@@ -142,7 +143,7 @@ func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 					RuntimeClassName:   ctrl.Spec.RuntimeClassName,
 					SchedulerName:      ctrl.Spec.SchedulerName,
 					Tolerations:        ctrl.Spec.Tolerations,
-					PriorityClassName:  ctrl.Spec.PodSecurityPolicyName,
+					PriorityClassName:  ctrl.Spec.PriorityClassName,
 					HostNetwork:        ctrl.Spec.HostNetwork,
 					HostAliases:        ctrl.Spec.HostAliases,
 					Containers:         containers,

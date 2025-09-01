@@ -5,7 +5,7 @@ metadata:
   namespace: vector
 spec:
   agent:
-    image: "timberio/vector:0.47.0-debian"
+    image: "timberio/vector:0.48.0-debian"
     internalMetrics: false
     api:
       enabled: true

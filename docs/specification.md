@@ -10,7 +10,7 @@
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="25">agent</td>
+      <td rowspan="24">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.47.0-distroless-libc</code> by default</td>
     </tr>
@@ -65,10 +65,6 @@
     <tr>
         <td>hostAliases</td>
         <td>HostAliases provides mapping between ip and hostnames, that would be propagated to pod.</td>
-    </tr>
-    <tr>
-        <td>podSecurityPolicyName</td>
-        <td>PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.</td>
     </tr>
     <tr>
         <td>readinessProbe</td>

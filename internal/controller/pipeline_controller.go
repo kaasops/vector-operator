@@ -20,14 +20,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
 	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"time"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
@@ -120,8 +121,12 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	p := &config.PipelineConfig{}
 	if err := config.UnmarshalJson(pipelineCR.GetSpec(), p); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipelineCR.GetName(), err)
+		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, fmt.Sprintf("Failed to unmarshal vector pipeline %s", err.Error())); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to set pipeline status %s: %w", pipelineCR.GetName(), err)
+		}
+		return ctrl.Result{}, nil
 	}
+
 	pipelineVectorRole, err := p.VectorRole()
 	if err != nil {
 		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {

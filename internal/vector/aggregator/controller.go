@@ -3,10 +3,6 @@ package aggregator
 import (
 	"context"
 
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/internal/buildinfo"
-	"github.com/kaasops/vector-operator/internal/config"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +13,11 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/buildinfo"
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 type Aggregator interface {

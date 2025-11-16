@@ -4,13 +4,14 @@ import (
 	"context"
 	"maps"
 
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error {

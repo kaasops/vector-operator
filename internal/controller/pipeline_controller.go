@@ -23,23 +23,28 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/vector/aggregator"
-	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/internal/config"
-	"github.com/kaasops/vector-operator/internal/pipeline"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/config/configcheck"
+	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
+	"github.com/kaasops/vector-operator/internal/vector/aggregator"
+	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 )
 
 type PipelineReconciler struct {
@@ -49,8 +54,6 @@ type PipelineReconciler struct {
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
 	Clientset                                *kubernetes.Clientset
 	ConfigCheckTimeout                       time.Duration
-	VectorAgentEventCh                       chan event.GenericEvent
-	VectorAggregatorsEventCh                 chan event.GenericEvent
 	ClusterVectorAggregatorsEventCh          chan event.GenericEvent
 	EnableReconciliationInvalidPipelines     bool
 	ReconciliationInvalidPipelinesRetryDelay time.Duration
@@ -143,6 +146,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if *pipelineVectorRole == v1alpha1.VectorPipelineRoleAgent {
 
 		for _, vector := range vectorAgents {
+			if !k8s.MatchLabels(vector.Spec.Selector.MatchLabels, pipelineCR.GetLabels()) {
+				continue
+			}
 			eg.Go(func() error {
 				vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 				cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
@@ -182,6 +188,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		if pipelineCR.GetNamespace() != "" {
 			for _, vector := range vectorAggregators {
+				if !k8s.MatchLabels(vector.Spec.Selector.MatchLabels, pipelineCR.GetLabels()) {
+					continue
+				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
@@ -228,6 +237,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		} else {
 
 			for _, vector := range clusterVectorAggregators {
+				if !k8s.MatchLabels(vector.Spec.Selector.MatchLabels, pipelineCR.GetLabels()) {
+					continue
+				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
@@ -335,14 +347,11 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 var specAndAnnotationsPredicate = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
-		oldObject := e.ObjectOld.(client.Object)
-		newObject := e.ObjectNew.(client.Object)
-
-		if oldObject.GetGeneration() != newObject.GetGeneration() {
+		if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
 			return true
 		}
 
-		if !reflect.DeepEqual(oldObject.GetAnnotations(), newObject.GetAnnotations()) {
+		if !reflect.DeepEqual(e.ObjectOld.GetAnnotations(), e.ObjectNew.GetAnnotations()) {
 			return true
 		}
 

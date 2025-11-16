@@ -20,13 +20,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/internal/evcollector"
+	"net"
+	"strconv"
+
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
-	"net"
 	goyaml "sigs.k8s.io/yaml"
-	"strconv"
+
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/evcollector"
 )
 
 var (
@@ -49,7 +51,7 @@ func newVectorConfig(p VectorConfigParams) *VectorConfig {
 	sinks := make(map[string]*Sink)
 
 	api := &ApiSpec{
-		Address:    net.JoinHostPort("0.0.0.0", strconv.Itoa(AgentApiPort)),
+		Address:    net.JoinHostPort(net.IPv6zero.String(), strconv.Itoa(AgentApiPort)),
 		Enabled:    p.ApiEnabled,
 		Playground: p.PlaygroundEnabled,
 	}

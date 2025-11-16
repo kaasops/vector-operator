@@ -3,10 +3,11 @@ package aggregator
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorPodMonitor(ctx context.Context) error {

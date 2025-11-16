@@ -21,12 +21,13 @@ import (
 
 	"time"
 
-	"github.com/kaasops/vector-operator/internal/common"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/common"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) EnsureVectorAgent(ctx context.Context) error {
@@ -161,7 +162,6 @@ func (ctrl *Controller) matchLabelsForVectorAgent() map[string]string {
 
 func (ctrl *Controller) labelsForVectorAgent() map[string]string {
 	basicLabels := ctrl.matchLabelsForVectorAgent()
-
 
 	labels := k8s.MergeLabels(basicLabels, ctrl.Vector.Spec.Agent.Labels)
 

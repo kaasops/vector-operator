@@ -42,18 +42,31 @@ const (
 // being merged into the destination (dst) labels. If a key exists in both maps,
 // the destination value is preserved.
 func MergeLabels(dst, src map[string]string) map[string]string {
-    if dst == nil {
+	if dst == nil {
 		dst = make(map[string]string)
-    }
+	}
 
-    if src == nil {
-        return dst
-    }
+	if src == nil {
+		return dst
+	}
 
-    for k, v := range src {
-        if _, ok := dst[k]; !ok {
-            dst[k] = v
-        }
-    }
-    return dst
+	for k, v := range src {
+		if _, ok := dst[k]; !ok {
+			dst[k] = v
+		}
+	}
+	return dst
+}
+
+// MatchLabels matches a set of Kubernetes selectors and a set of Kubernetes labels
+func MatchLabels(selector map[string]string, labels map[string]string) bool {
+	if selector == nil {
+		return true
+	}
+	for k, v := range selector {
+		if labels[k] != v {
+			return false
+		}
+	}
+	return true
 }

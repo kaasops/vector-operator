@@ -1,0 +1,34 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: complex-pipeline
+spec:
+  sources:
+    kubernetes_logs:
+      type: kubernetes_logs
+      extra_label_selector: "app=test-app"
+  transforms:
+    parse:
+      type: remap
+      inputs:
+        - kubernetes_logs
+      source: |
+        .parsed = parse_json!(.message)
+    filter:
+      type: filter
+      inputs:
+        - parse
+      condition: '.level == "info"'
+  sinks:
+    console_all:
+      type: console
+      inputs:
+        - parse
+      encoding:
+        codec: json
+    console_filtered:
+      type: console
+      inputs:
+        - filter
+      encoding:
+        codec: text

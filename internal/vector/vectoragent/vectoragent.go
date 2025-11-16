@@ -18,11 +18,13 @@ package vectoragent
 
 import (
 	"context"
+
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Controller struct {

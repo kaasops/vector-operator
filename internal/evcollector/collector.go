@@ -2,14 +2,16 @@ package evcollector
 
 import (
 	"context"
-	"github.com/kaasops/vector-operator/internal/vector/gen"
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"time"
+
+	"github.com/kaasops/vector-operator/internal/vector/gen"
 )
 
 type Logger interface {

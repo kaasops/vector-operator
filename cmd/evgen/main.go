@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/rand"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sync"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/rand"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +35,8 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	for i := 0; i < *workers; i++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 
 			clientset, err := kubernetes.NewForConfig(config)

@@ -20,6 +20,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kaasops/vector-operator/internal/config"
 )
 
 func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
@@ -68,6 +70,15 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 
 func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 	volume := ctrl.Vector.Spec.Agent.Volumes
+
+	// Merge user-defined volumes with required volumes.
+	// User-defined volumes take precedence over required volumes with the same name.
+	// Build a set of user-defined volume names to check for conflicts.
+	existingVolumes := make(map[string]bool, len(volume))
+	for _, v := range volume {
+		existingVolumes[v.Name] = true
+	}
+
 	configVolumeSource := corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
 			SecretName: ctrl.getNameVectorAgent(),
@@ -77,9 +88,10 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 		configVolumeSource = corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
-
 	}
-	volume = append(volume, []corev1.Volume{
+
+	// Define required volumes for Vector agent
+	requiredVolumes := []corev1.Volume{
 		{
 			Name:         "config",
 			VolumeSource: configVolumeSource,
@@ -108,9 +120,16 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 				},
 			},
 		},
-	}...)
+	}
 
-	if ctrl.Vector.Spec.Agent.CompressConfigFile {
+	// Only add volumes that don't already exist
+	for _, reqVol := range requiredVolumes {
+		if !existingVolumes[reqVol.Name] {
+			volume = append(volume, reqVol)
+		}
+	}
+
+	if ctrl.Vector.Spec.Agent.CompressConfigFile && !existingVolumes["app-config-compress"] {
 		volume = append(volume, corev1.Volume{
 			Name: "app-config-compress",
 			VolumeSource: corev1.VolumeSource{
@@ -127,7 +146,16 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 	volumeMount := ctrl.Vector.Spec.Agent.VolumeMounts
 
-	volumeMount = append(volumeMount, []corev1.VolumeMount{
+	// Merge user-defined volumeMounts with required volumeMounts.
+	// User-defined volumeMounts take precedence over required volumeMounts with the same name.
+	// Build a set of user-defined volumeMount names to check for conflicts.
+	existingVolumeMounts := make(map[string]bool, len(volumeMount))
+	for _, vm := range volumeMount {
+		existingVolumeMounts[vm.Name] = true
+	}
+
+	// Define required volumeMounts for Vector agent
+	requiredVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "config",
 			MountPath: "/etc/vector",
@@ -144,15 +172,20 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 			Name:      "sysfs",
 			MountPath: "/host/sys",
 		},
-	}...)
+	}
 
-	if ctrl.Vector.Spec.Agent.CompressConfigFile {
-		volumeMount = append(volumeMount, []corev1.VolumeMount{
-			{
-				Name:      "app-config-compress",
-				MountPath: "/tmp/archive",
-			},
-		}...)
+	// Only add volumeMounts that don't already exist
+	for _, reqVm := range requiredVolumeMounts {
+		if !existingVolumeMounts[reqVm.Name] {
+			volumeMount = append(volumeMount, reqVm)
+		}
+	}
+
+	if ctrl.Vector.Spec.Agent.CompressConfigFile && !existingVolumeMounts["app-config-compress"] {
+		volumeMount = append(volumeMount, corev1.VolumeMount{
+			Name:      "app-config-compress",
+			MountPath: "/tmp/archive",
+		})
 	}
 
 	return volumeMount
@@ -211,7 +244,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "prom-exporter",
-				ContainerPort: 9598,
+				ContainerPort: config.DefaultInternalMetricsSinkPort,
 				Protocol:      "TCP",
 			},
 		},

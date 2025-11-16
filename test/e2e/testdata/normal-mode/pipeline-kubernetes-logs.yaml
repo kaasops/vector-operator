@@ -1,0 +1,24 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: k8s-logs-pipeline
+spec:
+  sources:
+    kubernetes_logs:
+      type: kubernetes_logs
+      extra_label_selector: "app=test-app"
+  transforms:
+    filter:
+      type: filter
+      inputs:
+        - kubernetes_logs
+      condition:
+        type: vrl
+        source: '.level != "debug"'
+  sinks:
+    console:
+      type: console
+      inputs:
+        - filter
+      encoding:
+        codec: json

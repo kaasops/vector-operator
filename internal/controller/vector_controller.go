@@ -19,10 +19,11 @@ package controller
 import (
 	"context"
 	"errors"
+	"time"
+
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
@@ -36,7 +37,6 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	"github.com/kaasops/vector-operator/api/v1alpha1"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,6 +47,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 // VectorReconciler reconciles a Vector object

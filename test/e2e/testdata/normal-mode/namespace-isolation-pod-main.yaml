@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: main-namespace-pod
+  labels:
+    app: main-app
+spec:
+  containers:
+  - name: log-generator
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo '{"marker":"MAIN_NAMESPACE","message":"This is from main namespace"}'
+          sleep 5
+        done
+  restartPolicy: Always

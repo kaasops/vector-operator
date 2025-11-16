@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-app
+  labels:
+    app: test-app
+spec:
+  containers:
+  - name: log-generator
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo '{"level":"info","message":"Test log from test-app","timestamp":"'$(date -Iseconds)'"}'
+          echo '{"level":"debug","message":"Debug log should be filtered","timestamp":"'$(date -Iseconds)'"}'
+          sleep 5
+        done
+  restartPolicy: Always

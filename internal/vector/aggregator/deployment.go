@@ -152,6 +152,15 @@ func (ctrl *Controller) ConfigReloaderSidecarContainer() *corev1.Container {
 
 func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 	volume := ctrl.Spec.Volumes
+
+	// Merge user-defined volumes with required volumes.
+	// User-defined volumes take precedence over required volumes with the same name.
+	// Build a set of user-defined volume names to check for conflicts.
+	existingVolumes := make(map[string]bool, len(volume))
+	for _, v := range volume {
+		existingVolumes[v.Name] = true
+	}
+
 	configVolumeSource := corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
 			SecretName: ctrl.getNameVectorAggregator(),
@@ -161,9 +170,10 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 		configVolumeSource = corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
-
 	}
-	volume = append(volume, []corev1.Volume{
+
+	// Define required volumes for Vector aggregator
+	requiredVolumes := []corev1.Volume{
 		{
 			Name:         "config",
 			VolumeSource: configVolumeSource,
@@ -192,9 +202,16 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 				},
 			},
 		},
-	}...)
+	}
 
-	if ctrl.Spec.CompressConfigFile {
+	// Only add volumes that don't already exist
+	for _, reqVol := range requiredVolumes {
+		if !existingVolumes[reqVol.Name] {
+			volume = append(volume, reqVol)
+		}
+	}
+
+	if ctrl.Spec.CompressConfigFile && !existingVolumes["app-config-compress"] {
 		volume = append(volume, corev1.Volume{
 			Name: "app-config-compress",
 			VolumeSource: corev1.VolumeSource{
@@ -211,7 +228,16 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMount {
 	volumeMount := ctrl.Spec.VolumeMounts
 
-	volumeMount = append(volumeMount, []corev1.VolumeMount{
+	// Merge user-defined volumeMounts with required volumeMounts.
+	// User-defined volumeMounts take precedence over required volumeMounts with the same name.
+	// Build a set of user-defined volumeMount names to check for conflicts.
+	existingVolumeMounts := make(map[string]bool, len(volumeMount))
+	for _, vm := range volumeMount {
+		existingVolumeMounts[vm.Name] = true
+	}
+
+	// Define required volumeMounts for Vector aggregator
+	requiredVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "config",
 			MountPath: "/etc/vector",
@@ -228,15 +254,20 @@ func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMo
 			Name:      "sysfs",
 			MountPath: "/host/sys",
 		},
-	}...)
+	}
 
-	if ctrl.Spec.CompressConfigFile {
-		volumeMount = append(volumeMount, []corev1.VolumeMount{
-			{
-				Name:      "app-config-compress",
-				MountPath: "/tmp/archive",
-			},
-		}...)
+	// Only add volumeMounts that don't already exist
+	for _, reqVm := range requiredVolumeMounts {
+		if !existingVolumeMounts[reqVm.Name] {
+			volumeMount = append(volumeMount, reqVm)
+		}
+	}
+
+	if ctrl.Spec.CompressConfigFile && !existingVolumeMounts["app-config-compress"] {
+		volumeMount = append(volumeMount, corev1.VolumeMount{
+			Name:      "app-config-compress",
+			MountPath: "/tmp/archive",
+		})
 	}
 
 	return volumeMount

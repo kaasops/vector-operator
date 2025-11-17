@@ -69,6 +69,16 @@ func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
 }
 
 func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
+	volume := cc.Volumes
+
+	// Merge user-defined volumes with required volumes.
+	// User-defined volumes take precedence over required volumes with the same name.
+	// Build a set of user-defined volume names to check for conflicts.
+	existingVolumes := make(map[string]bool, len(volume))
+	for _, v := range volume {
+		existingVolumes[v.Name] = true
+	}
+
 	configVolumeSource := corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
 			SecretName: cc.getNameVectorConfigCheck(),
@@ -78,9 +88,10 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 		configVolumeSource = corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
-
 	}
-	volume := []corev1.Volume{
+
+	// Define required volumes for configcheck
+	requiredVolumes := []corev1.Volume{
 		{
 			Name:         "config",
 			VolumeSource: configVolumeSource,
@@ -125,7 +136,13 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 		},
 	}
 
-	if cc.CompressedConfig {
+	for _, reqVol := range requiredVolumes {
+		if !existingVolumes[reqVol.Name] {
+			volume = append(volume, reqVol)
+		}
+	}
+
+	if cc.CompressedConfig && !existingVolumes["app-config-compress"] {
 		volume = append(volume, corev1.Volume{
 			Name: "app-config-compress",
 			VolumeSource: corev1.VolumeSource{
@@ -140,7 +157,18 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 }
 
 func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMount {
-	volumeMount := []corev1.VolumeMount{
+	volumeMount := cc.VolumeMounts
+
+	// Merge user-defined volumeMounts with required volumeMounts.
+	// User-defined volumeMounts take precedence over required volumeMounts with the same name.
+	// Build a set of user-defined volumeMount names to check for conflicts.
+	existingVolumeMounts := make(map[string]bool, len(volumeMount))
+	for _, vm := range volumeMount {
+		existingVolumeMounts[vm.Name] = true
+	}
+
+	// Define required volumeMounts for configcheck
+	requiredVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "config",
 			MountPath: "/etc/vector/",
@@ -167,13 +195,17 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMo
 		},
 	}
 
-	if cc.CompressedConfig {
-		volumeMount = append(volumeMount, []corev1.VolumeMount{
-			{
-				Name:      "app-config-compress",
-				MountPath: "/tmp/archive",
-			},
-		}...)
+	for _, reqVm := range requiredVolumeMounts {
+		if !existingVolumeMounts[reqVm.Name] {
+			volumeMount = append(volumeMount, reqVm)
+		}
+	}
+
+	if cc.CompressedConfig && !existingVolumeMounts["app-config-compress"] {
+		volumeMount = append(volumeMount, corev1.VolumeMount{
+			Name:      "app-config-compress",
+			MountPath: "/tmp/archive",
+		})
 	}
 
 	return volumeMount

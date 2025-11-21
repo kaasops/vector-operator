@@ -19,8 +19,9 @@ package hash_test
 import (
 	"testing"
 
-	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/stretchr/testify/require"
+
+	"github.com/kaasops/vector-operator/internal/utils/hash"
 )
 
 func TestGet(t *testing.T) {

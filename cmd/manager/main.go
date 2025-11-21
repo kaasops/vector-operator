@@ -21,9 +21,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"os"
 	"time"
+
+	"github.com/kaasops/vector-operator/internal/buildinfo"
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"

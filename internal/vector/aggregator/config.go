@@ -2,10 +2,12 @@ package aggregator
 
 import (
 	"context"
-	"github.com/kaasops/vector-operator/internal/utils/compression"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
+
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/utils/compression"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorConfig(ctx context.Context) error {

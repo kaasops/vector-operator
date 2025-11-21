@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/kaasops/vector-operator/internal/evcollector"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,6 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/evcollector"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) ensureEventCollector(ctx context.Context) error {

@@ -42,18 +42,18 @@ const (
 // being merged into the destination (dst) labels. If a key exists in both maps,
 // the destination value is preserved.
 func MergeLabels(dst, src map[string]string) map[string]string {
-    if dst == nil {
+	if dst == nil {
 		dst = make(map[string]string)
-    }
+	}
 
-    if src == nil {
-        return dst
-    }
+	if src == nil {
+		return dst
+	}
 
-    for k, v := range src {
-        if _, ok := dst[k]; !ok {
-            dst[k] = v
-        }
-    }
-    return dst
+	for k, v := range src {
+		if _, ok := dst[k]; !ok {
+			dst[k] = v
+		}
+	}
+	return dst
 }

@@ -5,20 +5,22 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
-	"github.com/kaasops/vector-operator/internal/buildinfo"
-	"github.com/kaasops/vector-operator/internal/evcollector"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 	"syscall"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/viper"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/kaasops/vector-operator/internal/buildinfo"
+	"github.com/kaasops/vector-operator/internal/evcollector"
 )
 
 func main() {
@@ -112,7 +114,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		if err = http.ListenAndServe(net.JoinHostPort("", *port), nil); err != nil && !errors.Is(http.ErrServerClosed, err) {
+		if err = http.ListenAndServe(net.JoinHostPort("", *port), nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start http server", "error", err)
 			os.Exit(1)
 		}

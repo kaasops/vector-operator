@@ -23,16 +23,14 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/vector/aggregator"
-	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/internal/config"
-	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/kaasops/vector-operator/internal/config/configcheck"
+	"github.com/kaasops/vector-operator/internal/vector/aggregator"
+	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,6 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/pipeline"
 )
 
 type PipelineReconciler struct {
@@ -335,14 +337,11 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 var specAndAnnotationsPredicate = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
-		oldObject := e.ObjectOld.(client.Object)
-		newObject := e.ObjectNew.(client.Object)
-
-		if oldObject.GetGeneration() != newObject.GetGeneration() {
+		if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
 			return true
 		}
 
-		if !reflect.DeepEqual(oldObject.GetAnnotations(), newObject.GetAnnotations()) {
+		if !reflect.DeepEqual(e.ObjectOld.GetAnnotations(), e.ObjectNew.GetAnnotations()) {
 			return true
 		}
 

@@ -19,12 +19,8 @@ package controller
 import (
 	"context"
 	"errors"
-	"github.com/kaasops/vector-operator/internal/config"
-	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/pipeline"
-	"github.com/kaasops/vector-operator/internal/utils/hash"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
-	"github.com/kaasops/vector-operator/internal/vector/aggregator"
+	"time"
+
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +34,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
+
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/config/configcheck"
+	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/kaasops/vector-operator/internal/utils/hash"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
+	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 
 	v1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
 )

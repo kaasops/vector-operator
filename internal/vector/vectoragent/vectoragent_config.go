@@ -19,9 +19,10 @@ package vectoragent
 import (
 	"context"
 
-	"github.com/kaasops/vector-operator/internal/utils/compression"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/utils/compression"
 )
 
 func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {

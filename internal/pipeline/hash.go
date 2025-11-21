@@ -18,6 +18,7 @@ package pipeline
 
 import (
 	"encoding/json"
+
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/hash"

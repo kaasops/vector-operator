@@ -17,8 +17,9 @@ limitations under the License.
 package vectoragent
 
 import (
-	"github.com/kaasops/vector-operator/internal/config"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kaasops/vector-operator/internal/config"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 )

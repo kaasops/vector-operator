@@ -2,12 +2,14 @@ package config
 
 import (
 	"fmt"
-	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
-	"github.com/kaasops/vector-operator/internal/pipeline"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/labels"
 	goyaml "sigs.k8s.io/yaml"
+
+	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 const (

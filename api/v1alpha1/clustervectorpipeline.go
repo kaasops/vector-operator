@@ -2,10 +2,12 @@ package v1alpha1
 
 import (
 	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (vp *ClusterVectorPipeline) GetSpec() VectorPipelineSpec {

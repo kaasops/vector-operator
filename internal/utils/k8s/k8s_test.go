@@ -24,7 +24,6 @@ import (
 	// . "github.com/onsi/ginkgo/v2"
 	// . "github.com/onsi/gomega"
 
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +35,8 @@ import (
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 type objCase struct {

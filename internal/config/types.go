@@ -19,6 +19,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 
 	corev1 "k8s.io/api/core/v1"

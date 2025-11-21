@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"net"
+	"strconv"
+)
 
 const (
 	// types
@@ -12,6 +15,7 @@ const (
 	DefaultSinkName                  = "defaultSink"
 	DefaultInternalMetricsSourceName = "internalMetricsSource"
 	DefaultInternalMetricsSinkName   = "internalMetricsSink"
+	DefaultInternalMetricsSinkPort   = 9598
 	DefaultAggregatorSourcePort      = 8989
 	DefaultNamespace                 = "default"
 	DefaultPipelineName              = "default-pipeline"
@@ -26,7 +30,7 @@ var (
 		Name: DefaultSourceName,
 		Type: VectorType,
 		Options: map[string]any{
-			"address": fmt.Sprintf("0.0.0.0:%d", DefaultAggregatorSourcePort),
+			"address": net.JoinHostPort(net.IPv6zero.String(), strconv.Itoa(DefaultAggregatorSourcePort)),
 		},
 	}
 	defaultSink = &Sink{
@@ -63,5 +67,8 @@ var (
 		Name:   DefaultInternalMetricsSinkName,
 		Type:   PrometheusExporterType,
 		Inputs: []string{DefaultInternalMetricsSourceName},
+		Options: map[string]any{
+			"address": net.JoinHostPort(net.IPv6zero.String(), strconv.Itoa(DefaultInternalMetricsSinkPort)),
+		},
 	}
 )

@@ -96,7 +96,7 @@ test-e2e: ginkgo
 		echo "==> Label filter: $(E2E_LABEL_FILTER)"; \
 		GINKGO_FLAGS="$$GINKGO_FLAGS --label-filter=\"$(E2E_LABEL_FILTER)\""; \
 	fi; \
-	cd test/e2e && ../../$(GINKGO) $$GINKGO_FLAGS \
+	cd test/e2e && $(GINKGO) $$GINKGO_FLAGS \
 		--junit-report="../../$$RUN_DIR/reports/junit-report.xml" \
 		--json-report="../../$$RUN_DIR/reports/report.json" \
 		| tee "../../$$RUN_DIR/reports/test-output.log"; \

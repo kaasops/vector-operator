@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -60,4 +61,8 @@ func (vp *ClusterVectorPipeline) SetRole(role *VectorPipelineRole) {
 
 func (vp *ClusterVectorPipeline) GetTypeMeta() metav1.TypeMeta {
 	return vp.TypeMeta
+}
+
+func (vp *ClusterVectorPipeline) SkipPrefix() bool {
+	return vp.GetSpec().SkipPrefix
 }

@@ -26,6 +26,10 @@ import (
 
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
+	// Controls whether prefix logic should be applied
+	// +optional
+	// +kubebuilder:default:=false
+	SkipPrefix bool `json:"skipPrefix,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Sources *runtime.RawExtension `json:"sources,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields

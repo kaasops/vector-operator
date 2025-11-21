@@ -21,8 +21,8 @@ The E2E tests workflow automatically runs end-to-end tests for every pull reques
 3. **Install dependencies**: Installs kubebuilder for CRD generation
 4. **Create kind cluster**: Creates a single-node Kubernetes cluster using `scripts/kind-config-ci.yaml`
 5. **Verify cluster**: Checks cluster health and connectivity
-6. **Build images**: Builds operator and event-collector Docker images
-7. **Load images**: Loads images into the kind cluster
+6. **Build image**: Builds operator Docker image
+7. **Load image**: Loads image into the kind cluster
 8. **Run E2E tests**: Executes `make test-e2e` with JUnit reporting
 9. **Upload test results**: Saves test results as artifacts (retained for 7 days)
 10. **Publish test results**: Publishes JUnit results as GitHub check

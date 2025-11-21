@@ -46,16 +46,13 @@ jobs:
           kubectl get nodes
           kubectl get pods -A
 
-      - name: Build operator and event-collector images
+      - name: Build operator image
         run: |
-          make docker-build \
-            IMG=example.com/vector-operator:v0.0.1 \
-            IMG_COLLECTOR=example.com/event-collector:v0.0.1
+          docker build -t example.com/vector-operator:v0.0.1 .
 
-      - name: Load images into kind
+      - name: Load image into kind
         run: |
           kind load docker-image example.com/vector-operator:v0.0.1 --name kind
-          kind load docker-image example.com/event-collector:v0.0.1 --name kind
 
       - name: Run E2E tests
         run: make test-e2e

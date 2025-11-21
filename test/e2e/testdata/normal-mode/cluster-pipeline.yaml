@@ -1,0 +1,24 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: cluster-wide-pipeline
+spec:
+  sources:
+    cluster_logs:
+      type: kubernetes_logs
+      extra_label_selector: "cluster-monitor=enabled"
+  transforms:
+    add_cluster_info:
+      type: remap
+      inputs:
+        - cluster_logs
+      source: |
+        .cluster_pipeline = "cluster-wide-pipeline"
+        .collected_at = now()
+  sinks:
+    console:
+      type: console
+      inputs:
+        - add_cluster_info
+      encoding:
+        codec: json

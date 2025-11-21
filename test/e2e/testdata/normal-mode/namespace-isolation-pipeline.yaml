@@ -1,0 +1,17 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: isolated-pipeline
+  namespace: test-normal-mode-isolated
+spec:
+  sources:
+    my_namespace_logs:
+      type: kubernetes_logs
+      # Should only see logs from test-normal-mode-isolated namespace
+  sinks:
+    console:
+      type: console
+      inputs:
+        - my_namespace_logs
+      encoding:
+        codec: json

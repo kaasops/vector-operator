@@ -71,7 +71,7 @@ E2E_LABEL_FILTER ?=
 NAMESPACE ?= vector
 
 .PHONY: test-e2e  # Run e2e tests with comprehensive reporting (JUnit XML + JSON + logs + artifacts)
-test-e2e:
+test-e2e: ginkgo
 	@TIMESTAMP=$$(date +%Y-%m-%d-%H%M%S); \
 	RUN_DIR="test/e2e/results/run-$$TIMESTAMP"; \
 	echo "==> Running e2e tests..."; \
@@ -96,7 +96,7 @@ test-e2e:
 		echo "==> Label filter: $(E2E_LABEL_FILTER)"; \
 		GINKGO_FLAGS="$$GINKGO_FLAGS --label-filter=\"$(E2E_LABEL_FILTER)\""; \
 	fi; \
-	cd test/e2e && ginkgo $$GINKGO_FLAGS \
+	cd test/e2e && ../../$(GINKGO) $$GINKGO_FLAGS \
 		--junit-report="../../$$RUN_DIR/reports/junit-report.xml" \
 		--json-report="../../$$RUN_DIR/reports/report.json" \
 		| tee "../../$$RUN_DIR/reports/test-output.log"; \
@@ -229,12 +229,14 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+GINKGO ?= $(LOCALBIN)/ginkgo
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.3
 CONTROLLER_TOOLS_VERSION ?= v0.16.1
 ENVTEST_VERSION ?= release-0.19
 GOLANGCI_LINT_VERSION ?= v1.64.8
+GINKGO_VERSION ?= v2.20.2
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -255,6 +257,11 @@ $(ENVTEST): $(LOCALBIN)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+.PHONY: ginkgo
+ginkgo: $(GINKGO) ## Download ginkgo locally if necessary.
+$(GINKGO): $(LOCALBIN)
+	$(call go-install-tool,$(GINKGO),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

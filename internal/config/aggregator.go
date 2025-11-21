@@ -3,13 +3,15 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/kaasops/vector-operator/internal/common"
-	"github.com/kaasops/vector-operator/internal/pipeline"
-	"github.com/stoewer/go-strcase"
-	corev1 "k8s.io/api/core/v1"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/stoewer/go-strcase"
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kaasops/vector-operator/internal/common"
+	"github.com/kaasops/vector-operator/internal/pipeline"
 )
 
 func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline) (*VectorConfig, error) {

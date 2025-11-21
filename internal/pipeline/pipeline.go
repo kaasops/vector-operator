@@ -19,10 +19,12 @@ package pipeline
 import (
 	"context"
 	"fmt"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 type Pipeline interface {

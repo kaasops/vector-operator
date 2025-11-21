@@ -17,10 +17,11 @@ limitations under the License.
 package vectoragent
 
 import (
-	"github.com/kaasops/vector-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 )
 
 func (ctrl *Controller) SetDefault() {

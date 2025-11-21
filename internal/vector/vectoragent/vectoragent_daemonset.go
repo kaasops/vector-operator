@@ -17,10 +17,11 @@ limitations under the License.
 package vectoragent
 
 import (
-	"github.com/kaasops/vector-operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kaasops/vector-operator/internal/config"
 )
 
 func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {

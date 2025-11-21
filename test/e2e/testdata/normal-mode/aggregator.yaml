@@ -1,0 +1,11 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: normal-aggregator
+spec:
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+      role: aggregator

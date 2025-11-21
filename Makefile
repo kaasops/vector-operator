@@ -64,10 +64,79 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
-# Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
-.PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
+# E2E test configuration
+E2E_FAIL_FAST ?= false
+E2E_RUN_DESCRIPTION ?=
+E2E_LABEL_FILTER ?=
+NAMESPACE ?= vector
+
+.PHONY: test-e2e  # Run e2e tests with comprehensive reporting (JUnit XML + JSON + logs + artifacts)
 test-e2e:
-	go test ./test/e2e/ -v -ginkgo.v
+	@TIMESTAMP=$$(date +%Y-%m-%d-%H%M%S); \
+	RUN_DIR="test/e2e/results/run-$$TIMESTAMP"; \
+	echo "==> Running e2e tests..."; \
+	echo "==> Results will be saved to: $$RUN_DIR"; \
+	mkdir -p "$$RUN_DIR/reports"; \
+	export E2E_ARTIFACTS_DIR="$$RUN_DIR/artifacts"; \
+	export E2E_ARTIFACTS_ENABLED=true; \
+	export E2E_GIT_COMMIT=$$(git rev-parse HEAD 2>/dev/null || echo "unknown"); \
+	export E2E_GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"); \
+	export E2E_GIT_DIRTY=$$(git diff --quiet 2>/dev/null || echo "dirty"; git diff --cached --quiet 2>/dev/null || echo "staged"); \
+	export E2E_RUN_DESCRIPTION="$(E2E_RUN_DESCRIPTION)"; \
+	echo "==> Git info: commit=$$E2E_GIT_COMMIT branch=$$E2E_GIT_BRANCH dirty=$$E2E_GIT_DIRTY"; \
+	if [ -n "$$E2E_RUN_DESCRIPTION" ]; then \
+		echo "==> Run description: $$E2E_RUN_DESCRIPTION"; \
+	fi; \
+	GINKGO_FLAGS="-v -timeout=30m"; \
+	if [ "$(E2E_FAIL_FAST)" = "true" ]; then \
+		echo "==> Fail-fast mode enabled (stop on first failure)"; \
+		GINKGO_FLAGS="$$GINKGO_FLAGS --fail-fast"; \
+	fi; \
+	if [ -n "$(E2E_LABEL_FILTER)" ]; then \
+		echo "==> Label filter: $(E2E_LABEL_FILTER)"; \
+		GINKGO_FLAGS="$$GINKGO_FLAGS --label-filter=\"$(E2E_LABEL_FILTER)\""; \
+	fi; \
+	cd test/e2e && ginkgo $$GINKGO_FLAGS \
+		--junit-report="../../$$RUN_DIR/reports/junit-report.xml" \
+		--json-report="../../$$RUN_DIR/reports/report.json" \
+		| tee "../../$$RUN_DIR/reports/test-output.log"; \
+	EXIT_CODE=$$?; \
+	echo ""; \
+	echo "==> Test run complete!"; \
+	echo "==> All results in one place: $$RUN_DIR"; \
+	echo "  Reports:"; \
+	echo "    - JUnit XML: $$RUN_DIR/reports/junit-report.xml"; \
+	echo "    - JSON: $$RUN_DIR/reports/report.json"; \
+	echo "    - Logs: $$RUN_DIR/reports/test-output.log"; \
+	if [ -d "$$RUN_DIR/artifacts" ] && [ "$$(find $$RUN_DIR/artifacts -mindepth 1 -maxdepth 1 2>/dev/null | wc -l)" -gt 1 ]; then \
+		echo "  Artifacts: $$RUN_DIR/artifacts/ (collected for failed tests)"; \
+	else \
+		echo "  Artifacts: None (all tests passed)"; \
+	fi; \
+	echo ""; \
+	echo "Quick commands:"; \
+	echo "  View summary:  cat $$RUN_DIR/artifacts/metadata.json 2>/dev/null || echo 'All tests passed'"; \
+	echo "  View failures: grep -A 5 'FAILED' $$RUN_DIR/reports/test-output.log 2>/dev/null || echo 'No failures'"; \
+	exit $$EXIT_CODE
+
+.PHONY: test-report
+test-report: ## Generate interactive HTML report from e2e test results
+	@echo "==> Generating test report..."
+	@cd test/e2e/results && python3 ../scripts/generate_report.py
+	@echo "==> Report generated: test/e2e/results/test_results_report.html"
+
+.PHONY: deploy-helm-e2e
+deploy-helm-e2e: manifests ## Deploy operator using Helm for e2e tests (use IMG and NAMESPACE variables)
+	@echo "==> Installing CRDs..."
+	$(KUBECTL) apply -f config/crd/bases
+	@echo "==> Creating namespace $(NAMESPACE)..."
+	$(KUBECTL) create namespace $(NAMESPACE) || true
+	@echo "==> Deploying operator via Helm to namespace $(NAMESPACE)..."
+	helm upgrade --install vector-operator ./helm/charts/vector-operator \
+		--namespace $(NAMESPACE) \
+		--set image.repository=$$(echo $(IMG) | cut -d: -f1) \
+		--set image.tag=$$(echo $(IMG) | cut -d: -f2) \
+		--wait --timeout 5m
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter

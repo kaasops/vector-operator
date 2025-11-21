@@ -1,9 +1,11 @@
 package evcollector
 
 import (
-	"github.com/kaasops/vector-operator/internal/vector/gen"
-	corev1 "k8s.io/api/core/v1"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kaasops/vector-operator/internal/vector/gen"
 )
 
 func k8sEventToVectorLog(ev *corev1.Event) *gen.Log {

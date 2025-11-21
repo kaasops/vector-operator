@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/kaasops/vector-operator/internal/common"
-	"github.com/kaasops/vector-operator/internal/config"
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kaasops/vector-operator/internal/common"
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {

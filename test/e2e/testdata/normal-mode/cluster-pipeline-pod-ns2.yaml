@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cluster-monitored-pod-2
+  namespace: test-normal-mode-isolated
+  labels:
+    app: cluster-test
+    cluster-monitor: enabled
+spec:
+  containers:
+  - name: log-generator
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo '{"marker":"CLUSTER_MONITORED_NS2","message":"Cluster pipeline test from ns2"}'
+          sleep 5
+        done
+  restartPolicy: Always

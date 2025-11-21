@@ -1,0 +1,7 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: normal-agent
+spec:
+  agent:
+    image: timberio/vector:0.40.0-alpine

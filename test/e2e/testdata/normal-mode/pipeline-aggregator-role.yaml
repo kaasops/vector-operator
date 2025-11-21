@@ -1,0 +1,28 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: aggregator-pipeline
+  labels:
+    app: test
+    role: aggregator
+  annotations:
+    vector.kaasops.io/role: "Aggregator"
+spec:
+  sources:
+    vector_source:
+      type: vector
+      address: "0.0.0.0:9000"
+  transforms:
+    process:
+      type: remap
+      inputs:
+        - vector_source
+      source: |
+        .processed = true
+  sinks:
+    console:
+      type: console
+      inputs:
+        - process
+      encoding:
+        codec: json

@@ -28,3 +28,6 @@ testbin/*
 __debug_bin
 
 vendor
+
+# E2E test results and artifacts
+test/e2e/results/

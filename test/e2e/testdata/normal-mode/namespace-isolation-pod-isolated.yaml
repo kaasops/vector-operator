@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: isolated-pod
+  namespace: test-normal-mode-isolated
+  labels:
+    app: isolated-app
+spec:
+  containers:
+  - name: log-generator
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo '{"marker":"ISOLATED_NAMESPACE","message":"This is from isolated namespace"}'
+          sleep 5
+        done
+  restartPolicy: Always

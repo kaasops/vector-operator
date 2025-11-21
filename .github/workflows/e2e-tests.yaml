@@ -1,0 +1,76 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          # Install kubebuilder for CRD generation
+          curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
+          chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+          config: scripts/kind-config-ci.yaml
+          wait: 300s
+
+      - name: Verify cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl get pods -A
+
+      - name: Build operator image
+        run: |
+          docker build -t example.com/vector-operator:v0.0.1 .
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image example.com/vector-operator:v0.0.1 --name kind
+
+      - name: Run E2E tests
+        run: make test-e2e
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ github.run_number }}
+          path: test/e2e/results/
+          retention-days: 7
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test/e2e/results/run-*/reports/junit-report.xml
+          check_name: E2E Test Results
+          comment_mode: off

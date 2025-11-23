@@ -24,24 +24,23 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"github.com/kaasops/vector-operator/internal/config/configcheck"
-	"github.com/kaasops/vector-operator/internal/vector/aggregator"
-	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/config/configcheck"
 	"github.com/kaasops/vector-operator/internal/pipeline"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
+	"github.com/kaasops/vector-operator/internal/vector/aggregator"
+	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 )
 
 type PipelineReconciler struct {
@@ -139,12 +138,22 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 	pipelineCR.SetRole(pipelineVectorRole)
-
+	var pipelineLabels map[string]string
+	if pipelineCR.GetLabels() != nil {
+		pipelineLabels = pipelineCR.GetLabels()
+	}
 	eg := errgroup.Group{}
 
 	if *pipelineVectorRole == v1alpha1.VectorPipelineRoleAgent {
 
 		for _, vector := range vectorAgents {
+			var selectorLabels map[string]string
+			if vector.Spec.Selector != nil {
+				selectorLabels = vector.Spec.Selector.MatchLabels
+			}
+			if !k8s.MatchLabels(selectorLabels, pipelineLabels) {
+				continue
+			}
 			eg.Go(func() error {
 				vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
 				cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
@@ -184,6 +193,13 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		if pipelineCR.GetNamespace() != "" {
 			for _, vector := range vectorAggregators {
+				var selectorLabels map[string]string
+				if vector.Spec.Selector != nil {
+					selectorLabels = vector.Spec.Selector.MatchLabels
+				}
+				if !k8s.MatchLabels(selectorLabels, pipelineLabels) {
+					continue
+				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
@@ -230,6 +246,13 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		} else {
 
 			for _, vector := range clusterVectorAggregators {
+				var selectorLabels map[string]string
+				if vector.Spec.Selector != nil {
+					selectorLabels = vector.Spec.Selector.MatchLabels
+				}
+				if !k8s.MatchLabels(selectorLabels, pipelineLabels) {
+					continue
+				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
 					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{

@@ -225,6 +225,12 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 
 	defer watcher.Stop()
 
+	// Use time.NewTimer instead of time.After to prevent memory leak.
+	// time.After() creates a new timer on each select iteration that won't be GC'd
+	// until it fires, causing ~280 bytes leak per iteration.
+	timer := time.NewTimer(cc.ConfigCheckTimeout)
+	defer timer.Stop()
+
 	for {
 		select {
 		case e := <-watcher.ResultChan():
@@ -253,11 +259,17 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 					return reason, ValidationError
 				}
 			}
+			// Reset timer after processing event to restart timeout window
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(cc.ConfigCheckTimeout)
 		case <-ctx.Done():
-			watcher.Stop()
 			return "", nil
-		case <-time.After(cc.ConfigCheckTimeout):
-			watcher.Stop()
+		case <-timer.C:
 			return "", ConfigcheckTimeoutError
 		}
 	}

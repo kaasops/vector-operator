@@ -197,7 +197,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vectorAgentEventCh := make(chan event.GenericEvent)
+	vectorAgentEventCh := make(chan event.GenericEvent, 400)
 	defer close(vectorAgentEventCh)
 
 	if err = (&controller.VectorReconciler{
@@ -234,7 +234,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vectorAggregatorsEventCh := make(chan event.GenericEvent)
+	vectorAggregatorsEventCh := make(chan event.GenericEvent, 400)
 	defer close(vectorAggregatorsEventCh)
 
 	if err = (&controller.VectorAggregatorReconciler{
@@ -248,7 +248,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	clusterVectorAggregatorsEventCh := make(chan event.GenericEvent)
+	clusterVectorAggregatorsEventCh := make(chan event.GenericEvent, 400)
 	defer close(clusterVectorAggregatorsEventCh)
 
 	if err = (&controller.ClusterVectorAggregatorReconciler{

@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 type Pipeline interface {
@@ -82,7 +83,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 					vp.IsValid() &&
 					vp.GetRole() == filter.Role &&
 					(filter.Scope == AllPipelines || vp.Namespace == filter.Namespace) &&
-					MatchLabels(matchLabels, vp.Labels) {
+					k8s.MatchLabels(matchLabels, vp.Labels) {
 					validPipelines = append(validPipelines, vp.DeepCopy())
 				}
 			}
@@ -99,7 +100,7 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 				if !cvp.IsDeleted() &&
 					cvp.IsValid() &&
 					cvp.GetRole() == filter.Role &&
-					MatchLabels(matchLabels, cvp.Labels) {
+					k8s.MatchLabels(matchLabels, cvp.Labels) {
 					validPipelines = append(validPipelines, cvp.DeepCopy())
 				}
 			}
@@ -147,16 +148,4 @@ func GetClusterVectorPipelines(ctx context.Context, client client.Client) ([]v1a
 		return nil, err
 	}
 	return cvps.Items, nil
-}
-
-func MatchLabels(selector map[string]string, labels map[string]string) bool {
-	if selector == nil {
-		return true
-	}
-	for k, v := range selector {
-		if labels[k] != v {
-			return false
-		}
-	}
-	return true
 }

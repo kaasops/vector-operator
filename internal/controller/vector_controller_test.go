@@ -52,7 +52,15 @@ var _ = Describe("Vector Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: v1alpha1.VectorSpec{
+						Agent: &v1alpha1.VectorAgent{
+							VectorCommon: v1alpha1.VectorCommon{
+								ConfigCheck: v1alpha1.ConfigCheck{
+									Disabled: true,
+								},
+							},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
@@ -78,7 +86,14 @@ var _ = Describe("Vector Controller", func() {
 				EventChan:          make(chan event.GenericEvent, 1),
 			}
 
+			// First reconcile adds finalizer
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Second reconcile performs actual reconciliation
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())

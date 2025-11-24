@@ -57,3 +57,16 @@ func MergeLabels(dst, src map[string]string) map[string]string {
 	}
 	return dst
 }
+
+// MatchLabels matches a set of Kubernetes selectors and a set of Kubernetes labels
+func MatchLabels(selector map[string]string, labels map[string]string) bool {
+	if selector == nil {
+		return true
+	}
+	for k, v := range selector {
+		if labels[k] != v {
+			return false
+		}
+	}
+	return true
+}

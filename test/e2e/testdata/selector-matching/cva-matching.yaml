@@ -1,0 +1,12 @@
+# ClusterVectorAggregator with selector that MATCHES pipeline labels
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorAggregator
+metadata:
+  name: matching-aggregator
+spec:
+  resourceNamespace: NAMESPACE
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  selector:
+    matchLabels:
+      team: platform

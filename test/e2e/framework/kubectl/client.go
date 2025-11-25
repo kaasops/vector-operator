@@ -237,6 +237,24 @@ func (c *Client) Delete(resourceType, name string) error {
 	return err
 }
 
+// DeleteClusterScoped deletes a cluster-scoped resource (no namespace)
+func (c *Client) DeleteClusterScoped(resourceType, name string) error {
+	// Validate parameters to prevent command injection
+	if err := ValidateResourceType(resourceType); err != nil {
+		return fmt.Errorf("resource type validation failed: %w", err)
+	}
+	if err := ValidateResourceName(name); err != nil {
+		return fmt.Errorf("resource name validation failed: %w", err)
+	}
+
+	// Log command for audit and reproducibility
+	log.Printf("KUBECTL_CMD: kubectl delete %s %s --ignore-not-found", resourceType, name)
+
+	cmd := exec.Command("kubectl", "delete", resourceType, name, "--ignore-not-found")
+	_, err := utils.Run(cmd)
+	return err
+}
+
 // CreateNamespace creates a namespace
 func CreateNamespace(name string) error {
 	// Validate namespace to prevent command injection

@@ -1,0 +1,24 @@
+# ClusterVectorPipeline without labels - should match aggregator with no selector
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: unlabeled-pipeline
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+      extra_label_selector: "app.kubernetes.io/name=vector"
+  transforms:
+    parse:
+      type: remap
+      inputs:
+        - logs
+      source: |
+        .unlabeled_pipeline = true
+  sinks:
+    console:
+      type: console
+      inputs:
+        - parse
+      encoding:
+        codec: json

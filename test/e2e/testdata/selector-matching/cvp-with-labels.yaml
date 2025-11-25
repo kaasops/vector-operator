@@ -1,0 +1,26 @@
+# ClusterVectorPipeline with labels that match "matching-aggregator" selector
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: labeled-pipeline
+  labels:
+    team: platform
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+      extra_label_selector: "app.kubernetes.io/name=vector"
+  transforms:
+    parse:
+      type: remap
+      inputs:
+        - logs
+      source: |
+        .labeled_pipeline = true
+  sinks:
+    console:
+      type: console
+      inputs:
+        - parse
+      encoding:
+        codec: json

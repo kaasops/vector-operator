@@ -22,15 +22,22 @@ func (ctrl *Controller) createVectorAggregatorPodMonitor() *monitorv1.PodMonitor
 	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 
+	endpoint := monitorv1.PodMetricsEndpoint{
+		Path: "/metrics",
+		Port: "prom-exporter",
+	}
+
+	if ctrl.Spec.ScrapeInterval != "" {
+		endpoint.Interval = monitorv1.Duration(ctrl.Spec.ScrapeInterval)
+	}
+	if ctrl.Spec.ScrapeTimeout != "" {
+		endpoint.ScrapeTimeout = monitorv1.Duration(ctrl.Spec.ScrapeTimeout)
+	}
+
 	podmonitor := &monitorv1.PodMonitor{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: monitorv1.PodMonitorSpec{
-			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{
-				{
-					Path: "/metrics",
-					Port: "prom-exporter",
-				},
-			},
+			PodMetricsEndpoints: []monitorv1.PodMetricsEndpoint{endpoint},
 			Selector: metav1.LabelSelector{
 				MatchLabels: matchLabels,
 			},

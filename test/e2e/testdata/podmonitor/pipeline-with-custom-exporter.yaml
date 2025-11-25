@@ -1,0 +1,27 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: custom-exporter-pipeline
+  labels:
+    app: test
+spec:
+  sources:
+    k8s_logs:
+      type: kubernetes_logs
+      extra_label_selector: "app=test"
+  transforms:
+    log_to_metric:
+      type: log_to_metric
+      inputs:
+        - k8s_logs
+      metrics:
+        - type: counter
+          field: message
+          name: log_lines_total
+          namespace: custom
+  sinks:
+    custom_prom_exporter:
+      type: prometheus_exporter
+      inputs:
+        - log_to_metric
+      address: "0.0.0.0:9599"

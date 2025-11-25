@@ -1,0 +1,16 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: no-exporter-pipeline
+  labels:
+    app: test
+spec:
+  sources:
+    k8s_logs:
+      type: kubernetes_logs
+      extra_label_selector: "app=test"
+  sinks:
+    blackhole:
+      type: blackhole
+      inputs:
+        - k8s_logs

@@ -1,0 +1,16 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: aggregator-test-pipeline
+  labels:
+    app: test
+spec:
+  sources:
+    http_source:
+      type: http_server
+      address: "0.0.0.0:8080"
+  sinks:
+    blackhole:
+      type: blackhole
+      inputs:
+        - http_source

@@ -1,0 +1,14 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorAggregator
+metadata:
+  name: podmonitor-cluster-agg
+spec:
+  resourceNamespace: NAMESPACE
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  internalMetrics: true
+  scrapeInterval: "90s"
+  scrapeTimeout: "25s"
+  selector:
+    matchLabels:
+      app: cluster-test

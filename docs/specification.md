@@ -10,7 +10,7 @@
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="24">agent</td>
+      <td rowspan="27">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.48.0-distroless-libc</code> by default</td>
     </tr>
@@ -25,6 +25,18 @@
     <tr>
         <td><a href="https://vector.dev/docs/reference/api/">api</a></td>
         <td><a href="https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#api-spec">ApiSpec</a></td>
+    </tr>
+    <tr>
+        <td>internalMetrics</td>
+        <td>Enable internal metrics exporter. When enabled, a PodMonitor resource is created for Prometheus scraping. By default - <code>false</code></td>
+    </tr>
+    <tr>
+        <td>scrapeInterval</td>
+        <td>Interval at which Prometheus should scrape metrics from the internal metrics exporter. Examples: <code>"30s"</code>, <code>"1m"</code>, <code>"5m"</code>. Only used when <code>internalMetrics</code> is <code>true</code>. If not specified, Prometheus default is used.</td>
+    </tr>
+    <tr>
+        <td>scrapeTimeout</td>
+        <td>Timeout for scraping metrics. Must be less than <code>scrapeInterval</code>. Examples: <code>"10s"</code>, <code>"30s"</code>. Only used when <code>internalMetrics</code> is <code>true</code>. If not specified, Prometheus default is used.</td>
     </tr>
     <tr>
         <td>service</td>

@@ -1,0 +1,13 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: podmonitor-aggregator
+spec:
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  internalMetrics: true
+  scrapeInterval: "60s"
+  scrapeTimeout: "20s"
+  selector:
+    matchLabels:
+      app: test

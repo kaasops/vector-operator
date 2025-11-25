@@ -80,6 +80,28 @@ func (c *Client) ApplyWithoutNamespaceOverride(yamlContent string) error {
 	return err
 }
 
+// DeleteFromYAML deletes resources from YAML content
+func (c *Client) DeleteFromYAML(yamlContent string) error {
+	// Validate namespace to prevent command injection
+	if err := ValidateNamespace(c.namespace); err != nil {
+		return fmt.Errorf("namespace validation failed: %w", err)
+	}
+
+	// Log command for audit and reproducibility
+	log.Printf("KUBECTL_CMD: kubectl delete -f - -n %s", c.namespace)
+
+	cmd := exec.Command("kubectl", "delete", "-f", "-", "-n", c.namespace)
+	cmd.Stdin = strings.NewReader(yamlContent)
+	output, err := utils.Run(cmd)
+
+	// Log kubectl output for debugging
+	if len(output) > 0 {
+		fmt.Printf("kubectl delete: %s\n", string(output))
+	}
+
+	return err
+}
+
 // Get retrieves a resource by name and type
 func (c *Client) Get(resourceType, name string) ([]byte, error) {
 	// Validate parameters to prevent command injection

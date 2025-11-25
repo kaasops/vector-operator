@@ -1,0 +1,13 @@
+# ClusterVectorAggregator with selector that does NOT match pipeline labels
+# This aggregator requires "team: backend" but our pipeline has "team: platform"
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorAggregator
+metadata:
+  name: non-matching-aggregator
+spec:
+  resourceNamespace: NAMESPACE
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  selector:
+    matchLabels:
+      team: backend

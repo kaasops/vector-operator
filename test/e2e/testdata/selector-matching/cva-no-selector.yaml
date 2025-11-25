@@ -1,0 +1,9 @@
+# ClusterVectorAggregator without selector (matches all pipelines)
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorAggregator
+metadata:
+  name: no-selector-aggregator
+spec:
+  resourceNamespace: NAMESPACE
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1

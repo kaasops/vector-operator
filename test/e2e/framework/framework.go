@@ -702,6 +702,50 @@ func (f *Framework) VerifyAggregatorHasPipeline(aggregatorName, pipelineName str
 	return nil
 }
 
+// VerifyAggregatorHasClusterPipeline verifies that an aggregator Secret contains the specified ClusterVectorPipeline
+func (f *Framework) VerifyAggregatorHasClusterPipeline(aggregatorName, pipelineName string) error {
+	// Get the aggregator's vector config from the Secret
+	// The config is stored in a Secret with name pattern: {aggregatorName}-aggregator
+	secretName := fmt.Sprintf("%s-aggregator", aggregatorName)
+
+	// Get base64-encoded config from Secret
+	encodedConfig, err := f.kubectl.GetWithJsonPath("secret", secretName, ".data['config\\.json']")
+	if err != nil {
+		return fmt.Errorf("failed to get aggregator secret %s: %w", secretName, err)
+	}
+
+	if encodedConfig == "" {
+		return fmt.Errorf("aggregator secret %s has no config.json data", secretName)
+	}
+
+	// Check size before decoding to prevent DoS via large payloads
+	maxEncodedSize := MaxConfigSize * 4 / 3
+	if len(encodedConfig) > maxEncodedSize {
+		return fmt.Errorf("config too large: %d bytes (max %d bytes)", len(encodedConfig), maxEncodedSize)
+	}
+
+	// Decode base64
+	configBytes, err := base64.StdEncoding.DecodeString(encodedConfig)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 config from secret %s: %w", secretName, err)
+	}
+	config := string(configBytes)
+
+	if config == "" {
+		return fmt.Errorf("aggregator %s config is empty after decoding", aggregatorName)
+	}
+
+	// Check if the cluster pipeline name appears in the config
+	// ClusterVectorPipeline components are prefixed with only pipelinename- (no namespace prefix)
+	expectedPrefix := fmt.Sprintf("%s-", pipelineName)
+	if !strings.Contains(config, expectedPrefix) {
+		return fmt.Errorf("cluster pipeline %s not found in aggregator %s config (expected prefix: %s)",
+			pipelineName, aggregatorName, expectedPrefix)
+	}
+
+	return nil
+}
+
 // ApplyTestDataWithVars loads and applies a test manifest with variable substitution
 func (f *Framework) ApplyTestDataWithVars(path string, vars map[string]string) {
 	By(fmt.Sprintf("applying test data with vars: %s", path))
@@ -726,6 +770,17 @@ func (f *Framework) DeleteResource(kind, name string) {
 	By(fmt.Sprintf("deleting %s %s", kind, name))
 	err := f.kubectl.Delete(kind, name)
 	Expect(err).NotTo(HaveOccurred(), "Failed to delete %s %s in namespace %s", kind, name, f.namespace)
+}
+
+// DeleteClusterResource deletes a cluster-scoped Kubernetes resource (no namespace)
+func (f *Framework) DeleteClusterResource(kind, name string) {
+	By(fmt.Sprintf("deleting cluster resource %s %s", kind, name))
+	client := kubectl.NewClient("")
+	err := client.DeleteClusterScoped(kind, name)
+	if err != nil {
+		// Log warning but don't fail - resource might already be deleted
+		GinkgoWriter.Printf("Warning: failed to delete %s %s: %v\n", kind, name, err)
+	}
 }
 
 // WaitForPodReadyInNamespace waits for a pod to become ready in a specific namespace
@@ -777,6 +832,24 @@ func (f *Framework) WaitForClusterPipelineValid(name string) {
 		return result
 	}, config.PipelineValidTimeout, config.DefaultPollInterval).Should(Equal("true"),
 		"ClusterVectorPipeline %s did not become valid", name)
+}
+
+// WaitForClusterPipelineInvalid waits for a ClusterVectorPipeline to become invalid (for negative tests)
+func (f *Framework) WaitForClusterPipelineInvalid(name string) {
+	By(fmt.Sprintf("waiting for ClusterVectorPipeline %s to become invalid", name))
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		GinkgoWriter.Printf("⏱️  ClusterVectorPipeline %s invalidated in %v\n", name, duration)
+	}()
+
+	// ClusterVectorPipeline is cluster-scoped, so we use a client without namespace
+	client := kubectl.NewClient("")
+	Eventually(func() string {
+		result, _ := client.GetWithJsonPath("clustervectorpipeline", name, ".status.configCheckResult")
+		return result
+	}, config.PipelineValidTimeout, config.DefaultPollInterval).Should(Equal("false"),
+		"ClusterVectorPipeline %s did not become invalid", name)
 }
 
 // GetClusterPipelineAnnotation retrieves a specific annotation from a ClusterVectorPipeline

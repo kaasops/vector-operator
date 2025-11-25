@@ -84,6 +84,16 @@ type VectorCommon struct {
 	// Enable internal metrics exporter
 	// +optional
 	InternalMetrics bool `json:"internalMetrics,omitempty"`
+	// ScrapeInterval defines the interval at which Prometheus should scrape metrics.
+	// Example values: "30s", "1m", "5m". If not specified, Prometheus default is used.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^(0|([0-9]+(\.[0-9]+)?(ms|s|m|h))+)$`
+	ScrapeInterval string `json:"scrapeInterval,omitempty"`
+	// ScrapeTimeout defines the timeout for scraping metrics.
+	// Example values: "10s", "30s". Must be less than ScrapeInterval. If not specified, Prometheus default is used.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^(0|([0-9]+(\.[0-9]+)?(ms|s|m|h))+)$`
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`

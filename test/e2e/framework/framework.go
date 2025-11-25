@@ -280,19 +280,40 @@ func (f *Framework) ApplyTestDataWithoutNamespaceReplacement(path string) {
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply test data %s", path)
 }
 
-// replaceNamespace replaces hardcoded namespaces in YAML content
+// DeleteTestData loads and deletes a test manifest from testdata directory
+// It automatically replaces any hardcoded namespace with the framework's namespace
+func (f *Framework) DeleteTestData(path string) {
+	By(fmt.Sprintf("deleting test data: %s", path))
+
+	content, err := os.ReadFile(filepath.Join(f.TestDataPath, path))
+	Expect(err).NotTo(HaveOccurred(), "Failed to load test data from %s", path)
+
+	// Replace namespace in YAML if present
+	yamlContent := replaceNamespace(string(content), f.namespace)
+
+	err = f.kubectl.DeleteFromYAML(yamlContent)
+	Expect(err).NotTo(HaveOccurred(), "Failed to delete test data %s in namespace %s", path, f.namespace)
+}
+
+// replaceNamespace replaces namespace placeholders and fields in YAML content
 func replaceNamespace(yaml, namespace string) string {
-	// This is a simple replacement - for production use, proper YAML parsing might be better
-	// But for tests this is sufficient
+	// Replace NAMESPACE placeholders throughout the content
+	// This handles cases like spec.resourceNamespace: NAMESPACE
+	yaml = replacePlaceholder(yaml, "NAMESPACE", namespace)
+
+	// Also replace explicit namespace fields in metadata sections
+	// This handles cases like:
+	//   namespace: some-other-namespace
 	lines := []string{}
 	for _, line := range splitLines(yaml) {
-		// Replace namespace: <something> with namespace: <our-namespace>
+		// Check for "  namespace:" (2 spaces + "namespace:" = 12 chars)
 		if len(line) > 12 && line[:12] == "  namespace:" {
 			lines = append(lines, fmt.Sprintf("  namespace: %s", namespace))
 		} else {
 			lines = append(lines, line)
 		}
 	}
+
 	return joinLines(lines)
 }
 

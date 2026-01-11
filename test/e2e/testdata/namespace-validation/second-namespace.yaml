@@ -1,0 +1,6 @@
+# Second namespace for testing namespace isolation in VectorPipeline validation
+# This namespace will have a VectorAggregator WITHOUT the required secret
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns-validation-other

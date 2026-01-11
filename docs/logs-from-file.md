@@ -2,7 +2,7 @@
 
 If you want collect logs from file (like k8s-audit logs) you can use example.
 
-> Type `file` in source block work only in ClusterVectorPipeline. In VectorPipeline can use only `kubernetes_logs` type
+> Type `file` is an agent source type that requires node-level access. In VectorPipeline with agent role, only `kubernetes_logs` is allowed. Use ClusterVectorPipeline for `file` sources.
 
 
 ```yaml

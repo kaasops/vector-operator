@@ -1,10 +1,10 @@
 # Secure credential
 
-If you want collect service journald logs from node you can use example.
+If you want to collect service journald logs from node you can use example.
 
-> Type `journald` in source block work only in ClusterVectorPipeline. In VectorPipeline can use only `kubernetes_logs` type
+> Type `journald` is an agent source type that requires node-level access. In VectorPipeline with an agent role, only `kubernetes_logs` is allowed. Use ClusterVectorPipeline for `journald` sources.
 
-> If you want collect journald logs, needs to use vector-agent container with journalctl. `timberio/vector:0.48.0-debian` - for example
+> If you want to collect journald logs, needs to use vector-agent container with journalctl. `timberio/vector:0.48.0-debian` - for example
 
 
 ```yaml

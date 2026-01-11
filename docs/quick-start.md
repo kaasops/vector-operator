@@ -78,7 +78,9 @@ git clone https://github.com/kaasops/vector-operator.git
 cd vector-operator
 kubectl apply -f config/crd/bases/observability.kaasops.io_vectors.yaml
 kubectl apply -f config/crd/bases/observability.kaasops.io_vectorpipelines.yaml
-kubectl apply -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml      
+kubectl apply -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml
+kubectl apply -f config/crd/bases/observability.kaasops.io_vectoraggregators.yaml
+kubectl apply -f config/crd/bases/observability.kaasops.io_clustervectoraggregators.yaml
 ```
 
 ## Start Vector Operator
@@ -177,6 +179,8 @@ rules:
   - clustervectorpipelines
   - vectorpipelines
   - vectors
+  - vectoraggregators
+  - clustervectoraggregators
   verbs:
   - create
   - delete
@@ -191,6 +195,8 @@ rules:
   - clustervectorpipelines/status
   - vectorpipelines/status
   - vectors/status
+  - vectoraggregators/status
+  - clustervectoraggregators/status
   verbs:
   - get
   - patch
@@ -394,4 +400,6 @@ kubectl delete clusterrolebinding vector-operator
 kubectl delete -f config/crd/bases/observability.kaasops.io_vectors.yaml
 kubectl delete -f config/crd/bases/observability.kaasops.io_vectorpipelines.yaml
 kubectl delete -f config/crd/bases/observability.kaasops.io_clustervectorpipelines.yaml
+kubectl delete -f config/crd/bases/observability.kaasops.io_vectoraggregators.yaml
+kubectl delete -f config/crd/bases/observability.kaasops.io_clustervectoraggregators.yaml
 ```

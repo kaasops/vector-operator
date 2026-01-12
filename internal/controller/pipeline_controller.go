@@ -193,6 +193,10 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		if pipelineCR.GetNamespace() != "" {
 			for _, vector := range vectorAggregators {
+				// VectorPipeline should only be validated against VectorAggregator in the same namespace
+				if vector.Namespace != pipelineCR.GetNamespace() {
+					continue
+				}
 				var selectorLabels map[string]string
 				if vector.Spec.Selector != nil {
 					selectorLabels = vector.Spec.Selector.MatchLabels

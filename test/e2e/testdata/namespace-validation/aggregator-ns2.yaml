@@ -1,0 +1,21 @@
+# VectorAggregator in the SECOND namespace WITHOUT the required secret
+# This aggregator references the same secret that does NOT exist in this namespace
+# If the bug exists, VectorPipeline from namespace 1 will be validated against this
+# aggregator, and validation will fail because the secret doesn't exist here
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: aggregator-without-secret
+  namespace: test-ns-validation-other
+spec:
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ns-validation-test
+  env:
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: test-credentials
+          key: api-key

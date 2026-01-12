@@ -1,0 +1,18 @@
+# VectorAggregator in the MAIN namespace with the required secret
+# This aggregator has an env var from a secret that EXISTS in this namespace
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: aggregator-with-secret
+spec:
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ns-validation-test
+  env:
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: test-credentials
+          key: api-key

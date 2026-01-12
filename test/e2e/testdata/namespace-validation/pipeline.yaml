@@ -1,0 +1,28 @@
+# VectorPipeline with labels matching the aggregators' selector
+# This pipeline should ONLY be validated against the aggregator in the SAME namespace
+# Bug: It gets validated against ALL aggregators with matching selector (regardless of namespace)
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: test-pipeline
+  labels:
+    app: ns-validation-test
+spec:
+  sources:
+    vector_source:
+      type: vector
+      address: "0.0.0.0:9000"
+  transforms:
+    process:
+      type: remap
+      inputs:
+        - vector_source
+      source: |
+        .namespace_validation_test = true
+  sinks:
+    console:
+      type: console
+      inputs:
+        - process
+      encoding:
+        codec: json

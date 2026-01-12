@@ -783,6 +783,17 @@ func (f *Framework) DeleteClusterResource(kind, name string) {
 	}
 }
 
+// DeleteResourceInNamespace deletes a Kubernetes resource in a specific namespace
+func (f *Framework) DeleteResourceInNamespace(kind, name, namespace string) {
+	By(fmt.Sprintf("deleting %s %s in namespace %s", kind, name, namespace))
+	client := kubectl.NewClient(namespace)
+	err := client.Delete(kind, name)
+	if err != nil {
+		// Log warning but don't fail - resource might already be deleted
+		GinkgoWriter.Printf("Warning: failed to delete %s %s in namespace %s: %v\n", kind, name, namespace, err)
+	}
+}
+
 // WaitForPodReadyInNamespace waits for a pod to become ready in a specific namespace
 func (f *Framework) WaitForPodReadyInNamespace(podName, namespace string) {
 	By(fmt.Sprintf("waiting for pod %s to be ready in namespace %s", podName, namespace))

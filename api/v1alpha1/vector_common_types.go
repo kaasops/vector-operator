@@ -112,6 +112,7 @@ type VectorCommon struct {
 	CompressConfigFile      bool                    `json:"compressConfigFile,omitempty"`
 	ConfigReloaderImage     string                  `json:"configReloaderImage,omitempty"`
 	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
+	Args                    []string                `json:"args,omitempty"`
 }
 
 // ApiSpec is the Schema for the Vector Agent GraphQL API - https://vector.dev/docs/reference/api/

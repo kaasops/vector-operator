@@ -239,7 +239,7 @@ func (ctrl *Controller) VectorAgentContainer() *corev1.Container {
 	container := &corev1.Container{
 		Name:  ctrl.getNameVectorAgent(),
 		Image: ctrl.Vector.Spec.Agent.Image,
-		Args:  []string{"--config-dir", "/etc/vector", "--watch-config"},
+		Args:  append([]string{"--config-dir", "/etc/vector", "--watch-config"}, ctrl.Vector.Spec.Agent.Args...),
 		Env:   ctrl.generateVectorAgentEnvs(),
 		Ports: []corev1.ContainerPort{
 			{

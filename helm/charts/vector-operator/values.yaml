@@ -82,6 +82,9 @@ vector:
   #   env:
   #   - name: "testenv"
   #     value: "testvalues"
+  #   args:
+  #   --allocation-tracing
+
 
 secrets: {}
 # - name: elastic-creds

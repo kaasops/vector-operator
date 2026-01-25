@@ -998,6 +998,10 @@ spec:
                       playground:
                         type: boolean
                     type: object
+                  args:
+                    items:
+                      type: string
+                    type: array
                   compressConfigFile:
                     description: 'Compress config file to fix: metadata.annotations:
                       Too long: must have at most 262144 characters'

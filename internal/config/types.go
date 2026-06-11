@@ -91,7 +91,9 @@ type ServicePort struct {
 }
 
 type internalConfig struct {
-	servicePort map[string]*ServicePort
+	servicePort      map[string]*ServicePort
+	optimizedSources int
+	sourceGroups     int
 }
 
 func (c *internalConfig) addServicePort(port *ServicePort) error {
@@ -102,6 +104,12 @@ func (c *internalConfig) addServicePort(port *ServicePort) error {
 		return fmt.Errorf("duplicate port %s in %s and %s", key, v.PipelineName, port.PipelineName)
 	}
 	return nil
+}
+
+// OptimizationSummary reports how many kubernetes_logs sources were collapsed
+// into how many optimized sources by the sources optimization.
+func (c *VectorConfig) OptimizationSummary() (sources, groups int) {
+	return c.internal.optimizedSources, c.internal.sourceGroups
 }
 
 func (c *VectorConfig) GetGlobalConfigHash() *uint32 {

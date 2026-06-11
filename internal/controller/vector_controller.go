@@ -206,6 +206,10 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		log.Error(err, "Build config failed")
 		return ctrl.Result{}, nil
 	}
+	if collapsed, groups := cfg.OptimizationSummary(); collapsed > 0 {
+		log.Info("Sources optimization collapsed kubernetes_logs sources", "sources", collapsed, "optimizedSources", groups)
+	}
+
 	cfgHash := hash.Get(byteConfig)
 
 	if !vaCtrl.Vector.Spec.Agent.ConfigCheck.Disabled {

@@ -36,6 +36,10 @@ const (
 	// than the two-level (bucketed) routing.
 	flatRoutingThreshold = 16
 	maxRouteBuckets      = 256
+
+	// Larger groups are split to keep the generated namespace selector
+	// (one name per namespace) well below any request-URI limits.
+	maxNamespacesPerSource = 1000
 )
 
 // optimizeAgentSources collapses kubernetes_logs sources scoped to a single namespace
@@ -61,43 +65,54 @@ func optimizeAgentSources(cfg *VectorConfig) {
 		if len(sources) < 2 {
 			continue
 		}
-		collapseSourceGroup(cfg, sig, sources)
+		namespaces := sortedNamespacesOf(sources)
+		gid := fmt.Sprintf("%08x", hash.Get([]byte(sig)))
+		chunks := (len(namespaces) + maxNamespacesPerSource - 1) / maxNamespacesPerSource
+		if chunks == 1 {
+			collapseSourceGroup(cfg, gid, namespaces, sources)
+		} else {
+			nsChunk := make(map[string]int, len(namespaces))
+			for i, ns := range namespaces {
+				nsChunk[ns] = i / maxNamespacesPerSource
+			}
+			for c := 0; c < chunks; c++ {
+				chunkNamespaces := namespaces[c*maxNamespacesPerSource : min((c+1)*maxNamespacesPerSource, len(namespaces))]
+				chunkSources := make([]*Source, 0, len(chunkNamespaces))
+				for _, src := range sources {
+					ns, _ := singleNamespaceOf(src)
+					if nsChunk[ns] == c {
+						chunkSources = append(chunkSources, src)
+					}
+				}
+				collapseSourceGroup(cfg, fmt.Sprintf("%s-%d", gid, c), chunkNamespaces, chunkSources)
+			}
+		}
+		cfg.internal.optimizedSources += len(sources)
+		cfg.internal.sourceGroups += chunks
 	}
 }
 
 // collapseSourceGroup replaces the group sources with one source watching the union
 // of their namespaces and routes its events back to the original per-source streams.
-func collapseSourceGroup(cfg *VectorConfig, sig string, sources []*Source) {
-	sort.Slice(sources, func(i, j int) bool { return sources[i].Name < sources[j].Name })
-
-	namespaces := make([]string, 0, len(sources))
-	seen := make(map[string]bool)
-	for _, src := range sources {
-		ns, _ := singleNamespaceOf(src)
-		if !seen[ns] {
-			seen[ns] = true
-			namespaces = append(namespaces, ns)
-		}
-	}
-	sort.Strings(namespaces)
-
-	gid := fmt.Sprintf("%08x", hash.Get([]byte(sig)))
+// Routes are keyed by namespace: consumers of all pipelines of a namespace share one
+// route output, which keeps the number of conditions evaluated per event equal to
+// the number of namespaces, not sources.
+func collapseSourceGroup(cfg *VectorConfig, gid string, namespaces []string, sources []*Source) {
 	collapsed := *sources[0]
 	collapsed.Name = fmt.Sprintf("%s-%s", optimizedSourcePrefix, gid)
 	collapsed.ExtraNamespaceLabelSelector = fmt.Sprintf("kubernetes.io/metadata.name in (%s)", strings.Join(namespaces, ","))
 
-	routerInput := collapsed.Name
-	routeOutput := make(map[string]string, len(sources))
+	nsOutput := make(map[string]string, len(namespaces))
 	if len(namespaces) <= flatRoutingThreshold {
 		router := fmt.Sprintf("%s-%s", optimizedRouterPrefix, gid)
 		cfg.Transforms[router] = &Transform{
 			Name:    router,
 			Type:    RouteTransformType,
-			Inputs:  []string{routerInput},
-			Options: map[string]interface{}{"route": namespaceRoutes(sources)},
+			Inputs:  []string{collapsed.Name},
+			Options: map[string]interface{}{"route": namespaceRoutes(namespaces)},
 		}
-		for _, src := range sources {
-			routeOutput[src.Name] = fmt.Sprintf("%s.%s", router, src.Name)
+		for _, ns := range namespaces {
+			nsOutput[ns] = fmt.Sprintf("%s.%s", router, ns)
 		}
 	} else {
 		buckets := bucketCount(len(namespaces))
@@ -105,20 +120,19 @@ func collapseSourceGroup(cfg *VectorConfig, sig string, sources []*Source) {
 		cfg.Transforms[bucketer] = &Transform{
 			Name:   bucketer,
 			Type:   RemapTransformType,
-			Inputs: []string{routerInput},
+			Inputs: []string{collapsed.Name},
 			Options: map[string]interface{}{
 				"source": fmt.Sprintf("%%bucket = parse_int!(slice!(md5(string!(.kubernetes.pod_namespace)), 0, 2), base: 16) %% %d", buckets),
 			},
 		}
-		l1 := fmt.Sprintf("%s-%s-l1", optimizedRouterPrefix, gid)
-		l1Routes := make(map[string]string)
-		bucketSources := make(map[int][]*Source)
-		for _, src := range sources {
-			ns, _ := singleNamespaceOf(src)
+		bucketNamespaces := make(map[int][]string)
+		for _, ns := range namespaces {
 			b := nsBucket(ns, buckets)
-			bucketSources[b] = append(bucketSources[b], src)
+			bucketNamespaces[b] = append(bucketNamespaces[b], ns)
 		}
-		for b, members := range bucketSources {
+		l1 := fmt.Sprintf("%s-%s-l1", optimizedRouterPrefix, gid)
+		l1Routes := make(map[string]string, len(bucketNamespaces))
+		for b, members := range bucketNamespaces {
 			key := fmt.Sprintf("%d", b)
 			l1Routes[key] = fmt.Sprintf("%%bucket == %d", b)
 			l2 := fmt.Sprintf("%s-%s-%s", optimizedRouterPrefix, gid, key)
@@ -128,8 +142,8 @@ func collapseSourceGroup(cfg *VectorConfig, sig string, sources []*Source) {
 				Inputs:  []string{fmt.Sprintf("%s.%s", l1, key)},
 				Options: map[string]interface{}{"route": namespaceRoutes(members)},
 			}
-			for _, src := range members {
-				routeOutput[src.Name] = fmt.Sprintf("%s.%s", l2, src.Name)
+			for _, ns := range members {
+				nsOutput[ns] = fmt.Sprintf("%s.%s", l2, ns)
 			}
 		}
 		cfg.Transforms[l1] = &Transform{
@@ -140,7 +154,10 @@ func collapseSourceGroup(cfg *VectorConfig, sig string, sources []*Source) {
 		}
 	}
 
+	routeOutput := make(map[string]string, len(sources))
 	for _, src := range sources {
+		ns, _ := singleNamespaceOf(src)
+		routeOutput[src.Name] = nsOutput[ns]
 		delete(cfg.Sources, src.Name)
 	}
 	cfg.Sources[collapsed.Name] = &collapsed
@@ -153,14 +170,13 @@ func collapseSourceGroup(cfg *VectorConfig, sig string, sources []*Source) {
 	}
 }
 
-// namespaceRoutes returns a route condition per source matching its namespace.
-// An event matching several routes is sent to all of them, which preserves the
-// fan-out semantics of the original per-pipeline sources.
-func namespaceRoutes(sources []*Source) map[string]string {
-	routes := make(map[string]string, len(sources))
-	for _, src := range sources {
-		ns, _ := singleNamespaceOf(src)
-		routes[src.Name] = fmt.Sprintf(".kubernetes.pod_namespace == %q", ns)
+// namespaceRoutes returns a route condition per namespace. An event is sent to
+// every consumer of its namespace route, which preserves the fan-out semantics
+// of the original per-pipeline sources.
+func namespaceRoutes(namespaces []string) map[string]string {
+	routes := make(map[string]string, len(namespaces))
+	for _, ns := range namespaces {
+		routes[ns] = fmt.Sprintf(".kubernetes.pod_namespace == %q", ns)
 	}
 	return routes
 }
@@ -173,6 +189,20 @@ func singleNamespaceOf(src *Source) (string, bool) {
 		return "", false
 	}
 	return ns, true
+}
+
+func sortedNamespacesOf(sources []*Source) []string {
+	seen := make(map[string]bool, len(sources))
+	namespaces := make([]string, 0, len(sources))
+	for _, src := range sources {
+		ns, _ := singleNamespaceOf(src)
+		if !seen[ns] {
+			seen[ns] = true
+			namespaces = append(namespaces, ns)
+		}
+	}
+	sort.Strings(namespaces)
+	return namespaces
 }
 
 // sourceSignature identifies sources which differ only in the watched namespace.

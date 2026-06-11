@@ -18,6 +18,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,12 +69,12 @@ func TestOptimizeSourcesCollapsesIdenticalSources(t *testing.T) {
 	assert.Equal(t, RouteTransformType, router.Type)
 	assert.Equal(t, []string{collapsed.Name}, router.Inputs)
 	routes := router.Options["route"].(map[string]string)
-	assert.Equal(t, `.kubernetes.pod_namespace == "ns-a"`, routes["ns-a-pipe-logs"])
+	assert.Equal(t, `.kubernetes.pod_namespace == "ns-a"`, routes["ns-a"])
 	assert.Len(t, routes, 3)
 
 	// sink inputs are rewritten to the route outputs
-	assert.Equal(t, []string{router.Name + ".ns-a-pipe-logs"}, cfg.Sinks["ns-a-pipe-out"].Inputs)
-	assert.Equal(t, []string{router.Name + ".ns-b-pipe-logs"}, cfg.Sinks["ns-b-pipe-out"].Inputs)
+	assert.Equal(t, []string{router.Name + ".ns-a"}, cfg.Sinks["ns-a-pipe-out"].Inputs)
+	assert.Equal(t, []string{router.Name + ".ns-b"}, cfg.Sinks["ns-b-pipe-out"].Inputs)
 }
 
 func TestOptimizeSourcesDisabledKeepsSources(t *testing.T) {
@@ -153,6 +154,53 @@ func TestOptimizeSourcesDeterministicConfig(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		assert.Equal(t, first, build())
 	}
+}
+
+func TestOptimizeSourcesSharedNamespaceRoute(t *testing.T) {
+	second := testPipeline("ns-a", "second",
+		`{"logs": {"type": "kubernetes_logs"}}`,
+		`{"out": {"type": "blackhole", "inputs": ["logs"]}}`)
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), second, testLogPipeline("ns-b"))
+	require.NoError(t, err)
+
+	// two pipelines of ns-a share one route: conditions per namespace, not per source
+	var router *Transform
+	for _, tr := range cfg.Transforms {
+		router = tr
+	}
+	require.NotNil(t, router)
+	assert.Len(t, router.Options["route"].(map[string]string), 2)
+	assert.Equal(t, []string{router.Name + ".ns-a"}, cfg.Sinks["ns-a-pipe-out"].Inputs)
+	assert.Equal(t, []string{router.Name + ".ns-a"}, cfg.Sinks["ns-a-second-out"].Inputs)
+	collapsed, groups := cfg.OptimizationSummary()
+	assert.Equal(t, 3, collapsed)
+	assert.Equal(t, 1, groups)
+}
+
+func TestOptimizeSourcesChunksLargeGroups(t *testing.T) {
+	cfg := newVectorConfig(VectorConfigParams{})
+	for i := 0; i < 2200; i++ {
+		name := fmt.Sprintf("ns-%04d-pipe-logs", i)
+		cfg.Sources[name] = &Source{
+			Name:                        name,
+			Type:                        KubernetesLogsType,
+			ExtraNamespaceLabelSelector: fmt.Sprintf("kubernetes.io/metadata.name=ns-%04d", i),
+		}
+	}
+	optimizeAgentSources(cfg)
+
+	// 2200 namespaces are split into 3 sources of at most maxNamespacesPerSource
+	require.Len(t, cfg.Sources, 3)
+	total := 0
+	for _, src := range cfg.Sources {
+		assert.Contains(t, src.ExtraNamespaceLabelSelector, "kubernetes.io/metadata.name in (")
+		total += strings.Count(src.ExtraNamespaceLabelSelector, "ns-")
+	}
+	assert.Equal(t, 2200, total)
+	collapsed, groups := cfg.OptimizationSummary()
+	assert.Equal(t, 2200, collapsed)
+	assert.Equal(t, 3, groups)
 }
 
 func TestBucketCount(t *testing.T) {

@@ -122,7 +122,9 @@ func collapseSourceGroup(cfg *VectorConfig, gid string, namespaces []string, sou
 			Type:   RemapTransformType,
 			Inputs: []string{collapsed.Name},
 			Options: map[string]interface{}{
-				"source": fmt.Sprintf("%%bucket = parse_int!(slice!(md5(string!(.kubernetes.pod_namespace)), 0, 2), base: 16) %% %d", buckets),
+				// NB: the mod() function, not the % operator: after an expression
+				// VRL parses `%` as the start of a metadata query.
+				"source": fmt.Sprintf("%%bucket = mod(parse_int!(slice!(md5(string!(.kubernetes.pod_namespace)), 0, 2), base: 16), %d)", buckets),
 			},
 		}
 		bucketNamespaces := make(map[int][]string)

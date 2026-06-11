@@ -280,6 +280,23 @@ func (f *Framework) ApplyTestDataWithoutNamespaceReplacement(path string) {
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply test data %s", path)
 }
 
+// ApplyTestDataWithVarsWithoutNamespaceReplacement loads and applies a test manifest
+// with variable substitution and WITHOUT namespace replacement
+func (f *Framework) ApplyTestDataWithVarsWithoutNamespaceReplacement(path string, vars map[string]string) {
+	By(fmt.Sprintf("applying test data with vars without namespace replacement: %s", path))
+
+	content, err := os.ReadFile(filepath.Join(f.TestDataPath, path))
+	Expect(err).NotTo(HaveOccurred(), "Failed to load test data from %s", path)
+
+	yamlContent := string(content)
+	for placeholder, value := range vars {
+		yamlContent = strings.ReplaceAll(yamlContent, placeholder, value)
+	}
+
+	err = f.kubectl.ApplyWithoutNamespaceOverride(yamlContent)
+	Expect(err).NotTo(HaveOccurred(), "Failed to apply test data %s", path)
+}
+
 // DeleteTestData loads and deletes a test manifest from testdata directory
 // It automatically replaces any hardcoded namespace with the framework's namespace
 func (f *Framework) DeleteTestData(path string) {

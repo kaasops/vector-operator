@@ -40,6 +40,9 @@ var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFas
 
 	AfterAll(func() {
 		f.DeleteResource("namespace", "test-config-optimization-extra")
+		for i := 1; i <= 18; i++ {
+			f.DeleteResource("namespace", fmt.Sprintf("test-config-opt-hier-%02d", i))
+		}
 		f.Teardown()
 		f.PrintMetrics()
 	})
@@ -98,6 +101,32 @@ var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFas
 					`kubernetes.io/metadata.name in (`,
 				)
 			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+		})
+
+		It("should use hierarchical routing for large groups", func() {
+			By("creating pipelines in 18 namespaces (over the flat routing threshold)")
+			for i := 1; i <= 18; i++ {
+				f.ApplyTestDataWithVarsWithoutNamespaceReplacement("config-optimization/pipeline-hier-template.yaml",
+					map[string]string{"{{NS}}": fmt.Sprintf("test-config-opt-hier-%02d", i)})
+			}
+			for i := 1; i <= 18; i++ {
+				f.WaitForPipelineValidInNamespace("hier-pipeline", fmt.Sprintf("test-config-opt-hier-%02d", i))
+			}
+
+			By("verifying the bucketed two-level routing is generated and accepted by the agent")
+			Eventually(func() error {
+				return f.VerifyAgentConfigContains("optimized-agent",
+					`"optimizedBucketer-`,
+					`mod(parse_int!`,
+					`-l1`,
+				)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+
+			By("verifying the agent pod runs with the new config")
+			pods, err := f.GetAgentPods("optimized-agent")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods).NotTo(BeEmpty())
+			f.WaitForPodReady(pods[0])
 		})
 
 		It("should keep sources with different settings standalone", func() {

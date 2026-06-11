@@ -124,7 +124,8 @@ func TestOptimizeSourcesHierarchicalRouting(t *testing.T) {
 	}
 	// bucketCount(40) = 8: remap + l1 + at most 8 l2 routers
 	require.NotNil(t, bucketer)
-	assert.Contains(t, bucketer.Options["source"], "% 8")
+	assert.Contains(t, bucketer.Options["source"], "mod(")
+	assert.Contains(t, bucketer.Options["source"], ", 8)")
 	assert.GreaterOrEqual(t, routers, 2)
 
 	// every sink input points to an existing transform output

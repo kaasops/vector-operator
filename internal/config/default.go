@@ -9,6 +9,8 @@ const (
 	// types
 	BlackholeSinkType      = "blackhole"
 	PrometheusExporterType = "prometheus_exporter"
+	RouteTransformType     = "route"
+	RemapTransformType     = "remap"
 
 	// default names
 	DefaultSourceName                = "defaultSource"

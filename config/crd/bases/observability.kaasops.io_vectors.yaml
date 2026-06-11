@@ -2058,6 +2058,20 @@ spec:
                           type: object
                         type: array
                     type: object
+                  configOptimization:
+                    description: Optimizations applied to the generated vector config
+                    properties:
+                      sources:
+                        description: |-
+                          Sources optimization collapses kubernetes_logs sources with identical settings
+                          into a single source per group with namespace-based event routing.
+                          Reduces watch connections to the kube-apiserver and pod metadata caches
+                          from one set per source to one set per group.
+                        properties:
+                          enabled:
+                            type: boolean
+                        type: object
+                    type: object
                   configReloaderImage:
                     type: string
                   configReloaderResources:

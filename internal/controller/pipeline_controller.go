@@ -162,6 +162,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 					InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 					ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
+					OptimizeSources:   vaCtrl.Vector.Spec.Agent.SourcesOptimizationEnabled(),
 				}, pipelineCR)
 				if err != nil {
 					return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)

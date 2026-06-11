@@ -197,6 +197,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 		ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
+		OptimizeSources:   vaCtrl.Vector.Spec.Agent.SourcesOptimizationEnabled(),
 	}, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {

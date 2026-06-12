@@ -43,6 +43,7 @@ type VectorConfigParams struct {
 	UseApiServerCache bool
 	InternalMetrics   bool
 	ExpireMetricsSecs *int
+	OptimizeSources   bool
 }
 
 func newVectorConfig(p VectorConfigParams) *VectorConfig {

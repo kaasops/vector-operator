@@ -280,6 +280,23 @@ func (f *Framework) ApplyTestDataWithoutNamespaceReplacement(path string) {
 	Expect(err).NotTo(HaveOccurred(), "Failed to apply test data %s", path)
 }
 
+// ApplyTestDataWithVarsWithoutNamespaceReplacement loads and applies a test manifest
+// with variable substitution and WITHOUT namespace replacement
+func (f *Framework) ApplyTestDataWithVarsWithoutNamespaceReplacement(path string, vars map[string]string) {
+	By(fmt.Sprintf("applying test data with vars without namespace replacement: %s", path))
+
+	content, err := os.ReadFile(filepath.Join(f.TestDataPath, path))
+	Expect(err).NotTo(HaveOccurred(), "Failed to load test data from %s", path)
+
+	yamlContent := string(content)
+	for placeholder, value := range vars {
+		yamlContent = strings.ReplaceAll(yamlContent, placeholder, value)
+	}
+
+	err = f.kubectl.ApplyWithoutNamespaceOverride(yamlContent)
+	Expect(err).NotTo(HaveOccurred(), "Failed to apply test data %s", path)
+}
+
 // DeleteTestData loads and deletes a test manifest from testdata directory
 // It automatically replaces any hardcoded namespace with the framework's namespace
 func (f *Framework) DeleteTestData(path string) {
@@ -656,6 +673,56 @@ func (f *Framework) VerifyAgentHasClusterPipeline(vectorName, pipelineName strin
 		return fmt.Errorf("cluster pipeline %s not found in agent config (expected prefix: %s)", pipelineName, expectedPrefix)
 	}
 
+	return nil
+}
+
+// getAgentConfig returns the decoded agent config from the agent Secret
+func (f *Framework) getAgentConfig(vectorName string) (string, error) {
+	secretName := fmt.Sprintf("%s-agent", vectorName)
+
+	encodedConfig, err := f.kubectl.GetWithJsonPath("secret", secretName, ".data['agent\\.json']")
+	if err != nil {
+		return "", fmt.Errorf("failed to get agent secret %s: %w", secretName, err)
+	}
+	if encodedConfig == "" {
+		return "", fmt.Errorf("agent secret %s has no agent.json data", secretName)
+	}
+	maxEncodedSize := MaxConfigSize * 4 / 3
+	if len(encodedConfig) > maxEncodedSize {
+		return "", fmt.Errorf("config too large: %d bytes (max %d bytes)", len(encodedConfig), maxEncodedSize)
+	}
+	configBytes, err := base64.StdEncoding.DecodeString(encodedConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 config from secret %s: %w", secretName, err)
+	}
+	return string(configBytes), nil
+}
+
+// VerifyAgentConfigContains verifies that the agent Secret config contains all given substrings
+func (f *Framework) VerifyAgentConfigContains(vectorName string, substrings ...string) error {
+	config, err := f.getAgentConfig(vectorName)
+	if err != nil {
+		return err
+	}
+	for _, substring := range substrings {
+		if !strings.Contains(config, substring) {
+			return fmt.Errorf("agent config does not contain %q", substring)
+		}
+	}
+	return nil
+}
+
+// VerifyAgentConfigNotContains verifies that the agent Secret config contains none of the given substrings
+func (f *Framework) VerifyAgentConfigNotContains(vectorName string, substrings ...string) error {
+	config, err := f.getAgentConfig(vectorName)
+	if err != nil {
+		return err
+	}
+	for _, substring := range substrings {
+		if strings.Contains(config, substring) {
+			return fmt.Errorf("agent config unexpectedly contains %q", substring)
+		}
+	}
 	return nil
 }
 

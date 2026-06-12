@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{NS}}
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: hier-pipeline
+  namespace: {{NS}}
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    console:
+      type: console
+      inputs:
+        - logs
+      encoding:
+        codec: json

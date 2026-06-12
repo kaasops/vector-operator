@@ -83,6 +83,10 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 		}
 	}
 
+	if params.OptimizeSources {
+		optimizeAgentSources(cfg)
+	}
+
 	// Add exporter pipeline
 	if params.InternalMetrics && !isExporterSinkExists(cfg.Sinks) {
 		cfg.Sources[DefaultInternalMetricsSourceName] = defaultInternalMetricsSource

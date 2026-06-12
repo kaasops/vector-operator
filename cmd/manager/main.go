@@ -82,6 +82,7 @@ func main() {
 	var configCheckTimeout time.Duration
 	var enableReconciliationInvalidPipelines bool
 	var reconciliationRetryDelay time.Duration
+	var enableConfigOptimization bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -99,6 +100,7 @@ func main() {
 	flag.BoolVar(&enableReconciliationInvalidPipelines, "enable-reconciliation-invalid-pipelines", false,
 		"Enable the reconciliation process for pipelines with invalid configurations")
 	flag.DurationVar(&reconciliationRetryDelay, "reconciliation-retry-delay", 30*time.Second, "Specify the delay before retrying the reconciliation process for pipelines")
+	flag.BoolVar(&enableConfigOptimization, "enable-config-optimization", false, "Collapse kubernetes_logs sources with identical settings into one source per group in generated agent configs. Vector CRs can opt out with the vector-operator.kaasops.io/config-optimization=disabled annotation")
 
 	opts := zap.Options{
 		Development: true,
@@ -201,12 +203,13 @@ func main() {
 	defer close(vectorAgentEventCh)
 
 	if err = (&controller.VectorReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		Clientset:          clientset,
-		ConfigCheckTimeout: configCheckTimeout,
-		DiscoveryClient:    dc,
-		EventChan:          vectorAgentEventCh,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		Clientset:                clientset,
+		ConfigCheckTimeout:       configCheckTimeout,
+		EnableConfigOptimization: enableConfigOptimization,
+		DiscoveryClient:          dc,
+		EventChan:                vectorAgentEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
@@ -224,6 +227,7 @@ func main() {
 		Scheme:                                   mgr.GetScheme(),
 		Clientset:                                clientset,
 		ConfigCheckTimeout:                       configCheckTimeout,
+		EnableConfigOptimization:                 enableConfigOptimization,
 		VectorAgentEventCh:                       vectorAgentsPipelineEventCh,
 		VectorAggregatorsEventCh:                 vectorAggregatorsPipelineEventCh,
 		ClusterVectorAggregatorsEventCh:          clusterVectorAggregatorsPipelineEventCh,

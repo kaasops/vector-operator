@@ -1,0 +1,16 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: extra-ns-pipeline
+  namespace: test-config-optimization-extra
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    console:
+      type: console
+      inputs:
+        - logs
+      encoding:
+        codec: json

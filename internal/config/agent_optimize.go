@@ -61,12 +61,27 @@ func optimizeAgentSources(cfg *VectorConfig) {
 		groups[sig] = append(groups[sig], src)
 	}
 
-	for sig, sources := range groups {
+	signatures := make([]string, 0, len(groups))
+	for sig := range groups {
+		signatures = append(signatures, sig)
+	}
+	sort.Strings(signatures)
+
+	for _, sig := range signatures {
+		sources := groups[sig]
 		if len(sources) < 2 {
 			continue
 		}
+		sort.Slice(sources, func(i, j int) bool { return sources[i].Name < sources[j].Name })
 		namespaces := sortedNamespacesOf(sources)
 		gid := fmt.Sprintf("%08x", hash.Get([]byte(sig)))
+		// hash collision of two group signatures: extremely unlikely, but a silent
+		// component-name clash would corrupt the config; chunked groups occupy
+		// "-<chunk>" suffixed names, so the first chunk is checked too
+		for cfg.Sources[fmt.Sprintf("%s-%s", optimizedSourcePrefix, gid)] != nil ||
+			cfg.Sources[fmt.Sprintf("%s-%s-0", optimizedSourcePrefix, gid)] != nil {
+			gid += "x"
+		}
 		chunks := (len(namespaces) + maxNamespacesPerSource - 1) / maxNamespacesPerSource
 		if chunks == 1 {
 			collapseSourceGroup(cfg, gid, namespaces, sources)
@@ -165,10 +180,10 @@ func collapseSourceGroup(cfg *VectorConfig, gid string, namespaces []string, sou
 	cfg.Sources[collapsed.Name] = &collapsed
 
 	for _, t := range cfg.Transforms {
-		rewriteInputs(t.Inputs, routeOutput)
+		t.Inputs = rewriteInputs(t.Inputs, routeOutput)
 	}
 	for _, s := range cfg.Sinks {
-		rewriteInputs(s.Inputs, routeOutput)
+		s.Inputs = rewriteInputs(s.Inputs, routeOutput)
 	}
 }
 
@@ -238,10 +253,21 @@ func nsBucket(ns string, buckets int) int {
 	return int(md5.Sum([]byte(ns))[0]) % buckets
 }
 
-func rewriteInputs(inputs []string, routeOutput map[string]string) {
-	for i, input := range inputs {
+// rewriteInputs replaces inputs referring to collapsed sources with the route
+// outputs and dedupes the result: several identical sources of one pipeline map
+// to the same route output (legacy delivered such events once per source; the
+// collapsed config delivers them once).
+func rewriteInputs(inputs []string, routeOutput map[string]string) []string {
+	seen := make(map[string]bool, len(inputs))
+	result := inputs[:0]
+	for _, input := range inputs {
 		if out, ok := routeOutput[input]; ok {
-			inputs[i] = out
+			input = out
+		}
+		if !seen[input] {
+			seen[input] = true
+			result = append(result, input)
 		}
 	}
+	return result
 }

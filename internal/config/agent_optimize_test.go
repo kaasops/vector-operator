@@ -204,6 +204,25 @@ func TestOptimizeSourcesChunksLargeGroups(t *testing.T) {
 	assert.Equal(t, 3, groups)
 }
 
+func TestOptimizeSourcesDedupesIdenticalSourcesOfOnePipeline(t *testing.T) {
+	// degenerate but legal: one pipeline with two identical kubernetes_logs sources;
+	// legacy reads the files twice, the collapsed config delivers events once
+	twin := testPipeline("ns-a", "twin",
+		`{"logs1": {"type": "kubernetes_logs"}, "logs2": {"type": "kubernetes_logs"}}`,
+		`{"out": {"type": "blackhole", "inputs": ["logs1", "logs2"]}}`)
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true}, twin, testLogPipeline("ns-b"))
+	require.NoError(t, err)
+
+	require.Len(t, cfg.Sources, 1)
+	var router *Transform
+	for _, tr := range cfg.Transforms {
+		router = tr
+	}
+	require.NotNil(t, router)
+	// the sink gets the shared ns route exactly once, not twice
+	assert.Equal(t, []string{router.Name + ".ns-a"}, cfg.Sinks["ns-a-twin-out"].Inputs)
+}
+
 func TestBucketCount(t *testing.T) {
 	assert.Equal(t, 1, bucketCount(1))
 	assert.Equal(t, 4, bucketCount(17))

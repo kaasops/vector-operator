@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -25,7 +26,23 @@ import (
 
 	"github.com/kaasops/vector-operator/test/e2e/framework"
 	"github.com/kaasops/vector-operator/test/e2e/framework/config"
+	"github.com/kaasops/vector-operator/test/utils"
 )
+
+// setConfigOptimization toggles the --enable-config-optimization operator flag
+// by patching the deployment args and waiting for the rollout.
+func setConfigOptimization(enable bool) {
+	patch := `[{"op":"add","path":"/spec/template/spec/containers/0/args","value":["--enable-config-optimization"]}]`
+	if !enable {
+		patch = `[{"op":"add","path":"/spec/template/spec/containers/0/args","value":[]}]`
+	}
+	cmd := exec.Command("kubectl", "-n", operatorNamespace, "patch", "deployment", "vector-operator", "--type=json", "-p", patch)
+	_, err := utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred())
+	cmd = exec.Command("kubectl", "-n", operatorNamespace, "rollout", "status", "deployment/vector-operator", "--timeout=120s")
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred())
+}
 
 // Config Optimization tests verify that with spec.agent.configOptimization.sources
 // enabled the operator collapses kubernetes_logs sources with identical settings
@@ -36,9 +53,11 @@ var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFas
 
 	BeforeAll(func() {
 		f.Setup()
+		setConfigOptimization(true)
 	})
 
 	AfterAll(func() {
+		setConfigOptimization(false)
 		f.DeleteResource("namespace", "test-config-optimization-extra")
 		for i := 1; i <= 18; i++ {
 			f.DeleteResource("namespace", fmt.Sprintf("test-config-opt-hier-%02d", i))
@@ -127,6 +146,28 @@ var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFas
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods).NotTo(BeEmpty())
 			f.WaitForPodReady(pods[0])
+		})
+
+		It("should opt out via the Vector CR annotation", func() {
+			By("annotating the Vector CR with config-optimization=disabled")
+			cmd := exec.Command("kubectl", "-n", f.Namespace(), "annotate", "vector", "optimized-agent",
+				"vector-operator.kaasops.io/config-optimization=disabled", "--overwrite")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the config returns to per-pipeline sources")
+			Eventually(func() error {
+				return f.VerifyAgentConfigNotContains("optimized-agent", `"optimizedSource-`)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+
+			By("removing the annotation restores the optimization")
+			cmd = exec.Command("kubectl", "-n", f.Namespace(), "annotate", "vector", "optimized-agent",
+				"vector-operator.kaasops.io/config-optimization-")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				return f.VerifyAgentConfigContains("optimized-agent", `"optimizedSource-`)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
 		})
 
 		It("should keep sources with different settings standalone", func() {

@@ -39,28 +39,6 @@ type VectorStatus struct {
 // VectorAgent is the Schema for the Vector Agent
 type VectorAgent struct {
 	VectorCommon `json:",inline"`
-	// Optimizations applied to the generated vector config
-	// +optional
-	ConfigOptimization *ConfigOptimization `json:"configOptimization,omitempty"`
-}
-
-// ConfigOptimization is the Schema for optimizations of the generated vector config
-type ConfigOptimization struct {
-	// Sources optimization collapses kubernetes_logs sources with identical settings
-	// into a single source per group with namespace-based event routing.
-	// Reduces watch connections to the kube-apiserver and pod metadata caches
-	// from one set per source to one set per group.
-	// +optional
-	Sources *SourcesOptimization `json:"sources,omitempty"`
-}
-
-// SourcesOptimization is the Schema for the sources optimization
-type SourcesOptimization struct {
-	Enabled bool `json:"enabled,omitempty"`
-}
-
-func (a *VectorAgent) SourcesOptimizationEnabled() bool {
-	return a != nil && a.ConfigOptimization != nil && a.ConfigOptimization.Sources != nil && a.ConfigOptimization.Sources.Enabled
 }
 
 //+kubebuilder:object:root=true

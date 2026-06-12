@@ -5,6 +5,3 @@ metadata:
 spec:
   agent:
     image: timberio/vector:0.40.0-alpine
-    configOptimization:
-      sources:
-        enabled: true

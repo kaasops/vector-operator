@@ -2,19 +2,26 @@
 
 With many namespaced VectorPipelines the generated agent config contains one `kubernetes_logs` source per pipeline source. Inside vector every `kubernetes_logs` source runs its own kube-apiserver clients: three watch streams (Pods, Namespaces, Nodes) and its own pod metadata cache, plus a separate log file scanner. With N pipelines every agent pod keeps 3×N watch connections and N copies of the node's pod metadata. On large clusters this dominates kube-apiserver traffic and agent memory.
 
-Sources optimization collapses such sources into one:
+Sources optimization collapses such sources into one. It is a controller-level
+feature flag (off by default):
 
 ```yaml
-apiVersion: observability.kaasops.io/v1alpha1
-kind: Vector
-metadata:
-  name: vector
-spec:
-  agent:
-    configOptimization:
-      sources:
-        enabled: true
+# helm values
+args:
+  - "-enable-config-optimization"
 ```
+
+A particular Vector CR can be opted out (e.g. for a staged rollout or an agent
+image too old to compile the generated routing):
+
+```yaml
+metadata:
+  annotations:
+    vector-operator.kaasops.io/config-optimization: disabled
+```
+
+The flag is expected to become the default behavior in a future release and
+the gate to be removed eventually.
 
 ## What it does
 

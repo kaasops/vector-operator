@@ -55,6 +55,7 @@ type PipelineReconciler struct {
 	ClusterVectorAggregatorsEventCh          chan event.GenericEvent
 	EnableReconciliationInvalidPipelines     bool
 	ReconciliationInvalidPipelinesRetryDelay time.Duration
+	EnableConfigOptimization                 bool
 }
 
 var (
@@ -162,7 +163,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 					InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 					ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
-					OptimizeSources:   vaCtrl.Vector.Spec.Agent.SourcesOptimizationEnabled(),
+					OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
 				}, pipelineCR)
 				if err != nil {
 					return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)

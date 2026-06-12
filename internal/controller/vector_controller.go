@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/common"
 )
 
 // VectorReconciler reconciles a Vector object
@@ -57,10 +58,18 @@ type VectorReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset          *kubernetes.Clientset
-	ConfigCheckTimeout time.Duration
-	DiscoveryClient    *discovery.DiscoveryClient
-	EventChan          chan event.GenericEvent
+	Clientset                *kubernetes.Clientset
+	ConfigCheckTimeout       time.Duration
+	DiscoveryClient          *discovery.DiscoveryClient
+	EventChan                chan event.GenericEvent
+	EnableConfigOptimization bool
+}
+
+// optimizeSources reports whether the agent config of the given Vector should be
+// built with the sources optimization: the controller-level feature flag is on and
+// the Vector CR is not opted out with the config-optimization=disabled annotation.
+func optimizeSources(enabled bool, v *v1alpha1.Vector) bool {
+	return enabled && v.Annotations[common.AnnotationConfigOptimization] != "disabled"
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete
@@ -110,7 +119,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Vector{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.Vector{}, builder.WithPredicates(predicate.Or(predicate.GenerationChangedPredicate{}, predicate.AnnotationChangedPredicate{}))).
 		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.Service{}).
@@ -197,7 +206,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 		ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
-		OptimizeSources:   vaCtrl.Vector.Spec.Agent.SourcesOptimizationEnabled(),
+		OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
 	}, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {

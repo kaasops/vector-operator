@@ -73,6 +73,7 @@ args:
 #  - "-enable-reconciliation-invalid-pipelines=true" # Enable the reconciliation process for pipelines with invalid configurations
 #  - "-reconciliation-retry-delay=120s" # Specify the delay before retrying the reconciliation process for pipelines
 #  - "-enable-config-optimization" # Collapse kubernetes_logs sources with identical settings into one source per group (opt out per Vector CR with the vector-operator.kaasops.io/config-optimization=disabled annotation)
+#  - "-enable-checkpoint-migration" # Migrate vector file checkpoints when the config optimization renames sources: mode switches roll the agent DaemonSet and a checkpoint-merger init container consolidates checkpoints, avoiding a one-time re-read of retained logs
 
 vector:
   enable: false

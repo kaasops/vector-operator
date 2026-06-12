@@ -25,11 +25,10 @@ import (
 	"github.com/kaasops/vector-operator/internal/utils/compression"
 )
 
-func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Secret, error) {
+func (ctrl *Controller) createVectorAgentConfig(ctx context.Context, name string, data []byte) (*corev1.Secret, error) {
 	log := log.FromContext(ctx).WithValues("vector-agent-rbac", ctrl.Vector.Name)
 	labels := ctrl.labelsForVectorAgent()
 	annotations := ctrl.annotationsForVectorAgent()
-	var data = ctrl.ByteConfig
 
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
 		data = compression.Compress(data, log)
@@ -37,8 +36,10 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context) (*corev1.Se
 	config := map[string][]byte{
 		"agent.json": data,
 	}
+	meta := ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace)
+	meta.Name = name
 	secret := &corev1.Secret{
-		ObjectMeta: ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace),
+		ObjectMeta: meta,
 		Data:       config,
 	}
 

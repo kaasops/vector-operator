@@ -44,10 +44,10 @@ func setConfigOptimization(enable bool) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-// Config Optimization tests verify that with spec.agent.configOptimization.sources
-// enabled the operator collapses kubernetes_logs sources with identical settings
-// into a single source with namespace-based routing, and the resulting config
-// passes the vector config check.
+// Config Optimization tests verify that with --enable-config-optimization the
+// operator collapses kubernetes_logs sources with identical settings into a
+// single source with namespace-based routing, and the resulting config passes
+// the vector config check.
 var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFast), Ordered, func() {
 	f := framework.NewUniqueFramework("test-config-optimization")
 

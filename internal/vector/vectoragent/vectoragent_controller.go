@@ -117,12 +117,22 @@ func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
 
 	log.Info("start Reconcile Vector Agent Secret")
 
-	vectorAgentSecret, err := ctrl.createVectorAgentConfig(ctx)
+	vectorAgentSecret, err := ctrl.createVectorAgentConfig(ctx, ctrl.getConfigSecretName(), ctrl.ByteConfig)
 	if err != nil {
 		return err
 	}
+	if err := k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client); err != nil {
+		return err
+	}
 
-	return k8s.CreateOrUpdateResource(ctx, vectorAgentSecret, ctrl.Client)
+	if ctrl.CheckpointMigration && ctrl.AltByteConfig != nil {
+		altSecret, err := ctrl.createVectorAgentConfig(ctx, ctrl.getAltConfigSecretName(), ctrl.AltByteConfig)
+		if err != nil {
+			return err
+		}
+		return k8s.CreateOrUpdateResource(ctx, altSecret, ctrl.Client)
+	}
+	return nil
 }
 
 func (ctrl *Controller) ensureVectorAgentDaemonSet(ctx context.Context) error {
@@ -185,6 +195,25 @@ func (ctrl *Controller) objectMetaVectorAgent(labels map[string]string, annotati
 func (ctrl *Controller) getNameVectorAgent() string {
 	name := ctrl.Vector.Name + "-agent"
 	return name
+}
+
+// getConfigSecretName returns the name of the config Secret the DaemonSet
+// mounts. With checkpoint migration enabled the name is bound to the
+// optimization mode: switching the mode changes the pod template (a rolling
+// restart) instead of a live config reload, so the checkpoint-merger init
+// container runs on every node exactly when it picks up the renamed sources.
+func (ctrl *Controller) getConfigSecretName() string {
+	if ctrl.CheckpointMigration && ctrl.OptimizeSources {
+		return ctrl.getNameVectorAgent() + "-opt"
+	}
+	return ctrl.getNameVectorAgent()
+}
+
+func (ctrl *Controller) getAltConfigSecretName() string {
+	if ctrl.CheckpointMigration && ctrl.OptimizeSources {
+		return ctrl.getNameVectorAgent()
+	}
+	return ctrl.getNameVectorAgent() + "-opt"
 }
 
 func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {

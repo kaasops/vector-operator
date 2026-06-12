@@ -42,5 +42,21 @@ Measured on a 1000-pipeline single-node cluster (vector 0.48): watch requests to
 
 - Namespace selection relies on the `kubernetes.io/metadata.name` label, which is set automatically on every namespace since Kubernetes 1.21.
 - The optimized source names are derived from a hash of the group settings and do not depend on the namespace list: pipelines can be added and removed without renaming the source, so vector file checkpoints survive such changes.
-- **Enabling (or disabling) the optimization on a running cluster renames the sources, so vector re-reads the log files currently retained on the nodes: expect a one-time redelivery of recent logs.** Plan the rollout accordingly (e.g. enable it together with deduplication on the storage side, or accept the duplicates).
+- **Enabling (or disabling) the optimization on a running cluster renames the sources, so vector re-reads the log files currently retained on the nodes: expect a one-time redelivery of recent logs** — unless checkpoint migration is enabled, see below.
 - Vector logs a warning about unconsumed `<router>._unmatched` outputs of the generated route transforms; it is harmless — events not matching any pipeline namespace are dropped there.
+
+## Checkpoint migration
+
+Vector keys file checkpoints by a fingerprint of the file content, not by the source name, so the positions saved under the old source names stay valid after the rename and can be carried over. `--enable-checkpoint-migration` does that:
+
+```yaml
+# helm values
+args:
+  - "-enable-config-optimization"
+  - "-enable-checkpoint-migration"
+```
+
+- The agent config Secret name is bound to the optimization mode (`<name>-agent` / `<name>-agent-opt`) and both Secrets are kept up to date. Switching the mode (the flag or the per-CR annotation) changes the pod template and **rolls the DaemonSet** instead of a live config reload: pods not yet rolled keep their previous config, so every node migrates exactly at its own restart.
+- A `checkpoint-merger` init container (image `kaasops/checkpoint-merger`, override with `--checkpoint-merger-image`) consolidates the checkpoints into the directories of the new source names before vector starts. The operation is idempotent, fail-open (a problem is logged and the agent starts anyway — worst case is the one-time redelivery that would have happened without migration) and only understands the stable `version: "1"` checkpoint format (unchanged in vector since v0.20).
+- Rolling back to the legacy config restores the saved per-source positions; only files that appeared while the optimization was active are re-read.
+- A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want).

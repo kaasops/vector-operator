@@ -1,6 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 IMG_COLLECTOR ?= collector:latest
+IMG_MERGER ?= checkpoint-merger:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 
@@ -152,6 +153,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/manager/main.go
 	go build -o bin/event_collector cmd/event_collector/main.go
+	go build -o bin/checkpoint_merger cmd/checkpoint_merger/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -164,11 +166,13 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
 	$(CONTAINER_TOOL) build -t ${IMG_COLLECTOR} -f event_collector.Dockerfile .
+	$(CONTAINER_TOOL) build -t ${IMG_MERGER} -f checkpoint_merger.Dockerfile .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
 	$(CONTAINER_TOOL) push ${IMG_COLLECTOR}
+	$(CONTAINER_TOOL) push ${IMG_MERGER}
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:

@@ -35,6 +35,7 @@ import (
 const (
 	operatorNamespace = "vector-operator-system"
 	operatorImage     = "example.com/vector-operator:v0.0.1"
+	mergerImage       = "example.com/checkpoint-merger:v0.0.1"
 )
 
 // artifactCollector manages artifact collection for failed tests
@@ -48,11 +49,18 @@ var readinessTestNamespace string
 var _ = SynchronizedBeforeSuite(func() []byte {
 	// This function runs ONLY on process #1
 	By("building and loading operator image")
-	cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", operatorImage))
+	cmd := exec.Command("make", "docker-build",
+		fmt.Sprintf("IMG=%s", operatorImage),
+		fmt.Sprintf("IMG_MERGER=%s", mergerImage),
+	)
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred())
 
 	cmd = exec.Command("kind", "load", "docker-image", operatorImage, "--name", "kind")
+	_, err = utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred())
+
+	cmd = exec.Command("kind", "load", "docker-image", mergerImage, "--name", "kind")
 	_, err = utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred())
 

@@ -37,13 +37,44 @@ var (
 )
 
 type VectorConfigParams struct {
-	AggregatorName    string
-	ApiEnabled        bool
-	PlaygroundEnabled bool
-	UseApiServerCache bool
-	InternalMetrics   bool
-	ExpireMetricsSecs *int
-	OptimizeSources   bool
+	AggregatorName     string
+	ApiEnabled         bool
+	PlaygroundEnabled  bool
+	UseApiServerCache  bool
+	InternalMetrics    bool
+	ExpireMetricsSecs  *int
+	OptimizeSources    bool
+	ComponentTemplates *ComponentTemplatesConfig
+}
+
+// AgentConfigParamsFromVector builds agent config params from a Vector CR.
+func AgentConfigParamsFromVector(vector *vectorv1alpha1.Vector) VectorConfigParams {
+	params := VectorConfigParams{
+		UseApiServerCache: vector.Spec.UseApiServerCache,
+	}
+	if vector.Spec.Agent == nil {
+		return params
+	}
+
+	agent := vector.Spec.Agent
+	params.ApiEnabled = agent.Api.Enabled
+	params.PlaygroundEnabled = agent.Api.Playground
+	params.InternalMetrics = agent.InternalMetrics
+	params.ExpireMetricsSecs = agent.ExpireMetricsSecs
+	params.ComponentTemplates = ComponentTemplatesFromCR(agent.ComponentTemplates)
+	return params
+}
+
+// AggregatorConfigParamsFromCommon builds aggregator config params from VectorCommon.
+func AggregatorConfigParamsFromCommon(aggregatorName string, common *vectorv1alpha1.VectorCommon) VectorConfigParams {
+	return VectorConfigParams{
+		AggregatorName:     aggregatorName,
+		ApiEnabled:         common.Api.Enabled,
+		PlaygroundEnabled:  common.Api.Playground,
+		InternalMetrics:    common.InternalMetrics,
+		ExpireMetricsSecs:  common.ExpireMetricsSecs,
+		ComponentTemplates: ComponentTemplatesFromCR(common.ComponentTemplates),
+	}
 }
 
 func newVectorConfig(p VectorConfigParams) *VectorConfig {

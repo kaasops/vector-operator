@@ -200,14 +200,9 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 
 	// Get Config in Json ([]byte)
-	cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
-		ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
-		PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
-		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
-		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
-		ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
-		OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
-	}, pipelines...)
+	params := config.AgentConfigParamsFromVector(vaCtrl.Vector)
+	params.OptimizeSources = optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector)
+	cfg, byteConfig, err := config.BuildAgentConfig(params, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
 			return ctrl.Result{}, err

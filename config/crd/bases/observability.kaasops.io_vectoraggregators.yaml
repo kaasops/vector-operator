@@ -988,6 +988,27 @@ spec:
                   playground:
                     type: boolean
                 type: object
+              componentTemplates:
+                description: ComponentTemplates are named Go templates used to render
+                  pipeline components.
+                properties:
+                  sinks:
+                    additionalProperties:
+                      type: string
+                    description: Sinks are template bodies keyed by template name.
+                    type: object
+                  sources:
+                    additionalProperties:
+                      type: string
+                    description: Sources are template bodies keyed by template name.
+                    type: object
+                  transforms:
+                    additionalProperties:
+                      type: string
+                    description: Transforms are template bodies keyed by template
+                      name.
+                    type: object
+                type: object
               compressConfigFile:
                 description: 'Compress config file to fix: metadata.annotations: Too
                   long: must have at most 262144 characters'

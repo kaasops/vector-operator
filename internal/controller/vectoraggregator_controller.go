@@ -193,13 +193,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 		return ctrl.Result{}, err
 	}
 
-	cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-		AggregatorName:    vaCtrl.Name,
-		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
-		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
-		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
-		ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
-	}, pipelines...)
+	cfg, err := config.BuildAggregatorConfig(config.AggregatorConfigParamsFromCommon(vaCtrl.Name, &vaCtrl.Spec.VectorCommon), pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
 			return ctrl.Result{}, err

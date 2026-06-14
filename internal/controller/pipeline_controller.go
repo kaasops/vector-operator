@@ -157,14 +157,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			}
 			eg.Go(func() error {
 				vaCtrl := vectoragent.NewController(vector, r.Client, r.Clientset)
-				cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
-					ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
-					PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
-					UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
-					InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
-					ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
-					OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
-				}, pipelineCR)
+				params := config.AgentConfigParamsFromVector(vaCtrl.Vector)
+				params.OptimizeSources = optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector)
+				cfg, byteConfig, err := config.BuildAgentConfig(params, pipelineCR)
 				if err != nil {
 					return fmt.Errorf("agent %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
 				}
@@ -208,13 +203,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
-					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-						AggregatorName:    vaCtrl.Name,
-						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
-						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
-						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
-						ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
-					}, pipelineCR)
+					cfg, err := config.BuildAggregatorConfig(config.AggregatorConfigParamsFromCommon(vaCtrl.Name, &vaCtrl.Spec.VectorCommon), pipelineCR)
 					if err != nil {
 						return fmt.Errorf("aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
 					}
@@ -261,13 +250,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				}
 				eg.Go(func() error {
 					vaCtrl := aggregator.NewController(vector, r.Client, r.Clientset)
-					cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-						AggregatorName:    vaCtrl.Name,
-						ApiEnabled:        vaCtrl.Spec.Api.Enabled,
-						PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
-						InternalMetrics:   vaCtrl.Spec.InternalMetrics,
-						ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
-					}, pipelineCR)
+					cfg, err := config.BuildAggregatorConfig(config.AggregatorConfigParamsFromCommon(vaCtrl.Name, &vaCtrl.Spec.VectorCommon), pipelineCR)
 					if err != nil {
 						return fmt.Errorf("cluster aggregator %s/%s build config failed: %w: %w", vector.Namespace, vector.Name, ErrBuildConfigFailed, err)
 					}

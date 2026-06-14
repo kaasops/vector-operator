@@ -12,6 +12,12 @@ spec:
       healthcheck: true
     configCheck:
       disabled: true
+    # componentTemplates:
+    #   sinks:
+    #     json-console: |
+    #       type: console
+    #       encoding:
+    #         codec: "{{ .codec }}"
     resources:
       limits:
         cpu: 500m

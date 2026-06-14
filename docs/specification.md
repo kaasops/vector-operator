@@ -10,7 +10,7 @@
 # Vector Spec
 <table>
     <tr>
-      <td rowspan="27">agent</td>
+      <td rowspan="28">agent</td>
       <td>image</td>
       <td>Image for Vector agent. <code>timberio/vector:0.48.0-distroless-libc</code> by default</td>
     </tr>
@@ -117,6 +117,10 @@
     <tr>
         <td>labels</td>
         <td>Additional labels that will be added to Vector pod, service, podmonitor, etc. By default - not set</td>
+    </tr>
+    <tr>
+        <td>componentTemplates</td>
+        <td>Named Go templates for pipeline sources, transforms, and sinks. Pipelines reference them with <code>sourceTemplate</code>, <code>transformTemplate</code>, or <code>sinkTemplate</code> (reference only, no <code>type</code> field). Template params are available as <code>{{ .paramName }}</code>. By default - not set</td>
     </tr>
 </table>
 

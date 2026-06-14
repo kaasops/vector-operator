@@ -40,6 +40,9 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 		if err := UnmarshalJson(pipeline.GetSpec(), p); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
 		}
+		if err := applyComponentTemplates(p, params.ComponentTemplates); err != nil {
+			return nil, fmt.Errorf("failed to expand templates for pipeline %s: %w", pipeline.GetName(), err)
+		}
 		for k, v := range p.Sources {
 			// Validate source
 			if _, ok := pipeline.(*vectorv1alpha1.VectorPipeline); ok {

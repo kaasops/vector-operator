@@ -108,6 +108,9 @@ type VectorCommon struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Control params for ConfigCheck pods
 	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
+	// ComponentTemplates are named Go templates used to render pipeline components.
+	// +optional
+	ComponentTemplates *ComponentTemplates `json:"componentTemplates,omitempty"`
 	// Compress config file to fix: metadata.annotations: Too long: must have at most 262144 characters
 	CompressConfigFile      bool                    `json:"compressConfigFile,omitempty"`
 	ConfigReloaderImage     string                  `json:"configReloaderImage,omitempty"`

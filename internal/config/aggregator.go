@@ -31,6 +31,9 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 		if err := UnmarshalJson(pipeline.GetSpec(), p); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
 		}
+		if err := applyComponentTemplates(p, params.ComponentTemplates); err != nil {
+			return nil, fmt.Errorf("failed to expand templates for pipeline %s: %w", pipeline.GetName(), err)
+		}
 		for k, v := range p.Sources {
 			settings := v
 

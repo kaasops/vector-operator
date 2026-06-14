@@ -115,27 +115,51 @@ func TestSeedsNewSourceWithFullUnion(t *testing.T) {
 	}
 }
 
-func TestAdvancesExistingWithoutAddingForeign(t *testing.T) {
+func TestUnionAdvancesAndAddsIntoExisting(t *testing.T) {
 	dataDir := t.TempDir()
-	// rollback case: legacy dir holds stale positions, optimized dir is ahead
-	writeFile(t, dataDir, "legacy", vectorFormat)
-	writeFile(t, dataDir, "optimizedSource-1", `{"version":"1","checkpoints":[
+	// rollback / re-enable case: target dir pre-exists with stale positions,
+	// another dir is ahead and holds a fingerprint the target lacks. The target
+	// must both advance its own entries and pick up the missing fingerprint,
+	// otherwise the file behind that fingerprint is re-read from the start.
+	writeFile(t, dataDir, "target", vectorFormat)
+	writeFile(t, dataDir, "other", `{"version":"1","checkpoints":[
 	  {"fingerprint":{"first_lines_checksum":11111},"position":999,"modified":"2026-06-12T12:00:00Z"},
 	  {"fingerprint":{"first_lines_checksum":44444},"position":400,"modified":"2026-06-12T12:00:00Z"}]}`)
 
-	if err := Consolidate(dataDir, []string{"legacy"}, testLog()); err != nil {
+	if err := Consolidate(dataDir, []string{"target"}, testLog()); err != nil {
 		t.Fatal(err)
 	}
 
-	got := readState(t, dataDir, "legacy")
+	got := readState(t, dataDir, "target")
 	if got["11111"] != 999 {
 		t.Errorf("position not advanced: got %d, want 999", got["11111"])
 	}
 	if got["22222"] != 200 {
 		t.Errorf("untouched entry changed: got %d, want 200", got["22222"])
 	}
-	if _, ok := got["44444"]; ok {
-		t.Error("foreign fingerprint added to existing checkpoint file")
+	if got["44444"] != 400 {
+		t.Errorf("missing fingerprint not added: got %d, want 400 — this is the re-read bug", got["44444"])
+	}
+}
+
+func TestExistingOptimizedDirGetsNewFingerprints(t *testing.T) {
+	dataDir := t.TempDir()
+	// the bug found on the stand: the optimized source dir survives a previous
+	// run with stale entries; new files (their checkpoints under legacy dirs)
+	// must be seeded into it on re-enable, not ignored.
+	writeFile(t, dataDir, "optimizedSource-abcd", `{"version":"1","checkpoints":[
+	  {"fingerprint":{"first_lines_checksum":99999},"position":10,"modified":"2026-06-10T00:00:00Z"}]}`)
+	writeFile(t, dataDir, "vp-ns-0001-pipeline-logs", vectorFormat)
+
+	if err := Consolidate(dataDir, []string{"optimizedSource-abcd"}, testLog()); err != nil {
+		t.Fatal(err)
+	}
+
+	got := readState(t, dataDir, "optimizedSource-abcd")
+	for fp, want := range map[string]uint64{"11111": 100, "22222": 200, "99999": 10} {
+		if got[fp] != want {
+			t.Errorf("fingerprint %s: got %d, want %d", fp, got[fp], want)
+		}
 	}
 }
 

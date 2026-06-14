@@ -83,12 +83,13 @@ func KubernetesLogsSources(configJSON []byte) ([]string, error) {
 }
 
 // Consolidate merges checkpoints of all source directories under dataDir and
-// materializes the result into the directories of the given sources:
-//   - a source directory without a checkpoint file gets the full merged set
-//     (a renamed source picks up the positions saved under the old names);
-//   - an existing checkpoint file only gets its own entries advanced to the
-//     merged positions, no foreign fingerprints are added (keeps per-source
-//     files small; vector persists everything it loads).
+// materializes the union into the directories of the given sources: each target
+// gets every merged fingerprint at its highest known position (missing ones
+// added, existing ones advanced). A renamed source — including the optimized
+// source on a re-enable, whose directory may survive from a previous run — thus
+// resumes every file at its last position instead of re-reading it. Foreign
+// fingerprints (files this source will not discover) are harmless: vector keeps
+// them until they expire and never acts on a file it does not read.
 //
 // The operation is idempotent and never deletes anything. Directories with an
 // unknown format are skipped both as a merge input and as a target.
@@ -125,36 +126,35 @@ func Consolidate(dataDir string, sources []string, log *slog.Logger) error {
 		dir := filepath.Join(dataDir, src)
 		path := filepath.Join(dir, CheckpointFile)
 		existing, err := readCheckpoints(path)
-		switch {
-		case os.IsNotExist(err):
-			if err := os.MkdirAll(dir, 0750); err != nil {
-				log.Warn("skipping target", "source", src, "error", err)
-				continue
-			}
-			if err := writeCheckpoints(path, mapValues(merged)); err != nil {
-				log.Warn("skipping target", "source", src, "error", err)
-				continue
-			}
-			log.Info("seeded checkpoints for new source", "source", src, "checkpoints", len(merged))
-		case err != nil:
+		if err != nil && !os.IsNotExist(err) {
 			log.Warn("skipping target with unreadable checkpoints", "source", src, "error", err)
-		default:
-			advanced := 0
-			for i, e := range existing {
-				if m, ok := merged[e.fingerprint]; ok && m.position > e.position {
-					existing[i] = m
-					advanced++
-				}
-			}
-			if advanced == 0 {
-				continue
-			}
-			if err := writeCheckpoints(path, existing); err != nil {
-				log.Warn("skipping target", "source", src, "error", err)
-				continue
-			}
-			log.Info("advanced checkpoints", "source", src, "advanced", advanced)
+			continue
 		}
+
+		result := make(map[string]entry, len(existing))
+		for _, e := range existing {
+			result[e.fingerprint] = e
+		}
+		changed := 0
+		for fp, m := range merged {
+			if cur, ok := result[fp]; !ok || m.position > cur.position {
+				result[fp] = m
+				changed++
+			}
+		}
+		if changed == 0 {
+			continue
+		}
+
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			log.Warn("skipping target", "source", src, "error", err)
+			continue
+		}
+		if err := writeCheckpoints(path, mapValues(result)); err != nil {
+			log.Warn("skipping target", "source", src, "error", err)
+			continue
+		}
+		log.Info("consolidated checkpoints", "source", src, "applied", changed, "total", len(result))
 	}
 	return nil
 }

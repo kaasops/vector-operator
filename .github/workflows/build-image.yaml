@@ -48,3 +48,13 @@ jobs:
           push: true
           build-args: VERSION=${{ steps.tag.outputs.TAG }}
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/event-collector:latest
+
+      - name: Build checkpoint-merger image and push to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: checkpoint_merger.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:latest

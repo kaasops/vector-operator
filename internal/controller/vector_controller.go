@@ -257,6 +257,12 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		vaCtrl.CheckpointMigration = true
 		vaCtrl.CheckpointMergerImage = r.CheckpointMergerImage
 		vaCtrl.OptimizeSources = params.OptimizeSources
+		mode := "legacy"
+		if params.OptimizeSources {
+			mode = "optimized"
+		}
+		log.Info("Checkpoint migration enabled; agent config secret bound to optimization mode",
+			"mode", mode, "activeSecret", vaCtrl.ConfigSecretName())
 		// the config of the opposite optimization mode: kept in the second
 		// Secret so pods not yet rolled after a mode switch stay up to date
 		altParams := params

@@ -63,6 +63,22 @@ args:
 - A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want). Enabling both flags in one change gives a single migrated rollout.
 - The first migrated rollout pulls the merger image on each node before that node's agent restarts; with `maxUnavailable=1` this is sequential, so the per-node restart includes the image pull (and, on a chart upgrade, the operator's own new image pull happens first). The image is small (distroless + a small static binary) so the pull is quick, but on large clusters pre-pulling it shortens the window.
 
+### Observability
+
+Check what the operator decided and whether a node migrated:
+
+```sh
+# is optimization active and how much did it collapse? (operator log)
+kubectl -n vector-operator-system logs deploy/vector-operator | grep -iE "optimization|checkpoint migration"
+
+# which config is the agent mounting right now? (-agent = legacy, -agent-opt = optimized)
+kubectl -n <ns> get ds <vector>-agent -o jsonpath='{.spec.template.spec.volumes[?(@.name=="config")].secret.secretName}'
+
+# did the merger run on a node before vector started?
+kubectl -n <ns> logs <agent-pod> -c checkpoint-merger
+#   -> "consolidated checkpoints" source=... applied=<n> total=<m>
+```
+
 ### Limitations
 
 - **Standby config is not config-checked.** The opposite-mode config is written to the standby Secret without a `vector validate` pass; it is validated by the normal reconcile when it becomes active at the switch. Both modes derive from the same validated pipelines, so this is low-risk.

@@ -206,6 +206,13 @@ func (ctrl *Controller) getNameVectorAgent() string {
 	return name
 }
 
+// ConfigSecretName is the exported accessor for the active config Secret name
+// (for logging by the reconciler). Requires CheckpointMigration/OptimizeSources
+// to be set on the Controller.
+func (ctrl *Controller) ConfigSecretName() string {
+	return ctrl.getConfigSecretName()
+}
+
 // getConfigSecretName returns the name of the config Secret the DaemonSet
 // mounts. With checkpoint migration enabled the name is bound to the
 // optimization mode: switching the mode changes the pod template (a rolling

@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/config"
 )
 
@@ -34,6 +35,12 @@ func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
 
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
 		initContainers = append(initContainers, *ctrl.ConfigReloaderInitContainer())
+	}
+
+	// after the config-reloader init container: /etc/vector must already hold
+	// the decompressed config when the merger reads it
+	if ctrl.CheckpointMigration {
+		initContainers = append(initContainers, *ctrl.CheckpointMergerInitContainer())
 	}
 
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
@@ -81,7 +88,7 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 
 	configVolumeSource := corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
-			SecretName: ctrl.getNameVectorAgent(),
+			SecretName: ctrl.getConfigSecretName(),
 		},
 	}
 	if ctrl.Vector.Spec.Agent.CompressConfigFile {
@@ -134,7 +141,7 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 			Name: "app-config-compress",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: ctrl.getNameVectorAgent(),
+					SecretName: ctrl.getConfigSecretName(),
 				},
 			},
 		})
@@ -284,6 +291,38 @@ func (ctrl *Controller) ConfigReloaderInitContainer() *corev1.Container {
 			{
 				Name:      "app-config-compress",
 				MountPath: "/tmp/archive",
+			},
+		},
+	}
+}
+
+// CheckpointMergerInitContainer consolidates vector file checkpoints saved
+// under the previous source names before vector starts with the mounted
+// config (see internal/checkpoint). The data dir is a hostPath written by
+// vector itself, so the container shares the agent security context.
+func (ctrl *Controller) CheckpointMergerInitContainer() *corev1.Container {
+	image := ctrl.CheckpointMergerImage
+	if image == "" {
+		image = "kaasops/checkpoint-merger:" + buildinfo.Version
+	}
+	return &corev1.Container{
+		Name:            "checkpoint-merger",
+		Image:           image,
+		ImagePullPolicy: corev1.PullPolicy(ctrl.Vector.Spec.Agent.ImagePullPolicy),
+		SecurityContext: ctrl.Vector.Spec.Agent.ContainerSecurityContext,
+		Args: []string{
+			"-config=/etc/vector/agent.json",
+			"-data-dir=/vector-data-dir",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/etc/vector",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "data",
+				MountPath: "/vector-data-dir",
 			},
 		},
 	}

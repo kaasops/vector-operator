@@ -83,6 +83,8 @@ func main() {
 	var enableReconciliationInvalidPipelines bool
 	var reconciliationRetryDelay time.Duration
 	var enableConfigOptimization bool
+	var enableCheckpointMigration bool
+	var checkpointMergerImage string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -101,6 +103,8 @@ func main() {
 		"Enable the reconciliation process for pipelines with invalid configurations")
 	flag.DurationVar(&reconciliationRetryDelay, "reconciliation-retry-delay", 30*time.Second, "Specify the delay before retrying the reconciliation process for pipelines")
 	flag.BoolVar(&enableConfigOptimization, "enable-config-optimization", false, "Collapse kubernetes_logs sources with identical settings into one source per group in generated agent configs. Vector CRs can opt out with the vector-operator.kaasops.io/config-optimization=disabled annotation")
+	flag.BoolVar(&enableCheckpointMigration, "enable-checkpoint-migration", false, "Migrate vector file checkpoints when the config optimization renames kubernetes_logs sources: the agent config secret name is bound to the optimization mode (switching it rolls the DaemonSet) and a checkpoint-merger init container consolidates checkpoints before vector starts")
+	flag.StringVar(&checkpointMergerImage, "checkpoint-merger-image", "", "Override the checkpoint-merger init container image (default kaasops/checkpoint-merger:<operator version>)")
 
 	opts := zap.Options{
 		Development: true,
@@ -203,13 +207,15 @@ func main() {
 	defer close(vectorAgentEventCh)
 
 	if err = (&controller.VectorReconciler{
-		Client:                   mgr.GetClient(),
-		Scheme:                   mgr.GetScheme(),
-		Clientset:                clientset,
-		ConfigCheckTimeout:       configCheckTimeout,
-		EnableConfigOptimization: enableConfigOptimization,
-		DiscoveryClient:          dc,
-		EventChan:                vectorAgentEventCh,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		Clientset:                 clientset,
+		ConfigCheckTimeout:        configCheckTimeout,
+		EnableConfigOptimization:  enableConfigOptimization,
+		EnableCheckpointMigration: enableCheckpointMigration,
+		CheckpointMergerImage:     checkpointMergerImage,
+		DiscoveryClient:           dc,
+		EventChan:                 vectorAgentEventCh,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)

@@ -678,8 +678,11 @@ func (f *Framework) VerifyAgentHasClusterPipeline(vectorName, pipelineName strin
 
 // getAgentConfig returns the decoded agent config from the agent Secret
 func (f *Framework) getAgentConfig(vectorName string) (string, error) {
-	secretName := fmt.Sprintf("%s-agent", vectorName)
+	return f.getSecretConfig(fmt.Sprintf("%s-agent", vectorName))
+}
 
+// getSecretConfig returns the decoded agent config from the given Secret
+func (f *Framework) getSecretConfig(secretName string) (string, error) {
 	encodedConfig, err := f.kubectl.GetWithJsonPath("secret", secretName, ".data['agent\\.json']")
 	if err != nil {
 		return "", fmt.Errorf("failed to get agent secret %s: %w", secretName, err)
@@ -721,6 +724,34 @@ func (f *Framework) VerifyAgentConfigNotContains(vectorName string, substrings .
 	for _, substring := range substrings {
 		if strings.Contains(config, substring) {
 			return fmt.Errorf("agent config unexpectedly contains %q", substring)
+		}
+	}
+	return nil
+}
+
+// VerifySecretConfigContains verifies that the given config Secret contains all given substrings
+func (f *Framework) VerifySecretConfigContains(secretName string, substrings ...string) error {
+	config, err := f.getSecretConfig(secretName)
+	if err != nil {
+		return err
+	}
+	for _, substring := range substrings {
+		if !strings.Contains(config, substring) {
+			return fmt.Errorf("config secret %s does not contain %q", secretName, substring)
+		}
+	}
+	return nil
+}
+
+// VerifySecretConfigNotContains verifies that the given config Secret contains none of the given substrings
+func (f *Framework) VerifySecretConfigNotContains(secretName string, substrings ...string) error {
+	config, err := f.getSecretConfig(secretName)
+	if err != nil {
+		return err
+	}
+	for _, substring := range substrings {
+		if strings.Contains(config, substring) {
+			return fmt.Errorf("config secret %s unexpectedly contains %q", secretName, substring)
 		}
 	}
 	return nil

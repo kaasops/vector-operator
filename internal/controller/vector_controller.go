@@ -58,11 +58,13 @@ type VectorReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
-	Clientset                *kubernetes.Clientset
-	ConfigCheckTimeout       time.Duration
-	DiscoveryClient          *discovery.DiscoveryClient
-	EventChan                chan event.GenericEvent
-	EnableConfigOptimization bool
+	Clientset                 *kubernetes.Clientset
+	ConfigCheckTimeout        time.Duration
+	DiscoveryClient           *discovery.DiscoveryClient
+	EventChan                 chan event.GenericEvent
+	EnableConfigOptimization  bool
+	EnableCheckpointMigration bool
+	CheckpointMergerImage     string
 }
 
 // optimizeSources reports whether the agent config of the given Vector should be
@@ -200,14 +202,15 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 
 	// Get Config in Json ([]byte)
-	cfg, byteConfig, err := config.BuildAgentConfig(config.VectorConfigParams{
+	params := config.VectorConfigParams{
 		ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
 		PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
 		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
 		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
 		ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
 		OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
-	}, pipelines...)
+	}
+	cfg, byteConfig, err := config.BuildAgentConfig(params, pipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
 			return ctrl.Result{}, err
@@ -249,6 +252,27 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 
 	vaCtrl.ByteConfig = byteConfig
 	vaCtrl.Config = cfg
+
+	if r.EnableCheckpointMigration {
+		vaCtrl.CheckpointMigration = true
+		vaCtrl.CheckpointMergerImage = r.CheckpointMergerImage
+		vaCtrl.OptimizeSources = params.OptimizeSources
+		mode := "legacy"
+		if params.OptimizeSources {
+			mode = "optimized"
+		}
+		log.Info("Checkpoint migration enabled; agent config secret bound to optimization mode",
+			"mode", mode, "activeSecret", vaCtrl.ConfigSecretName())
+		// the config of the opposite optimization mode: kept in the second
+		// Secret so pods not yet rolled after a mode switch stay up to date
+		altParams := params
+		altParams.OptimizeSources = !params.OptimizeSources
+		if _, altBytes, err := config.BuildAgentConfig(altParams, pipelines...); err != nil {
+			log.Error(err, "Build alternate config failed, checkpoint migration secret not updated")
+		} else {
+			vaCtrl.AltByteConfig = altBytes
+		}
+	}
 
 	// Start Reconcile Vector Agent
 	if err := vaCtrl.EnsureVectorAgent(ctx); err != nil {

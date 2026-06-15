@@ -35,6 +35,18 @@ type Controller struct {
 	Config     *config.VectorConfig
 	// Temp. Wait this issue - https://github.com/kubernetes-sigs/controller-runtime/issues/452
 	ClientSet *kubernetes.Clientset
+
+	// Checkpoint migration (--enable-checkpoint-migration): the config Secret
+	// name is bound to the optimization mode, so switching the mode changes the
+	// pod template and rolls the DaemonSet instead of a live reload, and a
+	// checkpoint-merger init container consolidates file checkpoints saved
+	// under the previous source names before vector starts. AltByteConfig
+	// holds the config of the opposite mode: both Secrets are kept up to date,
+	// so pods not yet rolled keep receiving pipeline updates of their mode.
+	CheckpointMigration   bool
+	CheckpointMergerImage string
+	OptimizeSources       bool
+	AltByteConfig         []byte
 }
 
 func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Clientset) *Controller {

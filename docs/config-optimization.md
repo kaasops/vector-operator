@@ -57,10 +57,9 @@ args:
 ```
 
 - The agent config Secret name is bound to the optimization mode (`<name>-agent` / `<name>-agent-opt`) and both Secrets are kept up to date. Switching the mode (the flag or the per-CR annotation) changes the pod template and **rolls the DaemonSet** instead of a live config reload: pods not yet rolled keep their previous config, so every node migrates exactly at its own restart.
-- A `checkpoint-merger` init container (image `kaasops/checkpoint-merger`, override with `--checkpoint-merger-image`) consolidates the checkpoints into the directories of the new source names before vector starts. The operation is idempotent, fail-open (a problem is logged and the agent starts anyway — worst case is the one-time redelivery that would have happened without migration) and only understands the stable `version: "1"` checkpoint format (unchanged in vector since v0.20).
+- A `checkpoint-merger` init container consolidates the checkpoints into the directories of the new source names before vector starts. The operation is idempotent, fail-open (a problem is logged and the agent starts anyway — worst case is the one-time redelivery that would have happened without migration) and only understands the stable `version: "1"` checkpoint format (unchanged in vector since v0.20). Image defaults to `kaasops/checkpoint-merger:<operator version>` (override with `--checkpoint-merger-image`; air-gapped installs must mirror it).
 - Rolling back to the legacy config restores the saved per-source positions; only files that appeared while the optimization was active are re-read.
-- A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want).
-- Override the init container image with `--checkpoint-merger-image` (default `kaasops/checkpoint-merger:<operator version>`); air-gapped installs must mirror it.
+- A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want). Enabling both flags in one change gives a single migrated rollout.
 
 ### Limitations
 

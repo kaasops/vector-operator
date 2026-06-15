@@ -60,3 +60,11 @@ args:
 - A `checkpoint-merger` init container (image `kaasops/checkpoint-merger`, override with `--checkpoint-merger-image`) consolidates the checkpoints into the directories of the new source names before vector starts. The operation is idempotent, fail-open (a problem is logged and the agent starts anyway — worst case is the one-time redelivery that would have happened without migration) and only understands the stable `version: "1"` checkpoint format (unchanged in vector since v0.20).
 - Rolling back to the legacy config restores the saved per-source positions; only files that appeared while the optimization was active are re-read.
 - A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want).
+- Override the init container image with `--checkpoint-merger-image` (default `kaasops/checkpoint-merger:<operator version>`); air-gapped installs must mirror it.
+
+### Limitations
+
+- **Standby config is not config-checked.** The opposite-mode config is written to the standby Secret without a `vector validate` pass; it is validated by the normal reconcile when it becomes active at the switch. Both modes derive from the same validated pipelines, so this is low-risk.
+- **Checkpoint files grow on rollback.** Consolidation seeds each target source directory with the union of the node's checkpoints. The single optimized source legitimately needs them all; on rollback to legacy each per-namespace source also receives the full set (entries for files it never reads are ignored by vector and eventually expire). Bounded by sources × distinct files on the node — single-digit MB in practice.
+- **`ignore_older_secs` interaction.** A migrated checkpoint keeps its original `modified` time. If you set `ignore_older_secs` on the agent source, a carried-over checkpoint older than that window is dropped by vector and its file is re-read — the pre-migration outcome, no loss. Leave `ignore_older_secs` unset on agent sources if you rely on migration.
+- Functional validation (no re-delivery on switch) is covered by a lab measurement, not by the CI e2e, which asserts the wiring (secret binding, init container, merger run).

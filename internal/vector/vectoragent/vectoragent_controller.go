@@ -132,6 +132,15 @@ func (ctrl *Controller) ensureVectorAgentConfig(ctx context.Context) error {
 		}
 		return k8s.CreateOrUpdateResource(ctx, altSecret, ctrl.Client)
 	}
+
+	// Migration is off: the agent uses the single legacy-named secret. Remove the
+	// standby (-opt) secret a previous migration-enabled run may have left, so the
+	// feature gate is removable without leaking a stale, unmanaged config.
+	if !ctrl.CheckpointMigration {
+		if err := ctrl.deleteAgentConfigSecret(ctx, ctrl.getNameVectorAgent()+"-opt"); err != nil {
+			log.Error(err, "failed to clean up standby agent config secret")
+		}
+	}
 	return nil
 }
 

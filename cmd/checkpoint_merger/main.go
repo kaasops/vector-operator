@@ -41,8 +41,15 @@ func main() {
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	log.Info("build info", "version", buildinfo.Version)
+	run(*dataDir, *configPath, log)
+}
 
-	configJSON, err := os.ReadFile(*configPath)
+// run is fail-open: any problem (missing/unreadable/unparseable config, no
+// sources, consolidation error) is logged and swallowed so the init container
+// never blocks the agent pod. The worst outcome of a skip is a one-time re-read,
+// the pre-migration status quo.
+func run(dataDir, configPath string, log *slog.Logger) {
+	configJSON, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Error("cannot read config, skipping consolidation", "error", err)
 		return
@@ -56,7 +63,7 @@ func main() {
 		log.Info("no kubernetes_logs sources in config, nothing to do")
 		return
 	}
-	if err := checkpoint.Consolidate(*dataDir, sources, log); err != nil {
+	if err := checkpoint.Consolidate(dataDir, sources, log); err != nil {
 		log.Error("consolidation skipped", "error", err)
 	}
 }

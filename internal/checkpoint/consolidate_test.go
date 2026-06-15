@@ -235,6 +235,79 @@ func TestIdempotent(t *testing.T) {
 	}
 }
 
+func TestCorruptSourceDirSkippedOthersConsolidate(t *testing.T) {
+	dataDir := t.TempDir()
+	writeFile(t, dataDir, "corrupt", "}{ not json at all")
+	writeFile(t, dataDir, "good", vectorFormat)
+
+	if err := Consolidate(dataDir, []string{"new"}, testLog()); err != nil {
+		t.Fatal(err)
+	}
+	// the valid dir's checkpoints still seed the target despite the corrupt sibling
+	got := readState(t, dataDir, "new")
+	if got["11111"] != 100 || got["22222"] != 200 {
+		t.Errorf("valid checkpoints not consolidated past corrupt dir: %v", got)
+	}
+}
+
+func TestCorruptTargetDirSkippedNotAborted(t *testing.T) {
+	dataDir := t.TempDir()
+	writeFile(t, dataDir, "good", vectorFormat)
+	writeFile(t, dataDir, "corrupt-target", "garbage")
+	writeFile(t, dataDir, "clean-target", `{"version":"1","checkpoints":[]}`)
+
+	// a corrupt target must not abort the run for other targets
+	if err := Consolidate(dataDir, []string{"corrupt-target", "clean-target"}, testLog()); err != nil {
+		t.Fatal(err)
+	}
+	got := readState(t, dataDir, "clean-target")
+	if got["11111"] != 100 || got["22222"] != 200 {
+		t.Errorf("clean target not seeded when a sibling target was corrupt: %v", got)
+	}
+}
+
+func TestFingerprintVariantsDoNotCollide(t *testing.T) {
+	dataDir := t.TempDir()
+	// distinct vector FileFingerprint variants that share the numeric payload must
+	// be keyed apart (external tag), and a dev_inode array entry must round-trip.
+	writeFile(t, dataDir, "mixed", `{"version":"1","checkpoints":[
+	  {"fingerprint":{"checksum":5},"position":10,"modified":"2026-06-12T10:00:00Z"},
+	  {"fingerprint":{"first_lines_checksum":5},"position":20,"modified":"2026-06-12T10:00:00Z"},
+	  {"fingerprint":{"dev_inode":[1,2]},"position":30,"modified":"2026-06-12T10:00:00Z"}]}`)
+
+	if err := Consolidate(dataDir, []string{"new"}, testLog()); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dataDir, "new", CheckpointFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st struct {
+		Checkpoints []struct {
+			Fingerprint map[string]any `json:"fingerprint"`
+			Position    uint64         `json:"position"`
+		} `json:"checkpoints"`
+	}
+	if err := json.Unmarshal(data, &st); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Checkpoints) != 3 {
+		t.Fatalf("variants collided: got %d entries, want 3", len(st.Checkpoints))
+	}
+	var sawDevInode bool
+	for _, c := range st.Checkpoints {
+		if _, ok := c.Fingerprint["dev_inode"]; ok {
+			sawDevInode = true
+			if c.Position != 30 {
+				t.Errorf("dev_inode position not preserved: %d", c.Position)
+			}
+		}
+	}
+	if !sawDevInode {
+		t.Error("dev_inode variant lost on round-trip")
+	}
+}
+
 func TestEmptyDataDir(t *testing.T) {
 	dataDir := t.TempDir()
 	if err := Consolidate(dataDir, []string{"new"}, testLog()); err != nil {

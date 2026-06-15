@@ -20,6 +20,9 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kaasops/vector-operator/internal/utils/compression"
@@ -44,4 +47,15 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context, name string
 	}
 
 	return secret, nil
+}
+
+// deleteAgentConfigSecret best-effort removes a config Secret by name. Used to
+// clean up the standby (-opt) Secret once checkpoint migration is disabled, so
+// the feature gate leaves nothing behind.
+func (ctrl *Controller) deleteAgentConfigSecret(ctx context.Context, name string) error {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ctrl.Vector.Namespace}}
+	if err := ctrl.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+		return client.IgnoreNotFound(err)
+	}
+	return nil
 }

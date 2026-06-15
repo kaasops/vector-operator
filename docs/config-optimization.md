@@ -61,6 +61,7 @@ args:
 - **Restricted image sets / air-gapped clusters: mirror the merger image before enabling the flag.** It runs as an init container, so if its image cannot be pulled the agent pod is stuck in `Init:ImagePullBackOff` and vector does not start on that node — fail-open does not cover an unpullable image. The blast radius is contained (DaemonSet `maxUnavailable=1`: one node's agent is down and the rollout stalls there; other nodes keep their previous pod). Recover by making the image available, or by turning `--enable-checkpoint-migration` off (the init container is removed and agents restart, falling back to the one-time re-read).
 - Rolling back to the legacy config restores the saved per-source positions; only files that appeared while the optimization was active are re-read.
 - A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want). Enabling both flags in one change gives a single migrated rollout.
+- The first migrated rollout pulls the merger image on each node before that node's agent restarts; with `maxUnavailable=1` this is sequential, so the per-node restart includes the image pull (and, on a chart upgrade, the operator's own new image pull happens first). The image is small (distroless + a small static binary) so the pull is quick, but on large clusters pre-pulling it shortens the window.
 
 ### Limitations
 

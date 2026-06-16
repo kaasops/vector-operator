@@ -58,6 +58,7 @@ type ClusterVectorAggregatorReconciler struct {
 // +kubebuilder:rbac:groups=observability.kaasops.io,resources=clustervectoraggregators,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=observability.kaasops.io,resources=clustervectoraggregators/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=observability.kaasops.io,resources=clustervectoraggregators/finalizers,verbs=update
+// +kubebuilder:rbac:groups=observability.kaasops.io,resources=clustervectoraggregators/scale,verbs=get;update;patch
 
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete

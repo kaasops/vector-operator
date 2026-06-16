@@ -78,8 +78,10 @@ rules:
 - apiGroups:
   - observability.kaasops.io
   resources:
+  - clustervectoraggregators/scale
   - clustervectoraggregators/status
   - clustervectorpipelines/status
+  - vectoraggregators/scale
   - vectoraggregators/status
   - vectorpipelines/status
   - vectors/status

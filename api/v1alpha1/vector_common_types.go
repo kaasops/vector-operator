@@ -163,6 +163,14 @@ type VectorAggregatorCommon struct {
 	EventCollector EventCollector      `json:"eventCollector,omitempty"`
 }
 
+type VectorAggregatorCommonStatus struct {
+	VectorCommonStatus `json:",inline"`
+	// Replicas is the actual number of observed replicas.
+	Replicas int32 `json:"replicas,omitempty"`
+	// Selector is the serialized label selector for HPA to discover pods.
+	Selector string `json:"selector,omitempty"`
+}
+
 type EventCollector struct {
 	Image           string        `json:"image,omitempty"`
 	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`

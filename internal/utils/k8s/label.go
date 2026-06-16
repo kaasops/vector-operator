@@ -16,6 +16,10 @@ limitations under the License.
 
 package k8s
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 const (
 	// The following labels are recommended by kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 
@@ -69,4 +73,11 @@ func MatchLabels(selector map[string]string, labels map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// LabelsAsString transform a set of Kubernetes labels to string
+func LabelsAsString(labels map[string]string) string {
+	return metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchLabels: labels,
+	})
 }

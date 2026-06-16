@@ -29,7 +29,7 @@ type ClusterVectorAggregatorSpec struct {
 
 // ClusterVectorAggregatorStatus defines the observed state of ClusterVectorAggregator
 type ClusterVectorAggregatorStatus struct {
-	VectorCommonStatus `json:",inline"`
+	VectorAggregatorCommonStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true

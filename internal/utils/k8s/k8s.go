@@ -250,6 +250,15 @@ func createOrUpdatePodSrape(ctx context.Context, desired *victoriametricsv1beta1
 
 // Something else:
 
+func GetDeployment(ctx context.Context, namespacedName types.NamespacedName, c client.Client) (*appsv1.Deployment, error) {
+	result := &appsv1.Deployment{}
+	err := c.Get(ctx, namespacedName, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func CreatePod(ctx context.Context, pod *corev1.Pod, c client.Client) error {
 	err := c.Create(ctx, pod)
 	if api_errors.IsAlreadyExists(err) {

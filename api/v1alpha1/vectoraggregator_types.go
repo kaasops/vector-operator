@@ -31,11 +31,12 @@ type VectorAggregatorSpec struct {
 
 // VectorAggregatorStatus defines the observed state of VectorAggregator
 type VectorAggregatorStatus struct {
-	VectorCommonStatus `json:",inline"`
+	VectorAggregatorCommonStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="Valid",type="boolean",JSONPath=".status.configCheckResult"
 

@@ -33,7 +33,7 @@ type Controller struct {
 	APIVersion          string
 	Kind                string
 	Spec                *vectorv1alpha1.VectorAggregatorCommon
-	Status              *vectorv1alpha1.VectorCommonStatus
+	Status              *vectorv1alpha1.VectorAggregatorCommonStatus
 	ConfigBytes         []byte
 	Config              *config.VectorConfig
 	ClientSet           *kubernetes.Clientset
@@ -57,7 +57,7 @@ func NewController(
 		ctrl.Spec = &agg.Spec.VectorAggregatorCommon
 		ctrl.Name = agg.Name
 		ctrl.Namespace = agg.Namespace
-		ctrl.Status = &agg.Status.VectorCommonStatus
+		ctrl.Status = &agg.Status.VectorAggregatorCommonStatus
 		ctrl.APIVersion = agg.APIVersion
 		ctrl.Kind = agg.Kind
 		ctrl.id = types.NamespacedName{Name: agg.Name, Namespace: agg.Namespace}.String()
@@ -66,7 +66,7 @@ func NewController(
 		ctrl.Spec = &agg.Spec.VectorAggregatorCommon
 		ctrl.Name = agg.Name
 		ctrl.Namespace = agg.Spec.ResourceNamespace
-		ctrl.Status = &agg.Status.VectorCommonStatus
+		ctrl.Status = &agg.Status.VectorAggregatorCommonStatus
 		ctrl.APIVersion = agg.APIVersion
 		ctrl.Kind = agg.Kind
 		ctrl.id = types.NamespacedName{Name: agg.Name}.String()
@@ -260,6 +260,18 @@ func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash 
 	ctrl.Status.Reason = nil
 	ctrl.Status.LastAppliedConfigHash = hash
 	ctrl.Status.LastAppliedGlobalConfigHash = globCfgHash
+
+	// Set status for HPA
+	ctrl.Status.Selector = k8s.LabelsAsString(ctrl.matchLabelsForVectorAggregator())
+
+	// Get current replicas from deployment and set replicas to status for HPA
+	current_deploy, err := k8s.GetDeployment(ctx, types.NamespacedName{Name: ctrl.Name, Namespace: ctrl.Namespace}, ctrl.Client)
+	if err == nil {
+		ctrl.Status.Replicas = current_deploy.Status.Replicas
+	} else {
+		ctrl.Status.Replicas = ctrl.Spec.Replicas
+	}
+
 	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
 }
 

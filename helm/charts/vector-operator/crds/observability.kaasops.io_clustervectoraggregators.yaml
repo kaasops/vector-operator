@@ -5050,9 +5050,20 @@ spec:
                 type: boolean
               reason:
                 type: string
+              replicas:
+                description: Replicas is the actual number of observed replicas.
+                format: int32
+                type: integer
+              selector:
+                description: Selector is the serialized label selector for HPA to discover pods.
+                type: string
             type: object
         type: object
     served: true
     storage: true
     subresources:
       status: {}
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas

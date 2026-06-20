@@ -47,11 +47,16 @@ const (
 // identical settings. Per-pipeline event streams are restored with route transforms
 // matching on the pod namespace, so inputs of downstream transforms and sinks are
 // rewritten to the corresponding route output. Sources with any other namespace
-// selector or with unique settings are left as is.
-func optimizeAgentSources(cfg *VectorConfig) {
+// selector, with unique settings, or named in optOut are left as is.
+func optimizeAgentSources(cfg *VectorConfig, optOut map[string]struct{}) {
 	groups := make(map[string][]*Source)
 	for _, src := range cfg.Sources {
 		if src.Type != KubernetesLogsType {
+			continue
+		}
+		// pipelines that opted out via annotation keep their own dedicated source,
+		// preserving backpressure isolation from the rest of the group
+		if _, ok := optOut[src.Name]; ok {
 			continue
 		}
 		if _, ok := singleNamespaceOf(src); !ok {

@@ -72,7 +72,7 @@ args:
 #  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
 #  - "-enable-reconciliation-invalid-pipelines=true" # Enable the reconciliation process for pipelines with invalid configurations
 #  - "-reconciliation-retry-delay=120s" # Specify the delay before retrying the reconciliation process for pipelines
-#  - "-enable-config-optimization" # Collapse kubernetes_logs sources with identical settings into one source per group (opt out per Vector CR with the vector-operator.kaasops.io/config-optimization=disabled annotation)
+#  - "-enable-config-optimization" # Collapse kubernetes_logs sources with identical settings into one source per group (opt out per Vector CR or per (Cluster)VectorPipeline with the vector-operator.kaasops.io/config-optimization=disabled annotation)
 #  - "-enable-checkpoint-migration" # Migrate vector file checkpoints when the config optimization renames sources: mode switches roll the agent DaemonSet and a checkpoint-merger init container consolidates checkpoints, avoiding a one-time re-read of retained logs
 
 vector:
@@ -103,3 +103,22 @@ clustervectorpipeline: {}
 
 openshift:
   enabled: false
+
+# PrometheusRule with two alerts: VectorOptimizedSourceStalled (the collapsed source
+# stalled, i.e. head-of-line blocking) and VectorSinkFailing (names the failing HTTP sink).
+# Requires the Prometheus Operator CRDs AND the agent exposing vector_* metrics: set
+# spec.agent.internalMetrics: true on the Vector CR (off by default) so the agent runs an
+# internal_metrics -> prometheus_exporter pipeline; the operator's agent PodMonitor then
+# scrapes it. Without those metrics these alerts have no data. Disabled by default.
+prometheusRule:
+  enabled: false
+  # -- extra labels for the PrometheusRule, e.g. to match the Prometheus ruleSelector
+  additionalLabels: {}
+  # -- namespace for the PrometheusRule; defaults to the release namespace
+  namespace: ""
+  # -- rate window for the stall alert (also its `for:` duration)
+  window: 10m
+  # -- how far back to confirm the optimized source was flowing. The stall alert is a
+  # -- heuristic: it can false-positive on an idle low-volume agent that flowed within
+  # -- lookback, and is blind for the first `window` after an agent starts.
+  lookback: 1h

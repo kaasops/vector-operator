@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 )
 
@@ -84,6 +85,131 @@ func TestOptimizeSourcesDisabledKeepsSources(t *testing.T) {
 	assert.Len(t, cfg.Sources, 2)
 	assert.Len(t, cfg.Transforms, 0)
 	assert.Equal(t, []string{"ns-a-pipe-logs"}, cfg.Sinks["ns-a-pipe-out"].Inputs)
+}
+
+func withConfigOptAnnotation(p pipeline.Pipeline, value string) pipeline.Pipeline {
+	p.(*vectorv1alpha1.VectorPipeline).Annotations = map[string]string{common.AnnotationConfigOptimization: value}
+	return p
+}
+
+func testLogPipelineOptOut(namespace string) pipeline.Pipeline {
+	return withConfigOptAnnotation(testLogPipeline(namespace), common.AnnotationValueDisabled)
+}
+
+func TestOptimizeSourcesPerPipelineOptOut(t *testing.T) {
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), testLogPipelineOptOut("ns-c"))
+	require.NoError(t, err)
+
+	// ns-a + ns-b collapse; the opted-out pipeline keeps its own dedicated source
+	require.Len(t, cfg.Sources, 2)
+	standalone := cfg.Sources["ns-c-pipe-logs"]
+	require.NotNil(t, standalone)
+	assert.Equal(t, "kubernetes.io/metadata.name=ns-c", standalone.ExtraNamespaceLabelSelector)
+	assert.Equal(t, []string{"ns-c-pipe-logs"}, cfg.Sinks["ns-c-pipe-out"].Inputs)
+
+	// the collapsed source covers only the non-opted-out namespaces
+	var collapsed *Source
+	for name, s := range cfg.Sources {
+		if name != "ns-c-pipe-logs" {
+			collapsed = s
+		}
+	}
+	require.NotNil(t, collapsed)
+	assert.Equal(t, "kubernetes.io/metadata.name in (ns-a,ns-b)", collapsed.ExtraNamespaceLabelSelector)
+}
+
+func TestOptimizeSourcesOptOutOnlyOnDisabledValue(t *testing.T) {
+	// any value other than "disabled" must NOT opt out
+	enabled := withConfigOptAnnotation(testLogPipeline("ns-c"), "enabled")
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), enabled)
+	require.NoError(t, err)
+
+	require.Len(t, cfg.Sources, 1)
+	assert.Nil(t, cfg.Sources["ns-c-pipe-logs"])
+}
+
+func TestOptimizeSourcesOptOutMultipleSources(t *testing.T) {
+	twin := withConfigOptAnnotation(testPipeline("ns-c", "pipe",
+		`{"logs": {"type": "kubernetes_logs"}, "logs2": {"type": "kubernetes_logs"}}`,
+		`{"out": {"type": "blackhole", "inputs": ["logs", "logs2"]}}`), common.AnnotationValueDisabled)
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), twin)
+	require.NoError(t, err)
+
+	// both sources of the opted-out pipeline stay standalone and keep the sink wiring
+	require.NotNil(t, cfg.Sources["ns-c-pipe-logs"])
+	require.NotNil(t, cfg.Sources["ns-c-pipe-logs2"])
+	assert.Equal(t, []string{"ns-c-pipe-logs", "ns-c-pipe-logs2"}, cfg.Sinks["ns-c-pipe-out"].Inputs)
+}
+
+func TestOptimizeSourcesOptOutSharedNamespace(t *testing.T) {
+	// two pipelines in ns-a, one opted out, plus ns-b: documents the double-read of ns-a
+	optedB := withConfigOptAnnotation(testPipeline("ns-a", "second",
+		`{"logs": {"type": "kubernetes_logs"}}`,
+		`{"out": {"type": "blackhole", "inputs": ["logs"]}}`), common.AnnotationValueDisabled)
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), optedB, testLogPipeline("ns-b"))
+	require.NoError(t, err)
+
+	standalone := cfg.Sources["ns-a-second-logs"]
+	require.NotNil(t, standalone)
+	assert.Equal(t, "kubernetes.io/metadata.name=ns-a", standalone.ExtraNamespaceLabelSelector)
+	assert.Equal(t, []string{"ns-a-second-logs"}, cfg.Sinks["ns-a-second-out"].Inputs)
+
+	// the collapsed source still covers ns-a (from the non-opted pipeline), so ns-a is read twice
+	var collapsed *Source
+	for name, s := range cfg.Sources {
+		if name != "ns-a-second-logs" {
+			collapsed = s
+		}
+	}
+	require.NotNil(t, collapsed)
+	assert.Equal(t, "kubernetes.io/metadata.name in (ns-a,ns-b)", collapsed.ExtraNamespaceLabelSelector)
+}
+
+func TestOptimizeSourcesReCollapseAfterOptOutRemoved(t *testing.T) {
+	// opted out -> standalone source
+	opted, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), testLogPipelineOptOut("ns-c"))
+	require.NoError(t, err)
+	require.NotNil(t, opted.Sources["ns-c-pipe-logs"])
+
+	// annotation removed -> collapses back into the shared source
+	re, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), testLogPipeline("ns-c"))
+	require.NoError(t, err)
+	require.Len(t, re.Sources, 1)
+	assert.Nil(t, re.Sources["ns-c-pipe-logs"])
+}
+
+func TestOptimizeSourcesOptOutClusterVectorPipeline(t *testing.T) {
+	cvp := &vectorv1alpha1.ClusterVectorPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "cvp",
+			Annotations: map[string]string{common.AnnotationConfigOptimization: common.AnnotationValueDisabled},
+		},
+		Spec: vectorv1alpha1.VectorPipelineSpec{
+			Sources: &runtime.RawExtension{Raw: []byte(`{"logs": {"type": "kubernetes_logs", "extra_namespace_label_selector": "kubernetes.io/metadata.name=ns-x"}}`)},
+			Sinks:   &runtime.RawExtension{Raw: []byte(`{"out": {"type": "blackhole", "inputs": ["logs"]}}`)},
+		},
+	}
+	cfg, _, err := BuildAgentConfig(VectorConfigParams{OptimizeSources: true},
+		testLogPipeline("ns-a"), testLogPipeline("ns-b"), cvp)
+	require.NoError(t, err)
+
+	// only ns-a + ns-b collapse; the opted-out CVP keeps its own ns-x source
+	collapsed, groups := cfg.OptimizationSummary()
+	assert.Equal(t, 2, collapsed)
+	assert.Equal(t, 1, groups)
+	standalone := false
+	for _, s := range cfg.Sources {
+		if s.ExtraNamespaceLabelSelector == "kubernetes.io/metadata.name=ns-x" {
+			standalone = true
+		}
+	}
+	assert.True(t, standalone)
 }
 
 func TestOptimizeSourcesGroupsBySignature(t *testing.T) {
@@ -189,7 +315,7 @@ func TestOptimizeSourcesChunksLargeGroups(t *testing.T) {
 			ExtraNamespaceLabelSelector: fmt.Sprintf("kubernetes.io/metadata.name=ns-%04d", i),
 		}
 	}
-	optimizeAgentSources(cfg)
+	optimizeAgentSources(cfg, nil)
 
 	// 2200 namespaces are split into 3 sources of at most maxNamespacesPerSource
 	require.Len(t, cfg.Sources, 3)

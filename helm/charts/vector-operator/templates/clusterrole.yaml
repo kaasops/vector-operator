@@ -98,6 +98,8 @@ rules:
   - vectors/finalizers
   - clustervectoraggregators/status
   - vectoraggregators/status
+  - clustervectoraggregators/scale
+  - vectoraggregators/scale
   - vectoraggregators/finalizers
   verbs:
   - get

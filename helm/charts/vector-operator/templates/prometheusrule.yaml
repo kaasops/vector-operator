@@ -1,0 +1,70 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "chart.fullname" . }}-agent
+  namespace: {{ default .Release.Namespace .Values.prometheusRule.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  groups:
+    - name: vector-agent-config-optimization
+      rules:
+        # Symptom: a sink stuck with the default buffer.when_full=block backpressures the
+        # shared optimized source and stalls every pipeline of the group (head-of-line
+        # blocking), so the source stops emitting. Heuristic (zero now, flowed within
+        # lookback): may also fire for an idle agent; blind for the first `window` after
+        # start; groups by `pod`, which the scrape (PodMonitor) must add.
+        - alert: VectorOptimizedSourceStalled
+          expr: |-
+            sum by (pod) (rate(vector_component_sent_events_total{component_id=~"optimizedSource.*"}[{{ .Values.prometheusRule.window }}])) == 0
+            and
+            sum by (pod) (max_over_time(rate(vector_component_sent_events_total{component_id=~"optimizedSource.*"}[{{ .Values.prometheusRule.window }}])[{{ .Values.prometheusRule.lookback }}:{{ .Values.prometheusRule.window }}])) > 0
+          for: {{ .Values.prometheusRule.window }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Vector optimized source stalled (likely head-of-line blocking)
+            description: >-
+              The collapsed kubernetes_logs source on pod {{`{{ $labels.pod }}`}} stopped
+              emitting events while it was flowing earlier. Under config optimization every
+              pipeline of a signature group shares this source, so one sink stuck with
+              buffer.when_full=block stalls the whole group; with a single large group this
+              stops all logs. The VectorSinkFailing alert names the offending sink when it
+              fails (transport errors or 5xx/429); a non-HTTP or silently hanging sink will
+              not show there, then check which sink destination is unreachable. Remedy: set
+              buffer.when_full=drop_newest or a
+              bounded request.retry_max_duration_secs on that sink, or exclude its pipeline
+              with the vector-operator.kaasops.io/config-optimization=disabled annotation.
+              Heuristic: may also fire for an agent that has simply gone idle.
+        # Cause: names the failing sink directly (component_id). Counts both transport
+        # failures (errors_total: refused/DNS/TLS/timeout) and error responses
+        # (responses_total 5xx/429, which are retried, not counted as errors). HTTP-based
+        # sinks only; component_id also covers any HTTP-based source (kubernetes_logs is not).
+        - alert: VectorSinkFailing
+          expr: |-
+            (
+              sum by (pod, component_id) (rate(vector_http_client_errors_total[{{ .Values.prometheusRule.window }}]))
+              + sum by (pod, component_id) (rate(vector_http_client_responses_total{status=~"5..|429"}[{{ .Values.prometheusRule.window }}]))
+            )
+            / sum by (pod, component_id) (rate(vector_http_client_requests_sent_total[{{ .Values.prometheusRule.window }}]))
+            > 0.5
+          for: {{ .Values.prometheusRule.window }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Vector sink {{`{{ $labels.component_id }}`}} on pod {{`{{ $labels.pod }}`}} is failing most requests
+            description: >-
+              The HTTP sink {{`{{ $labels.component_id }}`}} on pod {{`{{ $labels.pod }}`}} is
+              failing the majority of its requests (transport errors or 5xx/429 responses).
+              Under config optimization a stuck sink backpressures its whole signature group
+              and can stall all of it (see VectorOptimizedSourceStalled). The component_id is
+              <namespace>-<pipeline>-<sinkKey> (dash-joined, not uniquely splittable; to map it
+              to the exact pipeline, grep the id in the agent config Secret).
+              Remedy: fix the destination, set buffer.when_full=drop_newest or a bounded
+              request.retry_max_duration_secs, or exclude its pipeline with the
+              vector-operator.kaasops.io/config-optimization=disabled annotation.
+{{- end }}

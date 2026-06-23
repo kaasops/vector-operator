@@ -28,13 +28,16 @@ type tmp struct {
 	Spec        v1alpha1.VectorPipelineSpec
 	Labels      map[string]string
 	ServiceName string
+	// omitempty so pipelines without the annotation keep a stable hash (no re-hash on upgrade)
+	ConfigOptimization string `json:",omitempty"`
 }
 
 func GetPipelineHash(pipeline Pipeline) (*uint32, error) {
 	a, err := json.Marshal(tmp{
-		Spec:        pipeline.GetSpec(),
-		Labels:      pipeline.GetLabels(),
-		ServiceName: pipeline.GetAnnotations()[common.AnnotationServiceName],
+		Spec:               pipeline.GetSpec(),
+		Labels:             pipeline.GetLabels(),
+		ServiceName:        pipeline.GetAnnotations()[common.AnnotationServiceName],
+		ConfigOptimization: pipeline.GetAnnotations()[common.AnnotationConfigOptimization],
 	})
 	if err != nil {
 		return nil, err

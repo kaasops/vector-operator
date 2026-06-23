@@ -102,7 +102,7 @@ func main() {
 	flag.BoolVar(&enableReconciliationInvalidPipelines, "enable-reconciliation-invalid-pipelines", false,
 		"Enable the reconciliation process for pipelines with invalid configurations")
 	flag.DurationVar(&reconciliationRetryDelay, "reconciliation-retry-delay", 30*time.Second, "Specify the delay before retrying the reconciliation process for pipelines")
-	flag.BoolVar(&enableConfigOptimization, "enable-config-optimization", false, "Collapse kubernetes_logs sources with identical settings into one source per group in generated agent configs. Vector CRs can opt out with the vector-operator.kaasops.io/config-optimization=disabled annotation")
+	flag.BoolVar(&enableConfigOptimization, "enable-config-optimization", false, "Collapse kubernetes_logs sources with identical settings into one source per group in generated agent configs. A Vector CR (whole agent) or an individual (Cluster)VectorPipeline (just its source) can opt out with the vector-operator.kaasops.io/config-optimization=disabled annotation")
 	flag.BoolVar(&enableCheckpointMigration, "enable-checkpoint-migration", false, "Migrate vector file checkpoints when the config optimization renames kubernetes_logs sources: the agent config secret name is bound to the optimization mode (switching it rolls the DaemonSet) and a checkpoint-merger init container consolidates checkpoints before vector starts")
 	flag.StringVar(&checkpointMergerImage, "checkpoint-merger-image", "", "Override the checkpoint-merger init container image (default kaasops/checkpoint-merger:<operator version>)")
 

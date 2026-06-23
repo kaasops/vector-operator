@@ -71,7 +71,7 @@ type VectorReconciler struct {
 // built with the sources optimization: the controller-level feature flag is on and
 // the Vector CR is not opted out with the config-optimization=disabled annotation.
 func optimizeSources(enabled bool, v *v1alpha1.Vector) bool {
-	return enabled && v.Annotations[common.AnnotationConfigOptimization] != "disabled"
+	return enabled && v.Annotations[common.AnnotationConfigOptimization] != common.AnnotationValueDisabled
 }
 
 //+kubebuilder:rbac:groups=observability.kaasops.io,resources=vectors,verbs=get;list;watch;create;update;patch;delete

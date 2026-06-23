@@ -20,6 +20,16 @@ metadata:
     vector-operator.kaasops.io/config-optimization: disabled
 ```
 
+A single pipeline can be excluded with the same annotation on the
+(Cluster)VectorPipeline; its source stays standalone while the rest of the group
+is still collapsed (see [Backpressure isolation](#backpressure-isolation)):
+
+```yaml
+metadata:
+  annotations:
+    vector-operator.kaasops.io/config-optimization: disabled
+```
+
 The flag is expected to become the default behavior in a future release and
 the gate to be removed eventually.
 
@@ -45,6 +55,30 @@ Measured on a 1000-pipeline single-node cluster (vector 0.48): watch requests to
 - **Enabling (or disabling) the optimization on a running cluster renames the sources, so vector re-reads the log files currently retained on the nodes: expect a one-time redelivery of recent logs** — unless checkpoint migration is enabled, see below.
 - Vector logs a warning about unconsumed `<router>._unmatched` outputs of the generated route transforms; it is harmless — events not matching any pipeline namespace are dropped there.
 
+## Backpressure isolation
+
+In vector a source emits events only as fast as the slowest sink that applies backpressure (the default `buffer.when_full: block`). Without optimization each pipeline has its own source, so a stuck sink (an unavailable destination retrying forever) backpressures only its own pipeline. After collapsing, the pipelines of a signature group share one source, so a single stuck sink backpressures that shared source and stalls every pipeline of the group (head-of-line blocking). Pipelines in other groups and standalone sources are unaffected.
+
+This is an inherent trade-off of a shared source: the savings come from collapsing the per-pipeline watchers and readers, while in vector backpressure isolation only comes from a non-blocking buffer. Options, cheapest first:
+
+- Set `buffer.when_full: drop_newest` (or a disk buffer with `overflow`) and/or a bounded `request.retry_max_duration_secs` on the unreliable sink. This breaks the backpressure back to the shared source, keeps the optimization's savings, and affects only that sink.
+- Exclude the pipeline from optimization with the per-pipeline annotation above. It keeps its own source (and thus its own backpressure domain) at the cost of that source's watch. If another, non-excluded pipeline shares the excluded pipeline's namespace, that namespace is then watched by both the dedicated and the collapsed source, and its pod logs are read twice. Toggling this annotation renames that pipeline's source, so its retained logs are re-read once (a bounded one-time redelivery). Unlike the whole-agent mode switch this is a live config reload, not covered by checkpoint migration even when `--enable-checkpoint-migration` is on (see below). The re-read is scoped to the toggled pipeline's namespace; the rest of the group keeps flowing.
+
+The chart ships an optional `PrometheusRule` (`prometheusRule.enabled`, off by default) with two alerts: `VectorOptimizedSourceStalled` (the collapsed source stopped emitting while it was flowing, i.e. the group stalled) and `VectorSinkFailing`, which names the offending sink (`component_id`) when an HTTP-based sink fails most of its requests, counting both transport failures (connection refused, DNS, TLS, timeout) and 5xx/429 responses. A sink that hangs without erroring, or a non-HTTP sink, is caught only by the first alert (throughput collapse); then check which sink destination is unreachable. The `component_id` is `<namespace>-<pipeline>-<sinkKey>`; the parts are dash-joined and not uniquely splittable, so to map it to the exact pipeline (e.g. to apply the opt-out annotation), grep the id in the agent config Secret. Both alerts need the agent to expose `vector_*` metrics: set `spec.agent.internalMetrics: true` on the Vector CR (off by default) so it runs an `internal_metrics` source feeding a `prometheus_exporter` sink that the operator's agent PodMonitor scrapes. Without it the alerts have no data.
+
+Both fire for the same incident, so inhibit the symptom under the cause in Alertmanager to page once:
+
+```yaml
+inhibit_rules:
+  - source_matchers: [alertname="VectorSinkFailing"]
+    target_matchers: [alertname="VectorOptimizedSourceStalled"]
+    equal: [pod]
+```
+
+### Before enabling on a large cluster
+
+Optimization changes the blast radius of an already-failing sink: without it, a sink stuck with `when_full: block` stalls only its own pipeline (easy to miss among thousands); after collapsing, it stalls its whole signature group, which can stop logs broadly. So surface failing sinks first. `VectorSinkFailing` is independent of optimization and fires on the legacy config too, so set `spec.agent.internalMetrics: true` (so the alerts have data) and enable `prometheusRule.enabled` ahead of `--enable-config-optimization`, let it flag the failing sinks, and for each one fix the destination, set `buffer.when_full: drop_newest` / a bounded `request.retry_max_duration_secs`, or pre-exclude its pipeline with the annotation. Then enable optimization.
+
 ## Checkpoint migration
 
 Vector keys file checkpoints by a fingerprint of the file content, not by the source name, so the positions saved under the old source names stay valid after the rename and can be carried over. `--enable-checkpoint-migration` does that:
@@ -61,6 +95,7 @@ args:
 - **Restricted image sets / air-gapped clusters: mirror the merger image before enabling the flag.** It runs as an init container, so if its image cannot be pulled the agent pod is stuck in `Init:ImagePullBackOff` and vector does not start on that node — fail-open does not cover an unpullable image. The blast radius is contained (DaemonSet `maxUnavailable=1`: one node's agent is down and the rollout stalls there; other nodes keep their previous pod). Recover by making the image available, or by turning `--enable-checkpoint-migration` off (the init container is removed and agents restart, falling back to the one-time re-read).
 - Rolling back to the legacy config restores the saved per-source positions; only files that appeared while the optimization was active are re-read.
 - A mode switch is a rolling restart of the agents: on large clusters expect it to take a while, and the re-created watch connections to arrive gradually (which is what you want). Enabling both flags in one change gives a single migrated rollout.
+- **The per-pipeline opt-out is not covered by migration.** Migration hinges on the config-Secret name changing (which rolls the DaemonSet so the merger init container runs). The whole-agent flag and the per-CR annotation change that name; the per-(Cluster)VectorPipeline annotation does not — it is applied as a live config reload with no pod restart, so the merger does not run. Toggling it therefore re-reads the retained logs of that one pipeline's namespace once, even with `--enable-checkpoint-migration` on. This is intentional: a full rolling restart to isolate a single pipeline (typically during a backpressure incident, where that pipeline's sink is already misbehaving) would be far more disruptive than a bounded one-time redelivery.
 - The first migrated rollout pulls the merger image on each node before that node's agent restarts; with `maxUnavailable=1` this is sequential, so the per-node restart includes the image pull (and, on a chart upgrade, the operator's own new image pull happens first). The image is small (distroless + a small static binary) so the pull is quick, but on large clusters pre-pulling it shortens the window.
 
 ### Observability

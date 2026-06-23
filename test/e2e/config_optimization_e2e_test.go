@@ -170,6 +170,35 @@ var _ = Describe("Config Optimization", Label(config.LabelSmoke, config.LabelFas
 			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
 		})
 
+		It("should opt out a single pipeline via its annotation", func() {
+			source := fmt.Sprintf("%s-opt-pipeline-3-logs", f.Namespace())
+
+			By("annotating one pipeline with config-optimization=disabled")
+			cmd := exec.Command("kubectl", "-n", f.Namespace(), "annotate", "vectorpipeline", "opt-pipeline-3",
+				"vector-operator.kaasops.io/config-optimization=disabled", "--overwrite")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying that pipeline keeps its own source while the rest stay collapsed")
+			collapsed := fmt.Sprintf("%s-opt-pipeline-1-logs", f.Namespace())
+			Eventually(func() error {
+				if err := f.VerifyAgentConfigContains("optimized-agent", source, `"optimizedSource-`); err != nil {
+					return err
+				}
+				// opt-pipeline-1 shares the namespace and stays collapsed, so its own source is gone
+				return f.VerifyAgentConfigNotContains("optimized-agent", collapsed)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+
+			By("removing the annotation re-collapses the pipeline source")
+			cmd = exec.Command("kubectl", "-n", f.Namespace(), "annotate", "vectorpipeline", "opt-pipeline-3",
+				"vector-operator.kaasops.io/config-optimization-")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				return f.VerifyAgentConfigNotContains("optimized-agent", source)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+		})
+
 		It("should keep sources with different settings standalone", func() {
 			By("creating a pipeline with an extra_label_selector")
 			f.ApplyTestData("config-optimization/pipeline-with-selector.yaml")

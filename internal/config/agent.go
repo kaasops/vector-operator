@@ -8,6 +8,7 @@ import (
 	goyaml "sigs.k8s.io/yaml"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
@@ -35,11 +36,16 @@ func BuildAgentConfig(p VectorConfigParams, pipelines ...pipeline.Pipeline) (*Ve
 func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline) (*VectorConfig, error) {
 	cfg := newVectorConfig(params)
 
+	// sources of pipelines that opted out of config optimization via annotation; kept
+	// out of source collapsing so they keep a dedicated source (backpressure isolation)
+	var optOutSources map[string]struct{}
+
 	for _, pipeline := range pipelines {
 		p := &PipelineConfig{}
 		if err := UnmarshalJson(pipeline.GetSpec(), p); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
 		}
+		optedOut := pipeline.GetAnnotations()[common.AnnotationConfigOptimization] == common.AnnotationValueDisabled
 		for k, v := range p.Sources {
 			// Validate source
 			if _, ok := pipeline.(*vectorv1alpha1.VectorPipeline); ok {
@@ -66,6 +72,12 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 			}
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
 			cfg.Sources[v.Name] = v
+			if optedOut {
+				if optOutSources == nil {
+					optOutSources = make(map[string]struct{})
+				}
+				optOutSources[v.Name] = struct{}{}
+			}
 		}
 		for k, v := range p.Transforms {
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
@@ -84,7 +96,7 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 	}
 
 	if params.OptimizeSources {
-		optimizeAgentSources(cfg)
+		optimizeAgentSources(cfg, optOutSources)
 	}
 
 	// Add exporter pipeline

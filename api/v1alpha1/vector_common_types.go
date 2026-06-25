@@ -1,6 +1,9 @@
 package v1alpha1
 
-import v1 "k8s.io/api/core/v1"
+import (
+	autoscaling "k8s.io/api/autoscaling/v2"
+	v1 "k8s.io/api/core/v1"
+)
 
 type VectorCommonStatus struct {
 	ConfigCheckResult           *bool   `json:"configCheckResult,omitempty"`
@@ -154,13 +157,41 @@ type VectorSelectorSpec struct {
 	MatchLabels map[string]string `json:"matchLabels,omitempty"`
 }
 
+type VectorAggregatorAutoscaling struct {
+	Enabled bool `json:"enabled,omitempty"`
+	// minReplicas is the lower limit for the number of replicas to which the autoscaler
+	// can scale down.  It defaults to 1 pod.
+	// +optional
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
+
+	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.
+	// It cannot be less that minReplicas. It defaults to 3 pod.\
+	// +kubebuilder:default=3
+	// +optional
+	MaxReplicas int32 `json:"maxReplicas"`
+
+	// metrics contains the specifications for which to use to calculate the
+	// desired replica count.
+	// If not set, the default metric will be set to 80% average CPU utilization.
+	// +listType=atomic
+	// +optional
+	Metrics []autoscaling.MetricSpec `json:"metrics,omitempty"`
+
+	// behavior configures the scaling behavior of the target
+	// in both Up and Down directions (scaleUp and scaleDown fields respectively).
+	// If not set, the default HPAScalingRules for scale up and scale down are used.
+	// +optional
+	Behavior *autoscaling.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
+}
+
 type VectorAggregatorCommon struct {
 	VectorCommon `json:",inline"`
 	Replicas     int32 `json:"replicas,omitempty"`
 	// Selector defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
 	// If not specified, all pipelines will be selected.
-	Selector       *VectorSelectorSpec `json:"selector,omitempty"`
-	EventCollector EventCollector      `json:"eventCollector,omitempty"`
+	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`
+	EventCollector EventCollector              `json:"eventCollector,omitempty"`
+	Autoscaling    VectorAggregatorAutoscaling `json:"autoscaling,omitempty"`
 }
 
 type EventCollector struct {

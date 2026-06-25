@@ -26,6 +26,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -68,6 +69,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdatePodMonitor(ctx, o, c)
 	case *victoriametricsv1beta1.VMPodScrape:
 		return createOrUpdatePodSrape(ctx, o, c)
+	case *autoscalingv2.HorizontalPodAutoscaler:
+		return createOrUpdateHPA(ctx, o, c)
 	default:
 		return NewNotSupportedError(o)
 	}
@@ -76,10 +79,16 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 func createOrUpdateDeployment(ctx context.Context, desired *appsv1.Deployment, c client.Client) error {
 	existing := desired.DeepCopy()
 	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		currentReplicas := existing.Spec.Replicas
+
 		existing.Labels = desired.Labels
 		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
 		existing.Spec = desired.Spec
+
+		if desired.Spec.Replicas == nil {
+			existing.Spec.Replicas = currentReplicas
+		}
 		return nil
 	})
 	if err != nil {
@@ -227,6 +236,22 @@ func createOrUpdatePodMonitor(ctx context.Context, desired *monitorv1.PodMonitor
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update PodMonitor: %w", err)
+	}
+	existing.DeepCopyInto(desired)
+	return nil
+}
+
+func createOrUpdateHPA(ctx context.Context, desired *autoscalingv2.HorizontalPodAutoscaler, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
+		existing.OwnerReferences = desired.OwnerReferences
+		existing.Spec = desired.Spec
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update HPA: %w", err)
 	}
 	existing.DeepCopyInto(desired)
 	return nil

@@ -48,7 +48,6 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: matchLabels},
-			Replicas: &ctrl.Spec.Replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 				Spec: corev1.PodSpec{
@@ -68,6 +67,13 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 				},
 			},
 		},
+	}
+
+	// Set replicas if autoscaling is disabled
+	if ctrl.Spec.Autoscaling.Enabled {
+		deployment.Spec.Replicas = nil
+	} else {
+		deployment.Spec.Replicas = &ctrl.Spec.Replicas
 	}
 
 	return deployment

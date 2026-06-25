@@ -111,6 +111,10 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
+	if err := ctrl.ensureVectorAggregatorHPA(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 

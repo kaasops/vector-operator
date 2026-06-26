@@ -33,7 +33,6 @@ import (
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -129,8 +128,7 @@ func (r *VectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
-		Owns(&rbacv1.ClusterRoleBinding{}).
-		Owns(&autoscalingv2.HorizontalPodAutoscaler{})
+		Owns(&rbacv1.ClusterRoleBinding{})
 
 	if monitoringCRD {
 		builder.Owns(&monitorv1.PodMonitor{})

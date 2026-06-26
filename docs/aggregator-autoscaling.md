@@ -8,11 +8,11 @@ The `Autoscaling` feature enables the Vector Operator to automatically deploy, c
 ```yaml
 spec:
   autoscaling:
-    Enabled: <boolean>
-    MinReplicas: <integer>
-    MaxReplicas: <integer>
-    Metrics: <array>
-    Behaviors: <object>
+    enabled: <boolean>
+    minReplicas: <integer>
+    maxReplicas: <integer>
+    metrics: <array>
+    behavior: <object>
 ```
 
 ---
@@ -20,7 +20,7 @@ spec:
 ## Configuration Example
 
 ```yaml
-apiVersion: observability.timber.io/v1alpha1
+apiVersion: observability.kaasops.io/v1alpha1
 kind: VectorAggregator
 metadata:
   name: vector-aggregator
@@ -43,7 +43,7 @@ spec:
           target:
             type: Utilization
             averageUtilization: 80
-    behaviors:
+    behavior:
       scaleUp:
         stabilizationWindowSeconds: 0
         policies:

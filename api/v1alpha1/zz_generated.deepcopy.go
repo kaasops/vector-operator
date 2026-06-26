@@ -367,6 +367,11 @@ func (in *VectorAggregatorAutoscaling) DeepCopy() *VectorAggregatorAutoscaling {
 func (in *VectorAggregatorCommon) DeepCopyInto(out *VectorAggregatorCommon) {
 	*out = *in
 	in.VectorCommon.DeepCopyInto(&out.VectorCommon)
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Selector != nil {
 		in, out := &in.Selector, &out.Selector
 		*out = new(VectorSelectorSpec)

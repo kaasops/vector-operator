@@ -186,7 +186,7 @@ type VectorAggregatorAutoscaling struct {
 
 type VectorAggregatorCommon struct {
 	VectorCommon `json:",inline"`
-	Replicas     int32 `json:"replicas,omitempty"`
+	Replicas     *int32 `json:"replicas,omitempty"`
 	// Selector defines a filter for the Vector Pipeline and Cluster Vector Pipeline by labels.
 	// If not specified, all pipelines will be selected.
 	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`

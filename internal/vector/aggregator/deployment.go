@@ -73,7 +73,7 @@ func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 	if ctrl.Spec.Autoscaling.Enabled {
 		deployment.Spec.Replicas = nil
 	} else {
-		deployment.Spec.Replicas = &ctrl.Spec.Replicas
+		deployment.Spec.Replicas = ctrl.Spec.Replicas
 	}
 
 	return deployment

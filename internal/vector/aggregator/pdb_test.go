@@ -1,10 +1,14 @@
 package aggregator
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	policyv1 "k8s.io/api/policy/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
@@ -93,4 +97,91 @@ func TestCreateVectorAggregatorPodDisruptionBudget_ClusterAggregator(t *testing.
 	g.Expect(*pdb.Spec.MaxUnavailable).To(Equal(intstr.FromInt32(1)))
 	g.Expect(pdb.ObjectMeta.Namespace).To(Equal("vector-system"))
 	g.Expect(pdb.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/instance", "cluster-test-aggregator"))
+}
+
+func TestEnsureVectorAggregatorPodDisruptionBudget_Gate(t *testing.T) {
+	existing := func() *policyv1.PodDisruptionBudget {
+		return &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-aggregator-aggregator", Namespace: "default"},
+		}
+	}
+
+	tests := []struct {
+		name    string
+		spec    *vectorv1alpha1.VectorAggregatorCommon
+		seed    bool
+		wantPDB bool
+	}{
+		{
+			name: "disabled removes an existing budget",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				Replicas: ptr.To[int32](3),
+			},
+			seed:    true,
+			wantPDB: false,
+		},
+		{
+			name: "disabled without an existing budget is a no-op",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				Replicas: ptr.To[int32](3),
+			},
+			wantPDB: false,
+		},
+		{
+			name: "enabled with static replicas creates the budget",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				Replicas:            ptr.To[int32](2),
+				PodDisruptionBudget: vectorv1alpha1.PodDisruptionBudget{Enabled: true},
+			},
+			wantPDB: true,
+		},
+		{
+			name: "enabled with autoscaling uses maxReplicas",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				Autoscaling:         vectorv1alpha1.VectorAggregatorAutoscaling{Enabled: true, MaxReplicas: 3},
+				PodDisruptionBudget: vectorv1alpha1.PodDisruptionBudget{Enabled: true},
+			},
+			wantPDB: true,
+		},
+		{
+			name: "enabled with one effective replica removes the budget",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				Autoscaling:         vectorv1alpha1.VectorAggregatorAutoscaling{Enabled: true, MaxReplicas: 1},
+				PodDisruptionBudget: vectorv1alpha1.PodDisruptionBudget{Enabled: true},
+			},
+			seed:    true,
+			wantPDB: false,
+		},
+		{
+			name: "enabled with unset replicas keeps the budget absent",
+			spec: &vectorv1alpha1.VectorAggregatorCommon{
+				PodDisruptionBudget: vectorv1alpha1.PodDisruptionBudget{Enabled: true},
+			},
+			wantPDB: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			ctrl := createTestController("test-aggregator", "default", tt.spec, false)
+			if tt.seed {
+				ctrl.Client = newFakeClient(g, existing())
+			} else {
+				ctrl.Client = newFakeClient(g)
+			}
+
+			g.Expect(ctrl.ensureVectorAggregatorPodDisruptionBudget(context.Background())).To(Succeed())
+
+			pdb := &policyv1.PodDisruptionBudget{}
+			err := ctrl.Client.Get(context.Background(),
+				types.NamespacedName{Name: "test-aggregator-aggregator", Namespace: "default"}, pdb)
+			if tt.wantPDB {
+				g.Expect(err).NotTo(HaveOccurred())
+			} else {
+				g.Expect(api_errors.IsNotFound(err)).To(BeTrue(), "budget should not exist")
+			}
+		})
+	}
 }

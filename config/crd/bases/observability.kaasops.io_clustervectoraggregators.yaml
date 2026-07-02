@@ -3307,6 +3307,40 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              podDisruptionBudget:
+                description: PodDisruptionBudget configures an optional PodDisruptionBudget
+                  for the aggregator.
+                properties:
+                  enabled:
+                    description: Enabled creates a PodDisruptionBudget for the aggregator.
+                      Defaults to false.
+                    type: boolean
+                  maxUnavailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: |-
+                      MaxUnavailable is the number of pods that can be unavailable during a voluntary
+                      disruption. Set either this or MinAvailable, not both.
+                    x-kubernetes-int-or-string: true
+                  minAvailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: |-
+                      MinAvailable is the number of pods that must stay available during a voluntary
+                      disruption. Set either this or MaxUnavailable, not both. When neither is set the
+                      operator defaults to MaxUnavailable of 1.
+                    x-kubernetes-int-or-string: true
+                  unhealthyPodEvictionPolicy:
+                    description: |-
+                      UnhealthyPodEvictionPolicy governs whether not-Ready pods count against the budget.
+                      Defaults to AlwaysAllow so unhealthy pods stay evictable and cannot block a node drain.
+                    enum:
+                    - IfHealthyBudget
+                    - AlwaysAllow
+                    type: string
+                type: object
               podSecurityContext:
                 description: |-
                   SecurityContext holds pod-level security attributes and common container settings.

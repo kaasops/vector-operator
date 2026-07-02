@@ -26,9 +26,10 @@ func (ctrl *Controller) ensureVectorAggregatorPodDisruptionBudget(ctx context.Co
 		maxReplicas = *ctrl.Spec.Replicas
 	}
 
-	// When scaled to one or zero replicas, remove any PDB we previously created.
-	if maxReplicas <= 1 {
-		log.Info("skip Reconcile Vector Aggregator PodDisruptionBudget, effective replicas <= 1")
+	// The budget is opt-in, and only meaningful with more than one effective
+	// replica. In every other case remove any budget we previously created.
+	if !ctrl.Spec.PodDisruptionBudget.Enabled || maxReplicas <= 1 {
+		log.Info("skip Reconcile Vector Aggregator PodDisruptionBudget, disabled or effective replicas <= 1")
 		pdb := ctrl.createVectorAggregatorPodDisruptionBudget()
 		if err := ctrl.Client.Delete(ctx, pdb); err != nil && !api_errors.IsNotFound(err) {
 			return err
@@ -46,15 +47,37 @@ func (ctrl *Controller) createVectorAggregatorPodDisruptionBudget() *policyv1.Po
 	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 
-	maxUnavailable := intstr.FromInt32(1)
+	cfg := ctrl.Spec.PodDisruptionBudget
+
+	spec := policyv1.PodDisruptionBudgetSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: matchLabels,
+		},
+	}
+
+	// A budget must set exactly one of MinAvailable or MaxUnavailable. Honor an
+	// explicit choice, otherwise keep at most one pod unavailable by default.
+	switch {
+	case cfg.MinAvailable != nil:
+		spec.MinAvailable = cfg.MinAvailable
+	case cfg.MaxUnavailable != nil:
+		spec.MaxUnavailable = cfg.MaxUnavailable
+	default:
+		maxUnavailable := intstr.FromInt32(1)
+		spec.MaxUnavailable = &maxUnavailable
+	}
+
+	// Default to AlwaysAllow so not-Ready pods stay evictable regardless of the
+	// budget and cannot block a node drain.
+	if cfg.UnhealthyPodEvictionPolicy != nil {
+		spec.UnhealthyPodEvictionPolicy = cfg.UnhealthyPodEvictionPolicy
+	} else {
+		policy := policyv1.AlwaysAllow
+		spec.UnhealthyPodEvictionPolicy = &policy
+	}
 
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MaxUnavailable: &maxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: matchLabels,
-			},
-		},
+		Spec:       spec,
 	}
 }

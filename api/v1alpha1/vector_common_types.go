@@ -209,13 +209,15 @@ type PodDisruptionBudget struct {
 	Enabled bool `json:"enabled,omitempty"`
 
 	// MinAvailable is the number of pods that must stay available during a voluntary
-	// disruption. Set either this or MaxUnavailable, not both. When neither is set the
-	// operator defaults to MaxUnavailable of 1.
+	// disruption. Set either this or MaxUnavailable, not both; when both are set,
+	// MinAvailable takes precedence. When neither is set the operator defaults to
+	// MaxUnavailable of 1.
 	// +optional
 	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
 
 	// MaxUnavailable is the number of pods that can be unavailable during a voluntary
-	// disruption. Set either this or MinAvailable, not both.
+	// disruption. Set either this or MinAvailable, not both; ignored when MinAvailable
+	// is set.
 	// +optional
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 

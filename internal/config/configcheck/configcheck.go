@@ -44,7 +44,7 @@ type ConfigCheck struct {
 	Config []byte
 
 	Client    client.Client
-	ClientSet *kubernetes.Clientset
+	ClientSet kubernetes.Interface
 
 	Name                     string
 	Namespace                string
@@ -72,7 +72,7 @@ type ConfigCheck struct {
 func New(
 	config []byte,
 	c client.Client,
-	cs *kubernetes.Clientset,
+	cs kubernetes.Interface,
 	vc *vectorv1alpha1.VectorCommon,
 	name, namespace string,
 	timeout time.Duration,

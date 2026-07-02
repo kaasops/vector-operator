@@ -107,6 +107,10 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
+	if err := ctrl.ensureVectorAggregatorPodDisruptionBudget(ctx); err != nil {
+		return err
+	}
+
 	if err := ctrl.ensureEventCollector(ctx); err != nil {
 		return err
 	}

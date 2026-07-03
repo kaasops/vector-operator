@@ -2,14 +2,6 @@ version: "2"
 run:
   modules-download-mode: readonly
 linters:
-  settings:
-    staticcheck:
-      # Preserve the original lint scope: v1 ran the SA (staticcheck) and S
-      # (gosimple) checks only. v2 merged stylecheck (ST) and quickfix (QF)
-      # into staticcheck and enables them by default; keep them off.
-      checks:
-        - SA
-        - S
   exclusions:
     generated: lax
     presets:

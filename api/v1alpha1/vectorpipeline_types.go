@@ -36,10 +36,14 @@ type VectorPipelineSpec struct {
 
 // VectorPipelineStatus defines the observed state of VectorPipeline
 type VectorPipelineStatus struct {
-	Role                    *VectorPipelineRole `json:"role,omitempty"`
-	ConfigCheckResult       *bool               `json:"configCheckResult,omitempty"`
-	Reason                  *string             `json:"reason,omitempty"`
-	LastAppliedPipelineHash *uint32             `json:"LastAppliedPipelineHash,omitempty"`
+	Role              *VectorPipelineRole `json:"role,omitempty"`
+	ConfigCheckResult *bool               `json:"configCheckResult,omitempty"`
+	Reason            *string             `json:"reason,omitempty"`
+	// LastAppliedPipelineHash holds the CRC32 (uint32) hash of the last successfully
+	// applied pipeline config. It is stored as an int64 because a uint32 can exceed the
+	// int32 upper bound (2147483647); an int32 field would reject roughly half of all
+	// hash values and leave the pipeline stuck with configCheckResult=false. See #232.
+	LastAppliedPipelineHash *int64 `json:"LastAppliedPipelineHash,omitempty"`
 }
 
 //+kubebuilder:object:root=true

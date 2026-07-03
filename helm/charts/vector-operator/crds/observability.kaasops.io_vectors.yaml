@@ -5054,10 +5054,14 @@ spec:
             description: VectorStatus defines the observed state of Vector
             properties:
               LastAppliedConfigHash:
-                format: int32
+                description: |-
+                  Config hashes are CRC32 (uint32) values stored as int64: a uint32 can exceed the
+                  int32 upper bound (2147483647), and an int32 status field rejects such values,
+                  wedging the reconcile loop with configCheckResult=false. See #232.
+                format: int64
                 type: integer
               LastAppliedGlobalConfigHash:
-                format: int32
+                format: int64
                 type: integer
               configCheckResult:
                 type: boolean

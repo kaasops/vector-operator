@@ -1,5 +1,5 @@
 # Build the checkpoint-merger binary
-FROM golang:1.22 AS builder
+FROM golang:1.26 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION="dev"

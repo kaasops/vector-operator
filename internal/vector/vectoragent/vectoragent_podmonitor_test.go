@@ -41,7 +41,7 @@ func TestCreateVectorAgentPodMonitor_WithCustomSettings(t *testing.T) {
 	g.Expect(string(endpoint.ScrapeTimeout)).To(Equal("15s"), "scrapeTimeout should be 15s")
 
 	// Verify endpoint configuration
-	g.Expect(endpoint.Port).To(Equal("prom-exporter"), "Port should be prom-exporter")
+	g.Expect(endpoint.Port).To(HaveValue(Equal("prom-exporter")), "Port should be prom-exporter")
 	g.Expect(endpoint.Path).To(Equal("/metrics"), "Path should be /metrics")
 
 	// Verify metadata
@@ -78,7 +78,7 @@ func TestCreateVectorAgentPodMonitor_WithDefaults(t *testing.T) {
 	g.Expect(string(endpoint.ScrapeTimeout)).To(BeEmpty(), "ScrapeTimeout should be empty when not specified")
 
 	// Basic endpoint config should still be set
-	g.Expect(endpoint.Port).To(Equal("prom-exporter"))
+	g.Expect(endpoint.Port).To(HaveValue(Equal("prom-exporter")))
 	g.Expect(endpoint.Path).To(Equal("/metrics"))
 }
 

@@ -13,9 +13,19 @@ on:
 
 jobs:
   e2e-tests:
-    name: Run E2E Tests
+    name: Run E2E Tests (${{ matrix.k8s }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # Node images are digest-pinned from the kind release notes;
+      # `kind load` requires kind v0.32+ for the 1.36 images.
+      fail-fast: false
+      matrix:
+        include:
+          - k8s: v1.32.11
+            node_image: kindest/node:v1.32.11@sha256:5fc52d52a7b9574015299724bd68f183702956aa4a2116ae75a63cb574b35af8
+          - k8s: v1.36.1
+            node_image: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
 
     steps:
       - name: Checkout code
@@ -27,16 +37,12 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Install dependencies
-        run: |
-          # Install kubebuilder for CRD generation
-          curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
-          chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
-
       - name: Create kind cluster
         uses: helm/kind-action@v1
         with:
+          version: v0.32.0
           cluster_name: kind
+          node_image: ${{ matrix.node_image }}
           config: scripts/kind-config-ci.yaml
           wait: 300s
 
@@ -45,14 +51,6 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
           kubectl get pods -A
-
-      - name: Build operator image
-        run: |
-          docker build -t example.com/vector-operator:v0.0.1 .
-
-      - name: Load image into kind
-        run: |
-          kind load docker-image example.com/vector-operator:v0.0.1 --name kind
 
       - name: Run E2E tests
         run: make test-e2e
@@ -63,7 +61,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-${{ github.run_number }}
+          name: e2e-results-${{ github.run_number }}-${{ matrix.k8s }}
           path: test/e2e/results/
           retention-days: 7
 
@@ -72,5 +70,5 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: test/e2e/results/run-*/reports/junit-report.xml
-          check_name: E2E Test Results
+          check_name: E2E Test Results (${{ matrix.k8s }})
           comment_mode: off

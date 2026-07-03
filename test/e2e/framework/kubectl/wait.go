@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" //nolint:golint,revive,staticcheck
 
 	"github.com/kaasops/vector-operator/test/e2e/framework/config"
 	"github.com/kaasops/vector-operator/test/utils"

@@ -37,8 +37,8 @@ func TestCreateVectorAggregatorPodDisruptionBudget_Defaults(t *testing.T) {
 	g.Expect(*pdb.Spec.UnhealthyPodEvictionPolicy).To(Equal(policyv1.AlwaysAllow))
 
 	// Name and namespace track the aggregator Deployment.
-	g.Expect(pdb.ObjectMeta.Name).To(Equal("test-aggregator-aggregator"))
-	g.Expect(pdb.ObjectMeta.Namespace).To(Equal("default"))
+	g.Expect(pdb.Name).To(Equal("test-aggregator-aggregator"))
+	g.Expect(pdb.Namespace).To(Equal("default"))
 }
 
 func TestCreateVectorAggregatorPodDisruptionBudget_Configured(t *testing.T) {
@@ -95,7 +95,7 @@ func TestCreateVectorAggregatorPodDisruptionBudget_ClusterAggregator(t *testing.
 
 	g.Expect(pdb).NotTo(BeNil())
 	g.Expect(*pdb.Spec.MaxUnavailable).To(Equal(intstr.FromInt32(1)))
-	g.Expect(pdb.ObjectMeta.Namespace).To(Equal("vector-system"))
+	g.Expect(pdb.Namespace).To(Equal("vector-system"))
 	g.Expect(pdb.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/instance", "cluster-test-aggregator"))
 }
 
@@ -175,7 +175,7 @@ func TestEnsureVectorAggregatorPodDisruptionBudget_Gate(t *testing.T) {
 			g.Expect(ctrl.ensureVectorAggregatorPodDisruptionBudget(context.Background())).To(Succeed())
 
 			pdb := &policyv1.PodDisruptionBudget{}
-			err := ctrl.Client.Get(context.Background(),
+			err := ctrl.Get(context.Background(),
 				types.NamespacedName{Name: "test-aggregator-aggregator", Namespace: "default"}, pdb)
 			if tt.wantPDB {
 				g.Expect(err).NotTo(HaveOccurred())

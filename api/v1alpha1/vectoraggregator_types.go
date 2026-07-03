@@ -62,7 +62,7 @@ func init() {
 }
 
 func (v *VectorAggregator) IsBeingDeleted() bool {
-	return !v.ObjectMeta.DeletionTimestamp.IsZero()
+	return !v.DeletionTimestamp.IsZero()
 }
 
 func (v *VectorAggregator) HasFinalizer(finalizerName string) bool {

@@ -31,7 +31,7 @@ func (ctrl *Controller) ensureVectorAggregatorPodDisruptionBudget(ctx context.Co
 	if !ctrl.Spec.PodDisruptionBudget.Enabled || maxReplicas <= 1 {
 		log.Info("skip Reconcile Vector Aggregator PodDisruptionBudget, disabled or effective replicas <= 1")
 		pdb := ctrl.createVectorAggregatorPodDisruptionBudget()
-		if err := ctrl.Client.Delete(ctx, pdb); err != nil && !api_errors.IsNotFound(err) {
+		if err := ctrl.Delete(ctx, pdb); err != nil && !api_errors.IsNotFound(err) {
 			return err
 		}
 		return nil

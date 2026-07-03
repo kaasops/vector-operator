@@ -76,9 +76,9 @@ func (r *TestRecorder) ExportAsShellScript() string {
 	// Script header
 	sb.WriteString("#!/bin/bash\n")
 	sb.WriteString("# E2E Test Playbook\n")
-	sb.WriteString(fmt.Sprintf("# Test: %s\n", r.testName))
-	sb.WriteString(fmt.Sprintf("# Namespace: %s\n", r.namespace))
-	sb.WriteString(fmt.Sprintf("# Generated: %s\n\n", time.Now().Format(time.RFC3339)))
+	fmt.Fprintf(&sb, "# Test: %s\n", r.testName)
+	fmt.Fprintf(&sb, "# Namespace: %s\n", r.namespace)
+	fmt.Fprintf(&sb, "# Generated: %s\n\n", time.Now().Format(time.RFC3339))
 
 	// Shell settings for safety
 	sb.WriteString("set -e  # Exit on error\n")
@@ -86,7 +86,7 @@ func (r *TestRecorder) ExportAsShellScript() string {
 	sb.WriteString("set -o pipefail  # Catch errors in pipes\n\n")
 
 	// Variables
-	sb.WriteString(fmt.Sprintf("NAMESPACE='%s'\n", r.namespace))
+	fmt.Fprintf(&sb, "NAMESPACE='%s'\n", r.namespace)
 	sb.WriteString("KUBECTL='kubectl'\n")
 	sb.WriteString("TMPDIR=$(mktemp -d)\n")
 	sb.WriteString("trap 'rm -rf $TMPDIR' EXIT\n\n")
@@ -97,19 +97,19 @@ func (r *TestRecorder) ExportAsShellScript() string {
 	// Main steps
 	sb.WriteString("# Test Steps\n")
 	sb.WriteString("echo '═══════════════════════════════════════════════════════════'\n")
-	sb.WriteString(fmt.Sprintf("echo 'Test: %s'\n", r.testName))
+	fmt.Fprintf(&sb, "echo 'Test: %s'\n", r.testName)
 	sb.WriteString("echo '═══════════════════════════════════════════════════════════'\n\n")
 
 	for _, step := range r.steps {
-		sb.WriteString(fmt.Sprintf("# Step %d: %s\n", step.Order, step.Description))
+		fmt.Fprintf(&sb, "# Step %d: %s\n", step.Order, step.Description)
 		sb.WriteString("echo '───────────────────────────────────────────────────────────'\n")
-		sb.WriteString(fmt.Sprintf("log_info 'Step %d: %s'\n", step.Order, step.Description))
+		fmt.Fprintf(&sb, "log_info 'Step %d: %s'\n", step.Order, step.Description)
 		sb.WriteString("echo '───────────────────────────────────────────────────────────'\n")
 
 		// If there's input data, save it to a temporary file
 		if step.Input != "" {
 			tmpFile := fmt.Sprintf("$TMPDIR/step-%d.yaml", step.Order)
-			sb.WriteString(fmt.Sprintf("cat <<'EOF' > %s\n", tmpFile))
+			fmt.Fprintf(&sb, "cat <<'EOF' > %s\n", tmpFile)
 			sb.WriteString(step.Input)
 			sb.WriteString("\nEOF\n")
 
@@ -126,12 +126,12 @@ func (r *TestRecorder) ExportAsShellScript() string {
 
 		// Add expected result as comment
 		if step.Expected != "" {
-			sb.WriteString(fmt.Sprintf("# Expected: %s\n", step.Expected))
+			fmt.Fprintf(&sb, "# Expected: %s\n", step.Expected)
 		}
 
 		// Add wait condition if specified
 		if step.WaitFor != "" {
-			sb.WriteString(fmt.Sprintf("# Wait for: %s (timeout: %s)\n", step.WaitFor, step.Timeout))
+			fmt.Fprintf(&sb, "# Wait for: %s (timeout: %s)\n", step.WaitFor, step.Timeout)
 		}
 
 		sb.WriteString("\n")
@@ -150,9 +150,9 @@ func (r *TestRecorder) ExportAsMarkdown() string {
 	var sb strings.Builder
 
 	// Document header
-	sb.WriteString(fmt.Sprintf("# Test Plan: %s\n\n", r.testName))
-	sb.WriteString(fmt.Sprintf("**Generated**: %s\n\n", time.Now().Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("**Namespace**: `%s`\n\n", r.namespace))
+	fmt.Fprintf(&sb, "# Test Plan: %s\n\n", r.testName)
+	fmt.Fprintf(&sb, "**Generated**: %s\n\n", time.Now().Format(time.RFC3339))
+	fmt.Fprintf(&sb, "**Namespace**: `%s`\n\n", r.namespace)
 
 	// Prerequisites
 	sb.WriteString("## Prerequisites\n\n")
@@ -164,7 +164,7 @@ func (r *TestRecorder) ExportAsMarkdown() string {
 	sb.WriteString("## Test Steps\n\n")
 
 	for _, step := range r.steps {
-		sb.WriteString(fmt.Sprintf("### Step %d: %s\n\n", step.Order, step.Description))
+		fmt.Fprintf(&sb, "### Step %d: %s\n\n", step.Order, step.Description)
 
 		// Command
 		sb.WriteString("**Command**:\n")
@@ -182,15 +182,15 @@ func (r *TestRecorder) ExportAsMarkdown() string {
 
 		// Wait condition if present
 		if step.WaitFor != "" {
-			sb.WriteString(fmt.Sprintf("**Wait Condition**: `%s`\n\n", step.WaitFor))
+			fmt.Fprintf(&sb, "**Wait Condition**: `%s`\n\n", step.WaitFor)
 			if step.Timeout != "" {
-				sb.WriteString(fmt.Sprintf("**Timeout**: %s\n\n", step.Timeout))
+				fmt.Fprintf(&sb, "**Timeout**: %s\n\n", step.Timeout)
 			}
 		}
 
 		// Expected result
 		if step.Expected != "" {
-			sb.WriteString(fmt.Sprintf("**Expected Result**: %s\n\n", step.Expected))
+			fmt.Fprintf(&sb, "**Expected Result**: %s\n\n", step.Expected)
 		}
 
 		sb.WriteString("---\n\n")

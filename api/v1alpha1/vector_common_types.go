@@ -8,10 +8,13 @@ import (
 )
 
 type VectorCommonStatus struct {
-	ConfigCheckResult           *bool   `json:"configCheckResult,omitempty"`
-	Reason                      *string `json:"reason,omitempty"`
-	LastAppliedConfigHash       *uint32 `json:"LastAppliedConfigHash,omitempty"`
-	LastAppliedGlobalConfigHash *uint32 `json:"LastAppliedGlobalConfigHash,omitempty"`
+	ConfigCheckResult *bool   `json:"configCheckResult,omitempty"`
+	Reason            *string `json:"reason,omitempty"`
+	// Config hashes are CRC32 (uint32) values stored as int64: a uint32 can exceed the
+	// int32 upper bound (2147483647), and an int32 status field rejects such values,
+	// wedging the reconcile loop with configCheckResult=false. See #232.
+	LastAppliedConfigHash       *int64 `json:"LastAppliedConfigHash,omitempty"`
+	LastAppliedGlobalConfigHash *int64 `json:"LastAppliedGlobalConfigHash,omitempty"`
 }
 
 type VectorCommon struct {

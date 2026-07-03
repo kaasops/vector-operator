@@ -33,8 +33,8 @@ type Pipeline interface {
 	GetSpec() v1alpha1.VectorPipelineSpec
 	SetConfigCheck(bool)
 	SetReason(*string)
-	GetLastAppliedPipeline() *uint32
-	SetLastAppliedPipeline(*uint32)
+	GetLastAppliedPipeline() *int64
+	SetLastAppliedPipeline(*int64)
 	GetConfigCheckResult() *bool
 	IsValid() bool
 	IsDeleted() bool

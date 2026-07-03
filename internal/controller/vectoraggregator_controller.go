@@ -216,7 +216,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cfgHash := hash.Get(byteCfg)
+	cfgHash := int64(hash.Get(byteCfg))
 
 	if !vaCtrl.Spec.ConfigCheck.Disabled {
 		if vaCtrl.Status.LastAppliedConfigHash == nil || *vaCtrl.Status.LastAppliedConfigHash != cfgHash {

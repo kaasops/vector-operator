@@ -45,11 +45,11 @@ func (vp *VectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }
 
-func (vp *VectorPipeline) GetLastAppliedPipeline() *uint32 {
+func (vp *VectorPipeline) GetLastAppliedPipeline() *int64 {
 	return vp.Status.LastAppliedPipelineHash
 }
 
-func (vp *VectorPipeline) SetLastAppliedPipeline(hash *uint32) {
+func (vp *VectorPipeline) SetLastAppliedPipeline(hash *int64) {
 	vp.Status.LastAppliedPipelineHash = hash
 }
 

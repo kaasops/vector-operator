@@ -264,7 +264,7 @@ func (ctrl *Controller) setDefault() {
 	}
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *uint32) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *int64) error {
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = nil

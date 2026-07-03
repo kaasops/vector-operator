@@ -618,12 +618,12 @@ func (in *VectorCommonStatus) DeepCopyInto(out *VectorCommonStatus) {
 	}
 	if in.LastAppliedConfigHash != nil {
 		in, out := &in.LastAppliedConfigHash, &out.LastAppliedConfigHash
-		*out = new(uint32)
+		*out = new(int64)
 		**out = **in
 	}
 	if in.LastAppliedGlobalConfigHash != nil {
 		in, out := &in.LastAppliedGlobalConfigHash, &out.LastAppliedGlobalConfigHash
-		*out = new(uint32)
+		*out = new(int64)
 		**out = **in
 	}
 }
@@ -779,7 +779,7 @@ func (in *VectorPipelineStatus) DeepCopyInto(out *VectorPipelineStatus) {
 	}
 	if in.LastAppliedPipelineHash != nil {
 		in, out := &in.LastAppliedPipelineHash, &out.LastAppliedPipelineHash
-		*out = new(uint32)
+		*out = new(int64)
 		**out = **in
 	}
 }

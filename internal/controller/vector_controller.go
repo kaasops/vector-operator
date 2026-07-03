@@ -222,7 +222,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		log.Info("Sources optimization collapsed kubernetes_logs sources", "sources", collapsed, "optimizedSources", groups)
 	}
 
-	cfgHash := hash.Get(byteConfig)
+	cfgHash := int64(hash.Get(byteConfig))
 
 	if !vaCtrl.Vector.Spec.Agent.ConfigCheck.Disabled {
 		if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {

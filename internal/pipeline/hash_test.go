@@ -18,6 +18,7 @@ package pipeline
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,26 @@ import (
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/utils/hash"
 )
+
+// Regression for #232: the CRC32 config hash is a uint32 and routinely exceeds the
+// int32 ceiling (2147483647). The status field must be a signed 64-bit int so such a
+// value is stored verbatim; a uint32->int32 schema (or cast) rejects it at the
+// apiserver and wedges the reconcile loop with configCheckResult=false forever.
+func TestLastAppliedPipelineHashHoldsFullUint32Range(t *testing.T) {
+	// crc32("test") == 3632233996, which is > math.MaxInt32 — the exact class of value
+	// that used to be rejected.
+	raw := hash.Get([]byte("test"))
+	require.Greater(t, raw, uint32(math.MaxInt32), "test input must hash above int32 max")
+
+	stored := int64(raw)
+	vp := &v1alpha1.VectorPipeline{}
+	vp.SetLastAppliedPipeline(&stored)
+
+	require.NotNil(t, vp.GetLastAppliedPipeline())
+	assert.Equal(t, int64(raw), *vp.GetLastAppliedPipeline())
+	assert.Positive(t, *vp.GetLastAppliedPipeline(), "hash must not overflow into a negative value")
+	assert.LessOrEqual(t, *vp.GetLastAppliedPipeline(), int64(math.MaxUint32))
+}
 
 // Toggling the per-pipeline config-optimization opt-out annotation must change the
 // pipeline hash so the reconcile propagates it to an agent config rebuild.
@@ -82,7 +103,7 @@ func TestGetPipelineHashStableWithoutAnnotation(t *testing.T) {
 		ServiceName string
 	}{Spec: p.Spec})
 	require.NoError(t, err)
-	assert.Equal(t, hash.Get(legacy), *h)
+	assert.Equal(t, int64(hash.Get(legacy)), *h)
 }
 
 // Toggling the annotation must read as "changed" (IsPipelineChanged == false) so the

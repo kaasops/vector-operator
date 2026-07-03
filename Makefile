@@ -3,7 +3,7 @@ IMG ?= controller:latest
 IMG_COLLECTOR ?= collector:latest
 IMG_MERGER ?= checkpoint-merger:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.33.0
+ENVTEST_K8S_VERSION = 1.36.2
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -138,6 +138,14 @@ deploy-helm-e2e: manifests ## Deploy operator using Helm for e2e tests (use IMG 
 		--set image.repository=$$(echo $(IMG) | cut -d: -f1) \
 		--set image.tag=$$(echo $(IMG) | cut -d: -f2) \
 		--wait --timeout 5m
+	@echo "==> Restarting operator to pick up a freshly loaded image (same-tag reruns)..."
+	$(KUBECTL) -n $(NAMESPACE) rollout restart deployment -l app.kubernetes.io/name=vector-operator
+	$(KUBECTL) -n $(NAMESPACE) rollout status deployment -l app.kubernetes.io/name=vector-operator --timeout=120s
+	@echo "==> Waiting for the replaced operator pod to terminate..."
+	@for i in $$(seq 1 60); do \
+		[ -z "$$($(KUBECTL) -n $(NAMESPACE) get pods -l app.kubernetes.io/name=vector-operator -o jsonpath='{.items[?(@.metadata.deletionTimestamp)].metadata.name}')" ] && exit 0; \
+		sleep 2; \
+	done; echo "terminating operator pod did not go away in time" >&2; exit 1
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter

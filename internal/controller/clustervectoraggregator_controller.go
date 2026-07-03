@@ -30,10 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/kaasops/vector-operator/internal/config"
@@ -187,7 +189,7 @@ func (r *ClusterVectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) e
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ClusterVectorAggregator{}).
+		For(&v1alpha1.ClusterVectorAggregator{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).

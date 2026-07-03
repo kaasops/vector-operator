@@ -21,6 +21,6 @@ import (
 )
 
 var (
-	ValidationError         = errors.New("config validation error")
-	ConfigcheckTimeoutError = errors.New("timeout waiting configcheck pod result")
+	ErrValidation         = errors.New("config validation error")
+	ErrConfigcheckTimeout = errors.New("timeout waiting configcheck pod result")
 )

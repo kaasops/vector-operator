@@ -30,7 +30,7 @@ func TestEnsureVectorAggregatorHPA_EnabledCreates(t *testing.T) {
 	g.Expect(ctrl.ensureVectorAggregatorHPA(context.Background())).To(Succeed())
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
-	g.Expect(ctrl.Client.Get(context.Background(),
+	g.Expect(ctrl.Get(context.Background(),
 		types.NamespacedName{Name: "test-aggregator-aggregator", Namespace: "default"}, hpa)).To(Succeed())
 
 	g.Expect(hpa.Spec.MinReplicas).To(HaveValue(Equal(int32(2))))
@@ -54,7 +54,7 @@ func TestEnsureVectorAggregatorHPA_DisabledRemovesExisting(t *testing.T) {
 	g.Expect(ctrl.ensureVectorAggregatorHPA(context.Background())).To(Succeed())
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
-	err := ctrl.Client.Get(context.Background(),
+	err := ctrl.Get(context.Background(),
 		types.NamespacedName{Name: "test-aggregator-aggregator", Namespace: "default"}, hpa)
 	g.Expect(api_errors.IsNotFound(err)).To(BeTrue(), "HPA should be removed when autoscaling is disabled")
 }

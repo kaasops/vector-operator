@@ -159,7 +159,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 
 	reason, err := cc.getCheckResult(ctx, vectorConfigCheckPod)
 	if err != nil {
-		if errors.Is(err, ValidationError) {
+		if errors.Is(err, ErrValidation) {
 			return reason, err
 		}
 		return "", err
@@ -256,7 +256,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 					if err != nil {
 						return "", err
 					}
-					return reason, ValidationError
+					return reason, ErrValidation
 				}
 			}
 			// Reset timer after processing event to restart timeout window
@@ -270,7 +270,7 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 		case <-ctx.Done():
 			return "", nil
 		case <-timer.C:
-			return "", ConfigcheckTimeoutError
+			return "", ErrConfigcheckTimeout
 		}
 	}
 }

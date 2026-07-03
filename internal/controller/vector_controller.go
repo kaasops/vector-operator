@@ -238,7 +238,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 			)
 			reason, err := configCheck.Run(ctx)
 			if err != nil {
-				if errors.Is(err, configcheck.ValidationError) {
+				if errors.Is(err, configcheck.ErrValidation) {
 					if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
 						return ctrl.Result{}, err
 					}

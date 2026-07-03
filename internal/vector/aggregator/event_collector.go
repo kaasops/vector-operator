@@ -96,7 +96,7 @@ func (ctrl *Controller) createEventCollectorService() *corev1.Service {
 			Selector: labels,
 		},
 	}
-	svc.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	svc.Name = ctrl.Name + "-event-collector"
 	return svc
 }
 
@@ -114,7 +114,7 @@ func (ctrl *Controller) createEventCollectorConfig(params *evcollector.Config) (
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Data:       config,
 	}
-	cfg.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	cfg.Name = ctrl.Name + "-event-collector"
 	return cfg, nil
 }
 
@@ -152,7 +152,7 @@ func (ctrl *Controller) createEventCollectorDeployment() *appsv1.Deployment {
 			},
 		},
 	}
-	deployment.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	deployment.Name = ctrl.Name + "-event-collector"
 	return deployment
 }
 
@@ -231,7 +231,7 @@ func (ctrl *Controller) createEventCollectorClusterRole() *rbacv1.ClusterRole {
 		},
 	}
 
-	clusterRole.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	clusterRole.Name = ctrl.Name + "-event-collector"
 	return clusterRole
 }
 
@@ -243,7 +243,7 @@ func (ctrl *Controller) createEventCollectorServiceAccount() *corev1.ServiceAcco
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 	}
 
-	serviceAccount.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	serviceAccount.Name = ctrl.Name + "-event-collector"
 
 	return serviceAccount
 }
@@ -267,7 +267,7 @@ func (ctrl *Controller) createEventCollectorClusterRoleBinding() *rbacv1.Cluster
 			},
 		},
 	}
-	clusterRoleBinding.ObjectMeta.Name = ctrl.Name + "-event-collector"
+	clusterRoleBinding.Name = ctrl.Name + "-event-collector"
 	return clusterRoleBinding
 }
 

@@ -65,7 +65,7 @@ func TestEnsureVectorAggregator_PDBWriteFailureDoesNotBlockHPA(t *testing.T) {
 	}
 
 	cs := k8sfake.NewSimpleClientset()
-	cs.Fake.Resources = []*metav1.APIResourceList{{GroupVersion: "monitoring.coreos.com/v1"}}
+	cs.Resources = []*metav1.APIResourceList{{GroupVersion: "monitoring.coreos.com/v1"}}
 
 	ctrl := NewController(va, cl, cs)
 	ctrl.Config = &config.VectorConfig{}

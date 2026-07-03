@@ -19,7 +19,7 @@ package framework
 import (
 	"time"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive,staticcheck
+	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 
 	"github.com/kaasops/vector-operator/test/utils"
 )

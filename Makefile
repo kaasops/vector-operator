@@ -45,9 +45,12 @@ help: ## Display this help.
 
 ##@ Development
 
+HELM_CRD_DIR = helm/charts/vector-operator/crds
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	rm -f $(HELM_CRD_DIR)/*.yaml && cp config/crd/bases/*.yaml $(HELM_CRD_DIR)/
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

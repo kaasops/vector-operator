@@ -45,9 +45,26 @@ spec:
       {{- end }}
       containers:
       - image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        {{- with .Values.args }}
+        {{- if or .Values.args .Values.metrics.enabled }}
         args:
+          {{- with .Values.args }}
           {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- if .Values.metrics.enabled }}
+          {{- if .Values.metrics.secure }}
+          - --metrics-bind-address=:8443
+          - --metrics-secure=true
+          {{- else }}
+          - --metrics-bind-address=:8080
+          - --metrics-secure=false
+          {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.metrics.enabled }}
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.metrics.secure | ternary 8443 8080 }}
+            protocol: TCP
         {{- end }}
         {{- with .Values.securityContext }}
         securityContext:

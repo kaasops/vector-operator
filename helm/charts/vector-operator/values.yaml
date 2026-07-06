@@ -122,3 +122,48 @@ prometheusRule:
   # -- heuristic: it can false-positive on an idle low-volume agent that flowed within
   # -- lookback, and is blind for the first `window` after an agent starts.
   lookback: 1h
+
+# Operator metrics endpoint (controller-runtime: reconcile, workqueue, rest_client,
+# process metrics). When enabled, the chart adds a named `metrics` container port and
+# passes the matching --metrics-bind-address (and --metrics-secure) args to the operator;
+# metrics.* wins over duplicates in `args`. Disabled by default: the rendered
+# manifests are byte-for-byte identical to previous releases.
+metrics:
+  enabled: false
+  # -- false: plain HTTP on :8080, no auth;
+  # -- true: HTTPS on :8443 with the operator's built-in authn/authz (TokenReview) —
+  # -- scraping then requires a bearer token, see metrics.podMonitor.createScrapeIdentity
+  secure: false
+  # PodMonitor for the operator pod. Requires the Prometheus Operator CRDs.
+  podMonitor:
+    enabled: false
+    interval: 30s
+    # -- extra labels so your Prometheus selects the PodMonitor,
+    # -- e.g. release: kube-prometheus-stack
+    additionalLabels: {}
+    # -- namespace for the PodMonitor; defaults to the release namespace
+    namespace: ""
+    # -- secure mode only: create a ServiceAccount + long-lived token Secret +
+    # -- ClusterRole (get /metrics) + binding, and point the PodMonitor's
+    # -- Authorization header at that token (a PodMonitor cannot use the Prometheus
+    # -- pod's own ServiceAccount token file). The token does not expire; rotate it
+    # -- by deleting the Secret (it is repopulated).
+    createScrapeIdentity: false
+    # -- secure mode only: use an existing Secret for the scrape token instead of
+    # -- createScrapeIdentity; secure mode requires one of the two
+    bearerTokenSecret:
+      name: ""
+      key: token
+
+# Grafana dashboard for the operator and the vector workloads it manages
+# (helm/charts/vector-operator/dashboards/vector-operator.json), shipped as a ConfigMap
+# for a dashboard sidecar (e.g. kube-prometheus-stack's grafana sidecar). Such sidecars
+# usually watch only their own namespace by default — either set grafanaDashboard.namespace
+# to the Grafana namespace or configure the sidecar's searchNamespace.
+grafanaDashboard:
+  enabled: false
+  # -- namespace for the ConfigMap; defaults to the release namespace
+  namespace: ""
+  # -- labels the sidecar matches on
+  labels:
+    grafana_dashboard: "1"

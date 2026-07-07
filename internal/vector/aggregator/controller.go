@@ -6,6 +6,7 @@ import (
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -360,6 +361,19 @@ func (ctrl *Controller) GetServiceName() string {
 // or when raw volume claim templates are supplied through the escape hatch.
 func (ctrl *Controller) persistenceEnabled() bool {
 	return ctrl.Spec.Persistence.Enabled || len(ctrl.Spec.Persistence.VolumeClaimTemplates) > 0
+}
+
+// deleteObsoleteWorkload removes a workload of the opposite kind left over from a
+// previous persistence mode. Toggling persistence switches between a Deployment
+// and a StatefulSet that share a name and pod labels, so the stale one must be
+// removed or its pods keep serving alongside the new workload.
+func (ctrl *Controller) deleteObsoleteWorkload(ctx context.Context, obj client.Object) error {
+	obj.SetName(ctrl.getNameVectorAggregator())
+	obj.SetNamespace(ctrl.Namespace)
+	if err := ctrl.Delete(ctx, obj); err != nil && !api_errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func (ctrl *Controller) prefix() string {

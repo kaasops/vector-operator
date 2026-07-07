@@ -238,6 +238,8 @@ type VectorAggregatorPersistence struct {
 
 	// VolumeClaimTemplates is an escape hatch for full control over the persistent
 	// volume claims. When set it takes precedence over the convenience fields above.
+	// One of the claims must be named "data", since that is the volume the
+	// aggregator mounts at the Vector data_dir.
 	// +optional
 	VolumeClaimTemplates []v1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 

@@ -7,6 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -72,12 +73,33 @@ func TestVolumeClaimTemplatesEscapeHatch(t *testing.T) {
 
 	spec := persistentSpec()
 	raw := []corev1.PersistentVolumeClaim{
-		{Spec: corev1.PersistentVolumeClaimSpec{VolumeName: "custom"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "data"}, Spec: corev1.PersistentVolumeClaimSpec{VolumeName: "custom"}},
 	}
 	spec.Persistence.VolumeClaimTemplates = raw
 	ctrl := createTestController("test", "default", spec, false)
 
 	g.Expect(ctrl.volumeClaimTemplates()).To(Equal(raw), "raw templates take precedence over the convenience fields")
+}
+
+func TestValidatePersistence(t *testing.T) {
+	g := NewWithT(t)
+
+	// No raw templates: nothing to validate, the default claim is named "data".
+	g.Expect(createTestController("test", "default", persistentSpec(), false).validatePersistence()).To(Succeed())
+
+	// Raw templates including a "data" claim are accepted.
+	okSpec := persistentSpec()
+	okSpec.Persistence.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+		{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+	}
+	g.Expect(createTestController("test", "default", okSpec, false).validatePersistence()).To(Succeed())
+
+	// Raw templates without a "data" claim are rejected, since the container mounts "data".
+	badSpec := persistentSpec()
+	badSpec.Persistence.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+		{ObjectMeta: metav1.ObjectMeta{Name: "buffer"}},
+	}
+	g.Expect(createTestController("test", "default", badSpec, false).validatePersistence()).NotTo(Succeed())
 }
 
 func TestDataVolumeOnlyForDeploymentPath(t *testing.T) {

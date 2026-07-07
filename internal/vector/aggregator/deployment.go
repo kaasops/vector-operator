@@ -25,58 +25,69 @@ func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) er
 		}
 		deployment.Spec.Template.Annotations[common.AnnotationRestartedAt] = time.Now().Format(time.RFC3339)
 	}
-	return k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client)
+	if err := k8s.CreateOrUpdateResource(ctx, deployment, ctrl.Client); err != nil {
+		return err
+	}
+	// Remove a StatefulSet left over from before persistence was disabled. Its
+	// PVCs are kept, since the default retention policy is Retain.
+	return ctrl.deleteObsoleteWorkload(ctx, &appsv1.StatefulSet{})
 }
 
 func (ctrl *Controller) createVectorAggregatorDeployment() *appsv1.Deployment {
 	labels := ctrl.labelsForVectorAggregator()
 	matchLabels := ctrl.matchLabelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
-	var initContainers []corev1.Container
-	var containers []corev1.Container
-	containers = append(containers, *ctrl.VectorAggregatorContainer())
 
+	return &appsv1.Deployment{
+		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
+		Spec: appsv1.DeploymentSpec{
+			Replicas: ctrl.aggregatorReplicas(),
+			Selector: &metav1.LabelSelector{MatchLabels: matchLabels},
+			Template: ctrl.aggregatorPodTemplateSpec(),
+		},
+	}
+}
+
+// aggregatorPodTemplateSpec builds the pod template shared by the Deployment and
+// StatefulSet workloads, so the pod shape stays identical across both paths.
+func (ctrl *Controller) aggregatorPodTemplateSpec() corev1.PodTemplateSpec {
+	labels := ctrl.labelsForVectorAggregator()
+	annotations := ctrl.annotationsForVectorAggregator()
+
+	containers := []corev1.Container{*ctrl.VectorAggregatorContainer()}
+	var initContainers []corev1.Container
 	if ctrl.Spec.CompressConfigFile {
 		initContainers = append(initContainers, *ctrl.ConfigReloaderInitContainer())
-	}
-
-	if ctrl.Spec.CompressConfigFile {
 		containers = append(containers, *ctrl.ConfigReloaderSidecarContainer())
 	}
 
-	deployment := &appsv1.Deployment{
+	return corev1.PodTemplateSpec{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: matchLabels},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
-				Spec: corev1.PodSpec{
-					ServiceAccountName: ctrl.getNameVectorAggregator(),
-					Volumes:            ctrl.generateVectorAggregatorVolume(),
-					SecurityContext:    ctrl.Spec.SecurityContext,
-					ImagePullSecrets:   ctrl.Spec.ImagePullSecrets,
-					Affinity:           ctrl.Spec.Affinity,
-					RuntimeClassName:   ctrl.Spec.RuntimeClassName,
-					SchedulerName:      ctrl.Spec.SchedulerName,
-					Tolerations:        ctrl.Spec.Tolerations,
-					PriorityClassName:  ctrl.Spec.PriorityClassName,
-					HostNetwork:        ctrl.Spec.HostNetwork,
-					HostAliases:        ctrl.Spec.HostAliases,
-					InitContainers:     initContainers,
-					Containers:         containers,
-				},
-			},
+		Spec: corev1.PodSpec{
+			ServiceAccountName: ctrl.getNameVectorAggregator(),
+			Volumes:            ctrl.generateVectorAggregatorVolume(),
+			SecurityContext:    ctrl.Spec.SecurityContext,
+			ImagePullSecrets:   ctrl.Spec.ImagePullSecrets,
+			Affinity:           ctrl.Spec.Affinity,
+			RuntimeClassName:   ctrl.Spec.RuntimeClassName,
+			SchedulerName:      ctrl.Spec.SchedulerName,
+			Tolerations:        ctrl.Spec.Tolerations,
+			PriorityClassName:  ctrl.Spec.PriorityClassName,
+			HostNetwork:        ctrl.Spec.HostNetwork,
+			HostAliases:        ctrl.Spec.HostAliases,
+			InitContainers:     initContainers,
+			Containers:         containers,
 		},
 	}
+}
 
-	// Set replicas if autoscaling is disabled
+// aggregatorReplicas returns the desired replica count, or nil when autoscaling
+// is enabled so the operator does not fight the HPA.
+func (ctrl *Controller) aggregatorReplicas() *int32 {
 	if ctrl.Spec.Autoscaling.Enabled {
-		deployment.Spec.Replicas = nil
-	} else {
-		deployment.Spec.Replicas = ctrl.Spec.Replicas
+		return nil
 	}
-
-	return deployment
+	return ctrl.Spec.Replicas
 }
 
 func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
@@ -208,7 +219,7 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 	// template, so only add the hostPath data volume for the Deployment path.
 	if !ctrl.persistenceEnabled() {
 		requiredVolumes = append(requiredVolumes, corev1.Volume{
-			Name: "data",
+			Name: dataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: ctrl.Spec.DataDir,
@@ -256,7 +267,7 @@ func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMo
 			MountPath: "/etc/vector",
 		},
 		{
-			Name:      "data",
+			Name:      dataVolumeName,
 			MountPath: "/vector-data-dir",
 		},
 		{

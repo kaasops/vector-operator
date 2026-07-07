@@ -83,7 +83,7 @@ Vector force exits when it cannot write to a disk buffer, for example when the v
 
 ## Resizing volumes
 
-The operator does not resize persistent volumes. The `size` and `storageClassName` of a StatefulSet's `volumeClaimTemplates` are immutable, so once the StatefulSet exists Kubernetes rejects changes to them. If you edit `persistence.size` on an existing aggregator the operator keeps the live value, leaves the StatefulSet unchanged, and logs a warning, since applying the change would require recreating the aggregator.
+The operator does not resize persistent volumes. The `size` and `storageClassName` of a StatefulSet's `volumeClaimTemplates` are immutable, so once the StatefulSet exists Kubernetes rejects changes to them. If you edit `persistence.size` on an existing aggregator the operator keeps the live value and leaves the StatefulSet unchanged, since applying the change would require recreating the aggregator. It records a log entry noting that the change was not applied, so watch the operator logs when you change these fields.
 
 If you need a larger volume you have two options, both manual:
 

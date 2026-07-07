@@ -187,14 +187,6 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 			VolumeSource: configVolumeSource,
 		},
 		{
-			Name: "data",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: ctrl.Spec.DataDir,
-				},
-			},
-		},
-		{
 			Name: "procfs",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
@@ -210,6 +202,19 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 				},
 			},
 		},
+	}
+
+	// In persistent mode the data volume comes from the StatefulSet volume claim
+	// template, so only add the hostPath data volume for the Deployment path.
+	if !ctrl.persistenceEnabled() {
+		requiredVolumes = append(requiredVolumes, corev1.Volume{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: ctrl.Spec.DataDir,
+				},
+			},
+		})
 	}
 
 	// Only add volumes that don't already exist

@@ -104,8 +104,14 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
-		return err
+	if ctrl.persistenceEnabled() {
+		if err := ctrl.ensureVectorAggregatorStatefulSet(ctx); err != nil {
+			return err
+		}
+	} else {
+		if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
+			return err
+		}
 	}
 
 	if err := ctrl.ensureEventCollector(ctx); err != nil {
@@ -324,6 +330,12 @@ func (ctrl *Controller) objectMetaVectorAggregator(labels map[string]string, ann
 func (ctrl *Controller) getNameVectorAggregator() string {
 	name := ctrl.Name + "-aggregator"
 	return name
+}
+
+// getHeadlessServiceName returns the name of the headless service that governs
+// the StatefulSet, providing stable per replica DNS in persistent mode.
+func (ctrl *Controller) getHeadlessServiceName() string {
+	return ctrl.getNameVectorAggregator() + "-headless"
 }
 
 func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {

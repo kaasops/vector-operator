@@ -4,6 +4,7 @@ import (
 	"context"
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,6 +149,21 @@ func (ctrl *Controller) setDefault() {
 
 	if ctrl.Spec.DataDir == "" {
 		ctrl.Spec.DataDir = "/var/lib/vector"
+	}
+
+	if ctrl.persistenceEnabled() {
+		if len(ctrl.Spec.Persistence.AccessModes) == 0 {
+			ctrl.Spec.Persistence.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+		}
+		if ctrl.Spec.Persistence.Size.IsZero() {
+			ctrl.Spec.Persistence.Size = resourcev1.MustParse("10Gi")
+		}
+		if ctrl.Spec.Persistence.RetentionPolicy == nil {
+			ctrl.Spec.Persistence.RetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+			}
+		}
 	}
 
 	if ctrl.Spec.Volumes == nil {
@@ -325,6 +341,13 @@ func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 
 func (ctrl *Controller) GetServiceName() string {
 	return ctrl.getNameVectorAggregator()
+}
+
+// persistenceEnabled reports whether the aggregator should run as a StatefulSet
+// with persistent disk buffers. It is true when persistence is explicitly enabled
+// or when raw volume claim templates are supplied through the escape hatch.
+func (ctrl *Controller) persistenceEnabled() bool {
+	return ctrl.Spec.Persistence.Enabled || len(ctrl.Spec.Persistence.VolumeClaimTemplates) > 0
 }
 
 func (ctrl *Controller) prefix() string {

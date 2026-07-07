@@ -1,8 +1,10 @@
 package v1alpha1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type VectorCommonStatus struct {
@@ -192,6 +194,52 @@ type VectorAggregatorCommon struct {
 	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`
 	EventCollector EventCollector              `json:"eventCollector,omitempty"`
 	Autoscaling    VectorAggregatorAutoscaling `json:"autoscaling,omitempty"`
+	// Persistence configures durable disk buffers for the aggregator.
+	// When enabled the aggregator is rendered as a StatefulSet with a persistent
+	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.
+	// +optional
+	Persistence VectorAggregatorPersistence `json:"persistence,omitempty"`
+}
+
+// VectorAggregatorPersistence configures durable disk buffers for the aggregator.
+//
+// When Enabled, the operator renders the aggregator as a StatefulSet whose data
+// directory is backed by a persistent volume claimed per replica, so buffered but
+// undelivered events survive pod restart and reschedule. When it is not enabled the
+// aggregator stays a Deployment and nothing changes.
+//
+// Note that turning this on for an existing aggregator recreates it, because
+// Kubernetes cannot convert a Deployment to a StatefulSet in place. The volume size
+// and storage class are fixed once the StatefulSet exists, since Kubernetes rejects
+// changes to volumeClaimTemplates.
+type VectorAggregatorPersistence struct {
+	// Enabled turns on persistent disk buffers and switches the workload to a StatefulSet.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Size is the requested size of the volume for each replica. Defaults to 10Gi.
+	// +optional
+	Size resource.Quantity `json:"size,omitempty"`
+
+	// StorageClassName selects the StorageClass for the volume. If not set the
+	// cluster default StorageClass is used.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// AccessModes for the volume. Defaults to ReadWriteOnce, which is required for a
+	// Vector disk buffer since it must have exactly one writer.
+	// +optional
+	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+
+	// VolumeClaimTemplates is an escape hatch for full control over the persistent
+	// volume claims. When set it takes precedence over the convenience fields above.
+	// +optional
+	VolumeClaimTemplates []v1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+
+	// RetentionPolicy controls whether the volumes are kept or deleted when replicas
+	// are scaled down or the StatefulSet is deleted. Defaults to retaining the volumes
+	// so buffered data can be replayed.
+	// +optional
+	RetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"retentionPolicy,omitempty"`
 }
 
 type EventCollector struct {

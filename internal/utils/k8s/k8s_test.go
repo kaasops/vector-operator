@@ -29,10 +29,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -642,6 +644,83 @@ func TestCreateOrUpdateResource(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, createOrUpdateResourceCase(tc.initObj, tc.obj, tc.want))
 	}
+}
+
+func TestCreateOrUpdateStatefulSetImmutableFields(t *testing.T) {
+	t.Parallel()
+	req := require.New(t)
+
+	storageClass := "gp3"
+	existingSize := resource.MustParse("10Gi")
+	desiredSize := resource.MustParse("20Gi")
+
+	vct := func(size resource.Quantity) []corev1.PersistentVolumeClaim {
+		return []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "data"},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					StorageClassName: &storageClass,
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: size},
+					},
+				},
+			},
+		}
+	}
+
+	// An existing StatefulSet, as it would look after creation. The non-zero
+	// CreationTimestamp is what marks it as already existing on update.
+	initObj := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "agg",
+			Namespace:         "test-namespace",
+			CreationTimestamp: metav1.Now(),
+		},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName:          "agg-headless",
+			PodManagementPolicy:  appsv1.ParallelPodManagement,
+			Replicas:             ptr.To(int32(3)),
+			Selector:             &metav1.LabelSelector{MatchLabels: map[string]string{"app": "agg"}},
+			VolumeClaimTemplates: vct(existingSize),
+		},
+	}
+
+	// Desired asks to grow the volume, an immutable change the API server would
+	// reject, drops replicas to nil as the autoscaling path does, and sets a
+	// mutable field.
+	desired := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agg",
+			Namespace: "test-namespace",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName:          "agg-headless",
+			PodManagementPolicy:  appsv1.ParallelPodManagement,
+			Replicas:             nil,
+			Selector:             &metav1.LabelSelector{MatchLabels: map[string]string{"app": "agg"}},
+			MinReadySeconds:      5,
+			VolumeClaimTemplates: vct(desiredSize),
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithObjects(initObj).Build()
+	req.NoError(k8s.CreateOrUpdateResource(context.Background(), desired, cl))
+
+	stored := &appsv1.StatefulSet{}
+	req.NoError(cl.Get(context.Background(), client.ObjectKeyFromObject(initObj), stored))
+
+	// The immutable volume size is preserved from the existing object rather than
+	// overwritten with the desired value, so the update never touches it.
+	storedSize := stored.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage]
+	req.Zero(storedSize.Cmp(existingSize), "VCT size should be preserved on update")
+
+	// Replicas are preserved because desired was nil, so reconcile does not fight the HPA.
+	req.NotNil(stored.Spec.Replicas)
+	req.Equal(int32(3), *stored.Spec.Replicas)
+
+	// The mutable field is applied.
+	req.Equal(int32(5), stored.Spec.MinReadySeconds)
 }
 
 func TestCreatePod(t *testing.T) {

@@ -112,8 +112,9 @@ func (c *VectorConfig) OptimizationSummary() (sources, groups int) {
 	return c.internal.optimizedSources, c.internal.sourceGroups
 }
 
-func (c *VectorConfig) GetGlobalConfigHash() *uint32 {
+func (c *VectorConfig) GetGlobalConfigHash() *int64 {
 	bytes, _ := json.Marshal(c.globalOptions)
-	gHash := hash.Get(bytes)
+	// Widen the uint32 CRC32 to int64 so it always fits the int64 status schema. See #232.
+	gHash := int64(hash.Get(bytes))
 	return &gHash
 }

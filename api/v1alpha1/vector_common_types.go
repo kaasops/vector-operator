@@ -4,14 +4,19 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type VectorCommonStatus struct {
-	ConfigCheckResult           *bool   `json:"configCheckResult,omitempty"`
-	Reason                      *string `json:"reason,omitempty"`
-	LastAppliedConfigHash       *uint32 `json:"LastAppliedConfigHash,omitempty"`
-	LastAppliedGlobalConfigHash *uint32 `json:"LastAppliedGlobalConfigHash,omitempty"`
+	ConfigCheckResult *bool   `json:"configCheckResult,omitempty"`
+	Reason            *string `json:"reason,omitempty"`
+	// Config hashes are CRC32 (uint32) values stored as int64: a uint32 can exceed the
+	// int32 upper bound (2147483647), and an int32 status field rejects such values,
+	// wedging the reconcile loop with configCheckResult=false. See #232.
+	LastAppliedConfigHash       *int64 `json:"LastAppliedConfigHash,omitempty"`
+	LastAppliedGlobalConfigHash *int64 `json:"LastAppliedGlobalConfigHash,omitempty"`
 }
 
 type VectorCommon struct {
@@ -199,6 +204,9 @@ type VectorAggregatorCommon struct {
 	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.
 	// +optional
 	Persistence VectorAggregatorPersistence `json:"persistence,omitempty"`
+	// PodDisruptionBudget configures an optional PodDisruptionBudget for the aggregator.
+	// +optional
+	PodDisruptionBudget PodDisruptionBudget `json:"podDisruptionBudget,omitempty"`
 }
 
 // VectorAggregatorPersistence gives the aggregator durable storage for its data_dir.
@@ -248,6 +256,35 @@ type VectorAggregatorPersistence struct {
 	// so buffered data can be replayed.
 	// +optional
 	RetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"retentionPolicy,omitempty"`
+}
+
+// PodDisruptionBudget configures a PodDisruptionBudget for the aggregator pods.
+// A budget only makes sense with more than one effective replica. Because a
+// budget can block node drains when a pod is unhealthy, it is opt-in so an
+// operator upgrade does not change existing aggregators.
+type PodDisruptionBudget struct {
+	// Enabled creates a PodDisruptionBudget for the aggregator. Defaults to false.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// MinAvailable is the number of pods that must stay available during a voluntary
+	// disruption. Set either this or MaxUnavailable, not both; when both are set,
+	// MinAvailable takes precedence. When neither is set the operator defaults to
+	// MaxUnavailable of 1.
+	// +optional
+	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
+
+	// MaxUnavailable is the number of pods that can be unavailable during a voluntary
+	// disruption. Set either this or MinAvailable, not both; ignored when MinAvailable
+	// is set.
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+
+	// UnhealthyPodEvictionPolicy governs whether not-Ready pods count against the budget.
+	// Defaults to AlwaysAllow so unhealthy pods stay evictable and cannot block a node drain.
+	// +kubebuilder:validation:Enum=IfHealthyBudget;AlwaysAllow
+	// +optional
+	UnhealthyPodEvictionPolicy *policyv1.UnhealthyPodEvictionPolicyType `json:"unhealthyPodEvictionPolicy,omitempty"`
 }
 
 type EventCollector struct {

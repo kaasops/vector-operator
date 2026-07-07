@@ -77,6 +77,7 @@ type VectorAggregatorReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;list;watch;create;update;patch;delete
 
@@ -217,7 +218,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cfgHash := hash.Get(byteCfg)
+	cfgHash := int64(hash.Get(byteCfg))
 
 	if !vaCtrl.Spec.ConfigCheck.Disabled {
 		if vaCtrl.Status.LastAppliedConfigHash == nil || *vaCtrl.Status.LastAppliedConfigHash != cfgHash {
@@ -232,7 +233,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 				configcheck.ConfigCheckInitiatorVector,
 			).Run(ctx)
 			if err != nil {
-				if errors.Is(err, configcheck.ValidationError) {
+				if errors.Is(err, configcheck.ErrValidation) {
 					if err := vaCtrl.SetFailedStatus(ctx, reason); err != nil {
 						return ctrl.Result{}, err
 					}

@@ -38,14 +38,14 @@ type Controller struct {
 	Status              *vectorv1alpha1.VectorCommonStatus
 	ConfigBytes         []byte
 	Config              *config.VectorConfig
-	ClientSet           *kubernetes.Clientset
+	ClientSet           kubernetes.Interface
 	isClusterAggregator bool
 }
 
 func NewController(
 	v Aggregator,
 	c client.Client,
-	cs *kubernetes.Clientset,
+	cs kubernetes.Interface,
 ) *Controller {
 	ctrl := &Controller{
 		Client:           c,
@@ -120,6 +120,12 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 	}
 
 	if err := ctrl.ensureVectorAggregatorHPA(ctx); err != nil {
+		return err
+	}
+
+	// Kept last: a rejected PodDisruptionBudget write (admission policy, quota,
+	// RBAC) must not keep the aggregator from getting its event collector and HPA.
+	if err := ctrl.ensureVectorAggregatorPodDisruptionBudget(ctx); err != nil {
 		return err
 	}
 
@@ -281,7 +287,7 @@ func (ctrl *Controller) setDefault() {
 	}
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *uint32) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *int64) error {
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = nil

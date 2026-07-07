@@ -30,20 +30,25 @@ type tmp struct {
 	ServiceName string
 	// omitempty so pipelines without the annotation keep a stable hash (no re-hash on upgrade)
 	ConfigOptimization string `json:",omitempty"`
+	ForceConfigCheck   string `json:",omitempty"`
 }
 
-func GetPipelineHash(pipeline Pipeline) (*uint32, error) {
+func GetPipelineHash(pipeline Pipeline) (*int64, error) {
 	a, err := json.Marshal(tmp{
 		Spec:               pipeline.GetSpec(),
 		Labels:             pipeline.GetLabels(),
 		ServiceName:        pipeline.GetAnnotations()[common.AnnotationServiceName],
 		ConfigOptimization: pipeline.GetAnnotations()[common.AnnotationConfigOptimization],
+		ForceConfigCheck:   pipeline.GetAnnotations()[common.AnnotationForceConfigCheck],
 	})
 	if err != nil {
 		return nil, err
 	}
-	hash := hash.Get(a)
-	return &hash, nil
+	// hash.Get returns a uint32 (CRC32); widen to int64 so the value always fits the
+	// status field's int32->int64 schema. A plain int32 cast would overflow to a
+	// negative number for hashes above 2147483647. See #232.
+	h := int64(hash.Get(a))
+	return &h, nil
 }
 
 // IsPipelineChanged returns true, if hash in .status.lastAppliedPipelineHash matches with spec Hash

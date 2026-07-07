@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # Go modules
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      k8s:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
+
+  # GitHub Actions used by the workflows
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  # Base images in the Dockerfiles
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly

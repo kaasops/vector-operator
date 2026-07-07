@@ -29,9 +29,9 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 	"github.com/onsi/ginkgo/v2/types"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" //nolint:revive,staticcheck
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/kaasops/vector-operator/test/e2e/framework/config"

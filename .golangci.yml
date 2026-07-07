@@ -1,25 +1,33 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
 linters:
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
   enable:
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - errcheck
     - gofmt
     - goimports
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/kaasops/vector-operator
-
-issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - errcheck
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/kaasops/vector-operator
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

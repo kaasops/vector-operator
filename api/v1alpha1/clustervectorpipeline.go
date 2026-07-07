@@ -37,11 +37,11 @@ func (vp *ClusterVectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }
 
-func (vp *ClusterVectorPipeline) GetLastAppliedPipeline() *uint32 {
+func (vp *ClusterVectorPipeline) GetLastAppliedPipeline() *int64 {
 	return vp.Status.LastAppliedPipelineHash
 }
 
-func (vp *ClusterVectorPipeline) SetLastAppliedPipeline(hash *uint32) {
+func (vp *ClusterVectorPipeline) SetLastAppliedPipeline(hash *int64) {
 	vp.Status.LastAppliedPipelineHash = hash
 }
 

@@ -5,6 +5,7 @@ import (
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
@@ -24,7 +25,7 @@ func (ctrl *Controller) createVectorAggregatorPodMonitor() *monitorv1.PodMonitor
 
 	endpoint := monitorv1.PodMetricsEndpoint{
 		Path: "/metrics",
-		Port: "prom-exporter",
+		Port: ptr.To("prom-exporter"),
 	}
 
 	if ctrl.Spec.ScrapeInterval != "" {

@@ -1,0 +1,36 @@
+{{- if and .Values.metrics.enabled .Values.metrics.podMonitor.enabled }}
+{{- $tokenSecret := .Values.metrics.podMonitor.bearerTokenSecret.name | default (printf "%s-metrics-reader-token" (include "chart.fullname" .)) }}
+{{- if and .Values.metrics.secure (not .Values.metrics.podMonitor.createScrapeIdentity) (not .Values.metrics.podMonitor.bearerTokenSecret.name) }}
+{{- fail "metrics.secure=true: the PodMonitor needs a bearer token to scrape the authenticated endpoint — set metrics.podMonitor.createScrapeIdentity=true or point metrics.podMonitor.bearerTokenSecret.name at an existing Secret" }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "chart.fullname" . }}
+  namespace: {{ default .Release.Namespace .Values.metrics.podMonitor.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.metrics.podMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  podMetricsEndpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.podMonitor.interval }}
+      {{- if .Values.metrics.secure }}
+      scheme: https
+      tlsConfig:
+        # the operator serves metrics with a self-signed certificate
+        insecureSkipVerify: true
+      authorization:
+        credentials:
+          name: {{ $tokenSecret }}
+          key: {{ .Values.metrics.podMonitor.bearerTokenSecret.key }}
+      {{- end }}
+{{- end }}

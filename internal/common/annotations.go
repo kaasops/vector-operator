@@ -1,8 +1,9 @@
 package common
 
 const (
-	AnnotationServiceName = "observability.kaasops.io/service-name"
-	AnnotationRestartedAt = "vector-operator.kaasops.io/restartedAt"
+	AnnotationServiceName      = "observability.kaasops.io/service-name"
+	AnnotationRestartedAt      = "vector-operator.kaasops.io/restartedAt"
+	AnnotationForceConfigCheck = "vector-operator.kaasops.io/force-configcheck"
 	// AnnotationConfigOptimization set to AnnotationValueDisabled opts out of the
 	// config optimization enabled by --enable-config-optimization. On a Vector CR it
 	// opts the whole agent out; on a (Cluster)VectorPipeline it keeps just that

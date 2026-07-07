@@ -32,7 +32,7 @@ func (ctrl *Controller) ensureVectorAggregatorService(ctx context.Context) error
 		}
 	}
 	for _, svc := range existing {
-		if err := ctrl.Client.Delete(ctx, svc); err != nil {
+		if err := ctrl.Delete(ctx, svc); err != nil {
 			return err
 		}
 	}
@@ -69,7 +69,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 				Selector: matchLabels,
 			},
 		}
-		svc.ObjectMeta.Name = group.ServiceName
+		svc.Name = group.ServiceName
 		svcList = append(svcList, svc)
 	}
 
@@ -102,7 +102,7 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 				PublishNotReadyAddresses: true,
 			},
 		}
-		headless.ObjectMeta.Name = ctrl.getHeadlessServiceName()
+		headless.Name = ctrl.getHeadlessServiceName()
 		svcList = append(svcList, headless)
 	}
 
@@ -115,7 +115,7 @@ func (ctrl *Controller) getExistingServices(ctx context.Context) (map[string]*co
 		Namespace:     ctrl.Namespace,
 		LabelSelector: labels.Set(ctrl.matchLabelsForVectorAggregator()).AsSelector(),
 	}
-	err := ctrl.Client.List(ctx, &svcList, opts)
+	err := ctrl.List(ctx, &svcList, opts)
 	if err != nil {
 		return nil, err
 	}

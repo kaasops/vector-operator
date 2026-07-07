@@ -59,7 +59,7 @@ func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Cli
 	return ctrl
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, cfgHash, globCfgHash *uint32) error {
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, cfgHash, globCfgHash *int64) error {
 	var status = true
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = nil

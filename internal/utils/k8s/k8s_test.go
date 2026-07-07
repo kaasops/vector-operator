@@ -48,16 +48,18 @@ type objCase struct {
 	want    error
 }
 
-var nameRequiredError = api_errors.NewInvalid(
-	schema.GroupKind{},
-	"",
-	field.ErrorList{
-		field.Required(
-			field.NewPath("metadata.name"),
-			"name is required",
-		),
-	},
-)
+func nameRequiredError(gk schema.GroupKind) error {
+	return api_errors.NewInvalid(
+		gk,
+		"",
+		field.ErrorList{
+			field.Required(
+				field.NewPath("metadata.name"),
+				"name is required",
+			),
+		},
+	)
+}
 
 func getInitObjectMeta() metav1.ObjectMeta {
 	ObjectMeta := metav1.ObjectMeta{
@@ -136,7 +138,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update Deployment: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update Deployment: %w", nameRequiredError(schema.GroupKind{Group: "apps", Kind: "Deployment"})),
 		},
 		{
 			name: "Update exist case",
@@ -200,7 +202,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update StatefulSet: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update StatefulSet: %w", nameRequiredError(schema.GroupKind{Group: "apps", Kind: "StatefulSet"})),
 		},
 		{
 			name: "Update exist case",
@@ -264,7 +266,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &appsv1.DaemonSet{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update Daemonset: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update Daemonset: %w", nameRequiredError(schema.GroupKind{Group: "apps", Kind: "DaemonSet"})),
 		},
 		{
 			name: "Update exist case",
@@ -328,7 +330,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update Secret: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update Secret: %w", nameRequiredError(schema.GroupKind{Kind: "Secret"})),
 		},
 		{
 			name: "Update exist case",
@@ -392,7 +394,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update Service: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update Service: %w", nameRequiredError(schema.GroupKind{Kind: "Service"})),
 		},
 		{
 			name: "Update exist case",
@@ -456,7 +458,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update ServiceAccount: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update ServiceAccount: %w", nameRequiredError(schema.GroupKind{Kind: "ServiceAccount"})),
 		},
 		{
 			name: "Update exist case",
@@ -523,7 +525,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update ClusterRole: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update ClusterRole: %w", nameRequiredError(schema.GroupKind{Group: "rbac.authorization.k8s.io", Kind: "ClusterRole"})),
 		},
 		{
 			name: "Update exist case",
@@ -590,7 +592,7 @@ func TestCreateOrUpdateResource(t *testing.T) {
 			obj: &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			want: fmt.Errorf("failed to create or update ClusterRoleBinding: %w", nameRequiredError),
+			want: fmt.Errorf("failed to create or update ClusterRoleBinding: %w", nameRequiredError(schema.GroupKind{Group: "rbac.authorization.k8s.io", Kind: "ClusterRoleBinding"})),
 		},
 		{
 			name: "Update exist case",
@@ -1082,7 +1084,7 @@ func TestUpdateStatus(t *testing.T) {
 			updateObj: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{},
 			},
-			err: nameRequiredError,
+			err: nameRequiredError(schema.GroupKind{Group: "apps", Kind: "Deployment"}),
 		},
 		{
 			name: "Update status case",

@@ -28,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,6 +69,8 @@ func CreateOrUpdateResource(ctx context.Context, obj client.Object, c client.Cli
 		return createOrUpdateClusterRoleBinding(ctx, o, c)
 	case *monitorv1.PodMonitor:
 		return createOrUpdatePodMonitor(ctx, o, c)
+	case *policyv1.PodDisruptionBudget:
+		return createOrUpdatePodDisruptionBudget(ctx, o, c)
 	case *victoriametricsv1beta1.VMPodScrape:
 		return createOrUpdatePodSrape(ctx, o, c)
 	case *autoscalingv2.HorizontalPodAutoscaler:
@@ -313,6 +316,22 @@ func createOrUpdateHPA(ctx context.Context, desired *autoscalingv2.HorizontalPod
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update HPA: %w", err)
+	}
+	existing.DeepCopyInto(desired)
+	return nil
+}
+
+func createOrUpdatePodDisruptionBudget(ctx context.Context, desired *policyv1.PodDisruptionBudget, c client.Client) error {
+	existing := desired.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(ctx, c, existing, func() error {
+		existing.Labels = desired.Labels
+		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
+		existing.OwnerReferences = desired.OwnerReferences
+		existing.Spec = desired.Spec
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update PodDisruptionBudget: %w", err)
 	}
 	existing.DeepCopyInto(desired)
 	return nil

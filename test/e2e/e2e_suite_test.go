@@ -19,6 +19,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -38,6 +39,15 @@ const (
 	mergerImage       = "example.com/checkpoint-merger:v0.0.1"
 )
 
+// kindCluster is the kind cluster the suite loads images into.
+// Override with KIND_CLUSTER to run against a differently named cluster.
+var kindCluster = func() string {
+	if name := os.Getenv("KIND_CLUSTER"); name != "" {
+		return name
+	}
+	return "kind"
+}()
+
 // artifactCollector manages artifact collection for failed tests
 var artifactCollector artifacts.Collector
 
@@ -56,11 +66,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	_, err := utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred())
 
-	cmd = exec.Command("kind", "load", "docker-image", operatorImage, "--name", "kind")
+	cmd = exec.Command("kind", "load", "docker-image", operatorImage, "--name", kindCluster)
 	_, err = utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred())
 
-	cmd = exec.Command("kind", "load", "docker-image", mergerImage, "--name", "kind")
+	cmd = exec.Command("kind", "load", "docker-image", mergerImage, "--name", kindCluster)
 	_, err = utils.Run(cmd)
 	Expect(err).NotTo(HaveOccurred())
 

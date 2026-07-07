@@ -5,3 +5,4 @@
 - Secure credentials [doc](https://github.com/kaasops/vector-operator/blob/main/docs/secure-credential.md)
 - Collect logs from file [doc](https://github.com/kaasops/vector-operator/blob/main/docs/logs-from-file.md)
 - Collect journald services logs [doc](https://github.com/kaasops/vector-operator/blob/main/docs/journald-logs.md)
+- Aggregator persistent disk buffers [doc](https://github.com/kaasops/vector-operator/blob/main/docs/aggregator-persistence.md)

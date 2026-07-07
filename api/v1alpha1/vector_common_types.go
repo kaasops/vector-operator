@@ -194,26 +194,32 @@ type VectorAggregatorCommon struct {
 	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`
 	EventCollector EventCollector              `json:"eventCollector,omitempty"`
 	Autoscaling    VectorAggregatorAutoscaling `json:"autoscaling,omitempty"`
-	// Persistence configures durable disk buffers for the aggregator.
+	// Persistence gives the aggregator durable storage for its data_dir.
 	// When enabled the aggregator is rendered as a StatefulSet with a persistent
 	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.
 	// +optional
 	Persistence VectorAggregatorPersistence `json:"persistence,omitempty"`
 }
 
-// VectorAggregatorPersistence configures durable disk buffers for the aggregator.
+// VectorAggregatorPersistence gives the aggregator durable storage for its data_dir.
 //
 // When Enabled, the operator renders the aggregator as a StatefulSet whose data
-// directory is backed by a persistent volume claimed per replica, so buffered but
-// undelivered events survive pod restart and reschedule. When it is not enabled the
-// aggregator stays a Deployment and nothing changes.
+// directory is backed by a persistent volume claimed per replica, so disk buffered
+// events survive pod restart and reschedule. When it is not enabled the aggregator
+// stays a Deployment and nothing changes.
+//
+// This provides the storage only. It does not turn on disk buffering; that must be
+// configured per sink with buffer.type = disk, otherwise a sink still buffers in
+// memory and its in flight events are lost on restart.
 //
 // Note that turning this on for an existing aggregator recreates it, because
 // Kubernetes cannot convert a Deployment to a StatefulSet in place. The volume size
 // and storage class are fixed once the StatefulSet exists, since Kubernetes rejects
 // changes to volumeClaimTemplates.
 type VectorAggregatorPersistence struct {
-	// Enabled turns on persistent disk buffers and switches the workload to a StatefulSet.
+	// Enabled switches the workload to a StatefulSet with a persistent volume per
+	// replica. It does not turn on disk buffering on its own; that is configured per
+	// sink with buffer.type = disk.
 	Enabled bool `json:"enabled,omitempty"`
 
 	// Size is the requested size of the volume for each replica. Defaults to 10Gi.

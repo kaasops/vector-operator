@@ -75,6 +75,7 @@ type VectorAggregatorReconciler struct {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;list;watch;create;update;patch;delete
@@ -151,6 +152,7 @@ func (r *VectorAggregatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha1.VectorAggregator{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WatchesRawSource(source.Channel(r.EventChan, &handler.EnqueueRequestForObject{})).
 		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ConfigMap{}).

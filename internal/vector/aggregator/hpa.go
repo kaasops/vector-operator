@@ -25,6 +25,13 @@ func (ctrl *Controller) createVectorAggregatorHPA() *autoscalingv2.HorizontalPod
 	labels := ctrl.labelsForVectorAggregator()
 	annotations := ctrl.annotationsForVectorAggregator()
 
+	// The aggregator is a StatefulSet in persistent mode and a Deployment otherwise.
+	// Both support the scale subresource, so the HPA just needs the right kind.
+	targetKind := "Deployment"
+	if ctrl.persistenceEnabled() {
+		targetKind = "StatefulSet"
+	}
+
 	HPA := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -33,7 +40,7 @@ func (ctrl *Controller) createVectorAggregatorHPA() *autoscalingv2.HorizontalPod
 			Behavior:    ctrl.Spec.Autoscaling.Behavior,
 			Metrics:     ctrl.Spec.Autoscaling.Metrics,
 			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
-				Kind:       "Deployment",
+				Kind:       targetKind,
 				Name:       ctrl.getNameVectorAggregator(),
 				APIVersion: "apps/v1",
 			},

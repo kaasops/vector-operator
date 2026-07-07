@@ -30,6 +30,7 @@ type tmp struct {
 	ServiceName string
 	// omitempty so pipelines without the annotation keep a stable hash (no re-hash on upgrade)
 	ConfigOptimization string `json:",omitempty"`
+	ForceConfigCheck   string `json:",omitempty"`
 }
 
 func GetPipelineHash(pipeline Pipeline) (*int64, error) {
@@ -38,6 +39,7 @@ func GetPipelineHash(pipeline Pipeline) (*int64, error) {
 		Labels:             pipeline.GetLabels(),
 		ServiceName:        pipeline.GetAnnotations()[common.AnnotationServiceName],
 		ConfigOptimization: pipeline.GetAnnotations()[common.AnnotationConfigOptimization],
+		ForceConfigCheck:   pipeline.GetAnnotations()[common.AnnotationForceConfigCheck],
 	})
 	if err != nil {
 		return nil, err

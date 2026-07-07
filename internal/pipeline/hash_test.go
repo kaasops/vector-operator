@@ -124,3 +124,78 @@ func TestIsPipelineChangedDetectsConfigOptimizationToggle(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, unchanged)
 }
+
+// Adding the force-configcheck annotation must change the pipeline hash so the
+// reconcile re-runs configcheck even when the spec is untouched.
+func TestGetPipelineHashTracksForceConfigCheckAnnotation(t *testing.T) {
+	base := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"}}
+	h1, err := GetPipelineHash(base)
+	require.NoError(t, err)
+
+	forced := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{
+		Name:        "p",
+		Namespace:   "ns",
+		Annotations: map[string]string{common.AnnotationForceConfigCheck: "v1"},
+	}}
+	h2, err := GetPipelineHash(forced)
+	require.NoError(t, err)
+
+	assert.NotEqual(t, *h1, *h2)
+}
+
+// The same for a ClusterVectorPipeline (cluster-scoped path).
+func TestGetPipelineHashTracksForceConfigCheckAnnotationCVP(t *testing.T) {
+	base := &v1alpha1.ClusterVectorPipeline{ObjectMeta: metav1.ObjectMeta{Name: "p"}}
+	h1, err := GetPipelineHash(base)
+	require.NoError(t, err)
+
+	forced := &v1alpha1.ClusterVectorPipeline{ObjectMeta: metav1.ObjectMeta{
+		Name:        "p",
+		Annotations: map[string]string{common.AnnotationForceConfigCheck: "v1"},
+	}}
+	h2, err := GetPipelineHash(forced)
+	require.NoError(t, err)
+
+	assert.NotEqual(t, *h1, *h2)
+}
+
+// Changing the annotation value (not just adding it) must change the hash — this is
+// how re-triggering configcheck works.
+func TestGetPipelineHashTracksForceConfigCheckValueChange(t *testing.T) {
+	v1 := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{
+		Name:        "p",
+		Namespace:   "ns",
+		Annotations: map[string]string{common.AnnotationForceConfigCheck: "v1"},
+	}}
+	h1, err := GetPipelineHash(v1)
+	require.NoError(t, err)
+
+	v2 := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{
+		Name:        "p",
+		Namespace:   "ns",
+		Annotations: map[string]string{common.AnnotationForceConfigCheck: "v2"},
+	}}
+	h2, err := GetPipelineHash(v2)
+	require.NoError(t, err)
+
+	assert.NotEqual(t, *h1, *h2)
+}
+
+// Toggling the force-configcheck annotation must read as "changed"
+// (IsPipelineChanged == false) so the reconcile propagates.
+func TestIsPipelineChangedDetectsForceConfigCheckToggle(t *testing.T) {
+	base := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"}}
+	h, err := GetPipelineHash(base)
+	require.NoError(t, err)
+
+	forced := &v1alpha1.VectorPipeline{ObjectMeta: metav1.ObjectMeta{
+		Name:        "p",
+		Namespace:   "ns",
+		Annotations: map[string]string{common.AnnotationForceConfigCheck: "v1"},
+	}}
+	forced.SetLastAppliedPipeline(h) // the no-annotation hash was last applied
+
+	unchanged, err := IsPipelineChanged(forced)
+	require.NoError(t, err)
+	assert.False(t, unchanged)
+}

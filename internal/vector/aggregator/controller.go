@@ -374,8 +374,15 @@ func (ctrl *Controller) persistenceEnabled() bool {
 // and a StatefulSet that share a name and pod labels, so the stale one must be
 // removed or its pods keep serving alongside the new workload.
 func (ctrl *Controller) deleteObsoleteWorkload(ctx context.Context, obj client.Object) error {
-	obj.SetName(ctrl.getNameVectorAggregator())
-	obj.SetNamespace(ctrl.Namespace)
+	key := types.NamespacedName{Name: ctrl.getNameVectorAggregator(), Namespace: ctrl.Namespace}
+	// Read from the cache the Owns() watch already maintains, so a steady-state
+	// reconcile skips the DELETE instead of firing one that just returns NotFound.
+	if err := ctrl.Get(ctx, key, obj); err != nil {
+		if api_errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
 	if err := ctrl.Delete(ctx, obj); err != nil && !api_errors.IsNotFound(err) {
 		return err
 	}

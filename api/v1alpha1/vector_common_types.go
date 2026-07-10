@@ -1,9 +1,11 @@
 package v1alpha1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -197,9 +199,63 @@ type VectorAggregatorCommon struct {
 	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`
 	EventCollector EventCollector              `json:"eventCollector,omitempty"`
 	Autoscaling    VectorAggregatorAutoscaling `json:"autoscaling,omitempty"`
+	// Persistence gives the aggregator durable storage for its data_dir.
+	// When enabled the aggregator is rendered as a StatefulSet with a persistent
+	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.
+	// +optional
+	Persistence VectorAggregatorPersistence `json:"persistence,omitempty"`
 	// PodDisruptionBudget configures an optional PodDisruptionBudget for the aggregator.
 	// +optional
 	PodDisruptionBudget PodDisruptionBudget `json:"podDisruptionBudget,omitempty"`
+}
+
+// VectorAggregatorPersistence gives the aggregator durable storage for its data_dir.
+//
+// When Enabled, the operator renders the aggregator as a StatefulSet whose data
+// directory is backed by a persistent volume claimed per replica, so disk buffered
+// events survive pod restart and reschedule. When it is not enabled the aggregator
+// stays a Deployment and nothing changes.
+//
+// This provides the storage only. It does not turn on disk buffering; that must be
+// configured per sink with buffer.type = disk, otherwise a sink still buffers in
+// memory and its in flight events are lost on restart.
+//
+// Note that turning this on for an existing aggregator recreates it, because
+// Kubernetes cannot convert a Deployment to a StatefulSet in place. The volume size
+// and storage class are fixed once the StatefulSet exists, since Kubernetes rejects
+// changes to volumeClaimTemplates.
+type VectorAggregatorPersistence struct {
+	// Enabled switches the workload to a StatefulSet with a persistent volume per
+	// replica. It does not turn on disk buffering on its own; that is configured per
+	// sink with buffer.type = disk.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Size is the requested size of the volume for each replica. Defaults to 10Gi.
+	// +optional
+	Size resource.Quantity `json:"size,omitempty"`
+
+	// StorageClassName selects the StorageClass for the volume. If not set the
+	// cluster default StorageClass is used.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// AccessModes for the volume. Defaults to ReadWriteOnce, which is required for a
+	// Vector disk buffer since it must have exactly one writer.
+	// +optional
+	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+
+	// VolumeClaimTemplates is an escape hatch for full control over the persistent
+	// volume claims. When set it takes precedence over the convenience fields above.
+	// One of the claims must be named "data", since that is the volume the
+	// aggregator mounts at the Vector data_dir.
+	// +optional
+	VolumeClaimTemplates []v1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+
+	// RetentionPolicy controls whether the volumes are kept or deleted when replicas
+	// are scaled down or the StatefulSet is deleted. Defaults to retaining the volumes
+	// so buffered data can be replayed.
+	// +optional
+	RetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"retentionPolicy,omitempty"`
 }
 
 // PodDisruptionBudget configures a PodDisruptionBudget for the aggregator pods.

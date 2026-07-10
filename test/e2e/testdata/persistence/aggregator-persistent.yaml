@@ -1,0 +1,14 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: persistent-aggregator
+spec:
+  image: timberio/vector:0.40.0-alpine
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 1Gi
+  selector:
+    matchLabels:
+      app: test
+      role: aggregator

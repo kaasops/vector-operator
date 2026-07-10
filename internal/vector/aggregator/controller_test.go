@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	policyv1 "k8s.io/api/policy/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -76,4 +78,45 @@ func TestEnsureVectorAggregator_PDBWriteFailureDoesNotBlockHPA(t *testing.T) {
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	g.Expect(cl.Get(context.Background(), types.NamespacedName{Name: "va-aggregator", Namespace: "default"}, hpa)).
 		To(Succeed(), "HPA must be ensured even when the PDB write fails")
+}
+
+// A workload left over from the previous persistence mode must be removed so its
+// pods stop serving alongside the new workload.
+func TestDeleteObsoleteWorkload_DeletesLeftover(t *testing.T) {
+	g := NewWithT(t)
+
+	stale := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "va-aggregator", Namespace: "default"}}
+	cl := newFakeClient(g, stale)
+
+	va := &vectorv1alpha1.VectorAggregator{ObjectMeta: metav1.ObjectMeta{Name: "va", Namespace: "default"}}
+	ctrl := NewController(va, cl, k8sfake.NewSimpleClientset())
+
+	g.Expect(ctrl.deleteObsoleteWorkload(context.Background(), &appsv1.Deployment{})).To(Succeed())
+
+	err := cl.Get(context.Background(), types.NamespacedName{Name: "va-aggregator", Namespace: "default"}, &appsv1.Deployment{})
+	g.Expect(api_errors.IsNotFound(err)).To(BeTrue(), "the leftover workload must be deleted")
+}
+
+// In steady state the opposite workload does not exist, so the reconcile must not
+// issue a DELETE that just comes back NotFound.
+func TestDeleteObsoleteWorkload_SkipsDeleteWhenAbsent(t *testing.T) {
+	g := NewWithT(t)
+
+	s := runtime.NewScheme()
+	g.Expect(clientgoscheme.AddToScheme(s)).To(Succeed())
+	g.Expect(vectorv1alpha1.AddToScheme(s)).To(Succeed())
+
+	deleteCalls := 0
+	cl := crfake.NewClientBuilder().WithScheme(s).WithInterceptorFuncs(interceptor.Funcs{
+		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			deleteCalls++
+			return c.Delete(ctx, obj, opts...)
+		},
+	}).Build()
+
+	va := &vectorv1alpha1.VectorAggregator{ObjectMeta: metav1.ObjectMeta{Name: "va", Namespace: "default"}}
+	ctrl := NewController(va, cl, k8sfake.NewSimpleClientset())
+
+	g.Expect(ctrl.deleteObsoleteWorkload(context.Background(), &appsv1.Deployment{})).To(Succeed())
+	g.Expect(deleteCalls).To(Equal(0), "no DELETE should be issued when the workload is absent")
 }

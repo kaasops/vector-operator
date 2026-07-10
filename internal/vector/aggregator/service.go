@@ -90,6 +90,22 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 		})
 	}
 
+	// In persistent mode the aggregator is a StatefulSet, which needs a headless
+	// governing service for stable per replica DNS. It carries the aggregator
+	// labels so the reconcile loop deletes it again if persistence is turned off.
+	if ctrl.persistenceEnabled() {
+		headless := &corev1.Service{
+			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
+			Spec: corev1.ServiceSpec{
+				ClusterIP:                corev1.ClusterIPNone,
+				Selector:                 matchLabels,
+				PublishNotReadyAddresses: true,
+			},
+		}
+		headless.Name = ctrl.getHeadlessServiceName()
+		svcList = append(svcList, headless)
+	}
+
 	return svcList, nil
 }
 

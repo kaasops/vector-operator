@@ -4,7 +4,9 @@ import (
 	"context"
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -103,8 +105,14 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		}
 	}
 
-	if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
-		return err
+	if ctrl.persistenceEnabled() {
+		if err := ctrl.ensureVectorAggregatorStatefulSet(ctx); err != nil {
+			return err
+		}
+	} else {
+		if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
+			return err
+		}
 	}
 
 	if err := ctrl.ensureEventCollector(ctx); err != nil {
@@ -154,6 +162,21 @@ func (ctrl *Controller) setDefault() {
 
 	if ctrl.Spec.DataDir == "" {
 		ctrl.Spec.DataDir = "/var/lib/vector"
+	}
+
+	if ctrl.persistenceEnabled() {
+		if len(ctrl.Spec.Persistence.AccessModes) == 0 {
+			ctrl.Spec.Persistence.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+		}
+		if ctrl.Spec.Persistence.Size.IsZero() {
+			ctrl.Spec.Persistence.Size = resourcev1.MustParse("10Gi")
+		}
+		if ctrl.Spec.Persistence.RetentionPolicy == nil {
+			ctrl.Spec.Persistence.RetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+			}
+		}
 	}
 
 	if ctrl.Spec.Volumes == nil {
@@ -316,6 +339,12 @@ func (ctrl *Controller) getNameVectorAggregator() string {
 	return name
 }
 
+// getHeadlessServiceName returns the name of the headless service that governs
+// the StatefulSet, providing stable per replica DNS in persistent mode.
+func (ctrl *Controller) getHeadlessServiceName() string {
+	return ctrl.getNameVectorAggregator() + "-headless"
+}
+
 func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
@@ -331,6 +360,33 @@ func (ctrl *Controller) getControllerReference() []metav1.OwnerReference {
 
 func (ctrl *Controller) GetServiceName() string {
 	return ctrl.getNameVectorAggregator()
+}
+
+// persistenceEnabled reports whether the aggregator should run as a StatefulSet
+// with persistent disk buffers. It is true when persistence is explicitly enabled
+// or when raw volume claim templates are supplied through the escape hatch.
+func (ctrl *Controller) persistenceEnabled() bool {
+	return ctrl.Spec.Persistence.Enabled || len(ctrl.Spec.Persistence.VolumeClaimTemplates) > 0
+}
+
+// deleteObsoleteWorkload removes a workload of the opposite kind left over from a
+// previous persistence mode. Toggling persistence switches between a Deployment
+// and a StatefulSet that share a name and pod labels, so the stale one must be
+// removed or its pods keep serving alongside the new workload.
+func (ctrl *Controller) deleteObsoleteWorkload(ctx context.Context, obj client.Object) error {
+	key := types.NamespacedName{Name: ctrl.getNameVectorAggregator(), Namespace: ctrl.Namespace}
+	// Read from the cache the Owns() watch already maintains, so a steady-state
+	// reconcile skips the DELETE instead of firing one that just returns NotFound.
+	if err := ctrl.Get(ctx, key, obj); err != nil {
+		if api_errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if err := ctrl.Delete(ctx, obj); err != nil && !api_errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func (ctrl *Controller) prefix() string {

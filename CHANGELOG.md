@@ -1,3 +1,6 @@
+## Unreleased
+- [[250]](https://github.com/kaasops/vector-operator/issues/250) **Feature** Add opt in persistent storage for the aggregator data_dir, rendering it as a StatefulSet with a volume claim template per replica
+
 ## v0.0.40
 - [[138]](https://github.com/kaasops/vector-operator/issues/138), [[142]](https://github.com/kaasops/vector-operator/issues/142) **Feature** Add control for Vector DaemonSet annotation
 

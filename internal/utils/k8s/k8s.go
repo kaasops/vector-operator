@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -107,7 +108,37 @@ func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet,
 		existing.Labels = desired.Labels
 		existing.Annotations = mergeMaps(desired.Annotations, existing.Annotations)
 		existing.OwnerReferences = desired.OwnerReferences
-		existing.Spec = desired.Spec
+
+		if existing.CreationTimestamp.IsZero() {
+			// The StatefulSet does not exist yet, so take the full desired spec.
+			existing.Spec = desired.Spec
+			return nil
+		}
+
+		// The StatefulSet already exists. Several spec fields are immutable and the
+		// API server rejects any change to them, so preserve the live values and
+		// only assign the fields Kubernetes allows to change on update. Sending an
+		// update that touches an immutable field would fail every reconcile.
+		if statefulSetImmutableChanged(existing, desired) {
+			log.FromContext(ctx).Info(
+				"StatefulSet has changes to immutable fields that cannot be applied in place, recreate the aggregator to apply them",
+				"statefulset", existing.Name, "namespace", existing.Namespace)
+		}
+
+		desiredReplicas := desired.Spec.Replicas
+		currentReplicas := existing.Spec.Replicas
+		existing.Spec.Template = desired.Spec.Template
+		existing.Spec.UpdateStrategy = desired.Spec.UpdateStrategy
+		existing.Spec.PersistentVolumeClaimRetentionPolicy = desired.Spec.PersistentVolumeClaimRetentionPolicy
+		existing.Spec.MinReadySeconds = desired.Spec.MinReadySeconds
+
+		// Preserve the HPA managed replica count when the desired count is nil,
+		// matching the Deployment path so reconcile does not fight the autoscaler.
+		if desiredReplicas == nil {
+			existing.Spec.Replicas = currentReplicas
+		} else {
+			existing.Spec.Replicas = desiredReplicas
+		}
 		return nil
 	})
 	if err != nil {
@@ -115,6 +146,36 @@ func createOrUpdateStatefulSet(ctx context.Context, desired *appsv1.StatefulSet,
 	}
 	existing.DeepCopyInto(desired)
 	return nil
+}
+
+// statefulSetImmutableChanged reports whether the desired StatefulSet asks for a
+// change to a field the API server treats as immutable. It compares only fields
+// the operator sets itself, so it does not report drift on values the API server
+// defaults, such as an unset StorageClassName. It is used to warn the user, since
+// applying such a change requires recreating the StatefulSet.
+func statefulSetImmutableChanged(existing, desired *appsv1.StatefulSet) bool {
+	if existing.Spec.ServiceName != desired.Spec.ServiceName {
+		return true
+	}
+	if existing.Spec.PodManagementPolicy != desired.Spec.PodManagementPolicy {
+		return true
+	}
+	if len(existing.Spec.VolumeClaimTemplates) != len(desired.Spec.VolumeClaimTemplates) {
+		return true
+	}
+	for i := range desired.Spec.VolumeClaimTemplates {
+		d := &desired.Spec.VolumeClaimTemplates[i]
+		e := &existing.Spec.VolumeClaimTemplates[i]
+		if d.Name != e.Name {
+			return true
+		}
+		desiredSize := d.Spec.Resources.Requests[corev1.ResourceStorage]
+		existingSize := e.Spec.Resources.Requests[corev1.ResourceStorage]
+		if desiredSize.Cmp(existingSize) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func createOrUpdateDaemonSet(ctx context.Context, desired *appsv1.DaemonSet, c client.Client) error {

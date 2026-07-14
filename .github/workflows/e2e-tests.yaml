@@ -11,6 +11,9 @@ on:
       - master
   workflow_dispatch:  # Allow manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   e2e-tests:
     name: Run E2E Tests (${{ matrix.k8s }})
@@ -65,10 +68,12 @@ jobs:
           path: test/e2e/results/
           retention-days: 7
 
+      # Runs from Dependabot PRs and forks get a read-only GITHUB_TOKEN, so creating a
+      # check run fails with 403. Report into the job summary instead, which needs no token.
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: test/e2e/results/run-*/reports/junit-report.xml
-          check_name: E2E Test Results (${{ matrix.k8s }})
           comment_mode: off
+          check_run: false

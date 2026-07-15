@@ -41,6 +41,10 @@ var _ = Describe("PodMonitor Configuration", Label(config.LabelSmoke, config.Lab
 	})
 
 	AfterAll(func() {
+		// Cluster-scoped aggregators outlive the namespace; delete them so the operator
+		// does not keep reconciling them into the torn-down namespace.
+		f.DeleteClusterResource("clustervectoraggregator", "podmonitor-cluster-agg")
+		f.DeleteClusterResource("clustervectoraggregator", "podmonitor-cluster-agg-defaults")
 		f.Teardown()
 		f.PrintMetrics()
 	})

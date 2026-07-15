@@ -113,6 +113,16 @@ func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx c
 		return ctrl.Result{}, nil
 	}
 
+	// resourceNamespace may be terminating or already deleted (e.g. left behind after the
+	// namespace it targeted was removed). Reconciling into it only produces errors and
+	// requeues that starve the (serial) worker, so skip until it is gone.
+	if terminating, err := k8s.NamespaceIsTerminating(ctx, client, vaCtrl.Namespace); err != nil {
+		return ctrl.Result{}, err
+	} else if terminating {
+		log.Info("Skip reconcile: resourceNamespace is terminating or gone", "namespace", vaCtrl.Namespace)
+		return ctrl.Result{}, nil
+	}
+
 	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
 		Scope:    pipeline.ClusterPipelines,
 		Selector: v.Spec.Selector,

@@ -127,15 +127,7 @@ func New(
 // pod/secret — the API server rejects new content — so the caller must skip it
 // instead of blocking a reconcile worker until ConfigCheckTimeout.
 func (cc *ConfigCheck) namespaceIsTerminating(ctx context.Context) (bool, error) {
-	ns := &corev1.Namespace{}
-	if err := cc.Client.Get(ctx, types.NamespacedName{Name: cc.Namespace}, ns); err != nil {
-		if api_errors.IsNotFound(err) {
-			// namespace already gone — nothing to validate into, treat as terminating (skip)
-			return true, nil
-		}
-		return false, err
-	}
-	return ns.DeletionTimestamp != nil, nil
+	return k8s.NamespaceIsTerminating(ctx, cc.Client, cc.Namespace)
 }
 
 func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {

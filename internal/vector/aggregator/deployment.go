@@ -197,26 +197,12 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 			Name:         "config",
 			VolumeSource: configVolumeSource,
 		},
-		{
-			Name: "procfs",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/proc",
-				},
-			},
-		},
-		{
-			Name: "sysfs",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/sys",
-				},
-			},
-		},
 	}
 
 	// In persistent mode the data volume comes from the StatefulSet volume claim
 	// template, so only add the hostPath data volume for the Deployment path.
+	// Keep it right after "config": reordering the volume list changes the pod
+	// template and rolls every non-persistent aggregator on operator upgrade.
 	if !ctrl.persistenceEnabled() {
 		requiredVolumes = append(requiredVolumes, corev1.Volume{
 			Name: dataVolumeName,
@@ -227,6 +213,25 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 			},
 		})
 	}
+
+	requiredVolumes = append(requiredVolumes,
+		corev1.Volume{
+			Name: "procfs",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/proc",
+				},
+			},
+		},
+		corev1.Volume{
+			Name: "sysfs",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/sys",
+				},
+			},
+		},
+	)
 
 	// Only add volumes that don't already exist
 	for _, reqVol := range requiredVolumes {

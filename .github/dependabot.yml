@@ -20,9 +20,11 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
 
   # Base images in the Dockerfiles
   - package-ecosystem: docker
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10

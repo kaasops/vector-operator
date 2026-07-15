@@ -23,4 +23,8 @@ import (
 var (
 	ErrValidation         = errors.New("config validation error")
 	ErrConfigcheckTimeout = errors.New("timeout waiting configcheck pod result")
+	// ErrConfigcheckSkipped signals that the check did not run because its target
+	// namespace is terminating (or gone). Callers should treat it as a no-op skip,
+	// not a validation failure — the config was never checked.
+	ErrConfigcheckSkipped = errors.New("configcheck skipped: namespace is terminating")
 )

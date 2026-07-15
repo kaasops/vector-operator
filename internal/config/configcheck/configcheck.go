@@ -122,9 +122,35 @@ func New(
 	}
 }
 
+// namespaceIsTerminating reports whether the target namespace is being deleted or
+// already gone. A ConfigCheck launched into such a namespace can never create its
+// pod/secret — the API server rejects new content — so the caller must skip it
+// instead of blocking a reconcile worker until ConfigCheckTimeout.
+func (cc *ConfigCheck) namespaceIsTerminating(ctx context.Context) (bool, error) {
+	ns := &corev1.Namespace{}
+	if err := cc.Client.Get(ctx, types.NamespacedName{Name: cc.Namespace}, ns); err != nil {
+		if api_errors.IsNotFound(err) {
+			// namespace already gone — nothing to validate into, treat as terminating (skip)
+			return true, nil
+		}
+		return false, err
+	}
+	return ns.DeletionTimestamp != nil, nil
+}
+
 func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =================")
+
+	// A terminating namespace cannot accept new content, so the configcheck pod and
+	// secret would never be admitted and getCheckResult would block until
+	// ConfigCheckTimeout, holding the reconcile worker. Skip instead.
+	if terminating, err := cc.namespaceIsTerminating(ctx); err != nil {
+		return "", err
+	} else if terminating {
+		log.Info("Skipping ConfigCheck: namespace is terminating or gone", "namespace", cc.Namespace)
+		return "", ErrConfigcheckSkipped
+	}
 
 	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
 		return "", err

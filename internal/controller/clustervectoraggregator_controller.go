@@ -163,6 +163,11 @@ func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx c
 					log.Error(err, "Invalid config")
 					return ctrl.Result{}, nil
 				}
+				if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+					// namespace is terminating; the aggregator is on its way out, nothing to do
+					log.Info("ConfigCheck skipped, namespace is terminating")
+					return ctrl.Result{}, nil
+				}
 				return ctrl.Result{}, err
 			}
 		}

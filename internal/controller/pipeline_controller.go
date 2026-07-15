@@ -184,6 +184,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				)
 
 				reason, err := configCheck.Run(ctx)
+				if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+					return nil
+				}
 				if reason != "" {
 					return fmt.Errorf("agent %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
 				}
@@ -242,6 +245,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					)
 
 					reason, err := configCheck.Run(ctx)
+					if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+						return nil
+					}
 					if reason != "" {
 						return fmt.Errorf("aggregator %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
 					}
@@ -295,6 +301,9 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					)
 
 					reason, err := configCheck.Run(ctx)
+					if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+						return nil
+					}
 					if reason != "" {
 						return fmt.Errorf("cluster aggregator %s/%s config check failed: %s", vector.Namespace, vector.Name, reason)
 					}

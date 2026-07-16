@@ -19,6 +19,7 @@ package configcheck
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -227,6 +228,26 @@ func randStringRunes() string {
 	return string(b)
 }
 
+// unstartableReason reports a container waiting state that cannot resolve without a
+// spec change (missing secret/configmap referenced by env, invalid image name), so
+// waiting for the configcheck pod to complete is pointless.
+func unstartableReason(pod *corev1.Pod) (string, bool) {
+	statuses := make([]corev1.ContainerStatus, 0, len(pod.Status.InitContainerStatuses)+len(pod.Status.ContainerStatuses))
+	statuses = append(statuses, pod.Status.InitContainerStatuses...)
+	statuses = append(statuses, pod.Status.ContainerStatuses...)
+	for _, st := range statuses {
+		w := st.State.Waiting
+		if w == nil {
+			continue
+		}
+		switch w.Reason {
+		case "CreateContainerConfigError", "InvalidImageName":
+			return fmt.Sprintf("configcheck pod cannot start, %s: %s", w.Reason, w.Message), true
+		}
+	}
+	return "", false
+}
+
 func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
@@ -251,16 +272,21 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 
 	for {
 		select {
-		case e := <-watcher.ResultChan():
-			if e.Object == nil {
-				return "", nil
+		case e, open := <-watcher.ResultChan():
+			if !open {
+				// We lost sight of the pod; reporting success here would let an
+				// unvalidated config through.
+				return "", fmt.Errorf("configcheck: watch for pod %s closed before a result", pod.Name)
 			}
 			pod, ok := e.Object.(*corev1.Pod)
 			if !ok {
 				continue
 			}
 			switch e.Type {
-			case watch.Modified:
+			// Added matters too: a resourceVersion-less watch is seeded with synthetic
+			// Added events, so a pod that reached a final state before the watch was
+			// established would otherwise be ignored until ConfigCheckTimeout.
+			case watch.Added, watch.Modified:
 				if pod.DeletionTimestamp != nil {
 					continue
 				}
@@ -275,7 +301,17 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 						return "", err
 					}
 					return reason, ErrValidation
+				default:
+					// A pod that can never start (e.g. env from a missing secret →
+					// CreateContainerConfigError) stays Pending forever; fail the check
+					// now instead of holding the reconcile worker until timeout.
+					if reason, unstartable := unstartableReason(pod); unstartable {
+						log.Info("Config Check pod cannot start", "reason", reason)
+						return reason, ErrValidation
+					}
 				}
+			case watch.Deleted:
+				return "", fmt.Errorf("configcheck: pod %s was deleted before producing a result", pod.Name)
 			}
 			// Reset timer after processing event to restart timeout window
 			if !timer.Stop() {

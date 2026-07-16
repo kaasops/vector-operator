@@ -363,7 +363,10 @@ func reconcileWithDelay(ctx context.Context, in, out chan event.GenericEvent, de
 		case <-ctx.Done():
 			return
 		case ev := <-in:
-			ticker.Reset(delay)
+			// Coalesce events per object into the current window. Do NOT reset the
+			// ticker here: under a continuous stream (events arriving faster than
+			// delay) resetting would postpone the flush indefinitely and starve
+			// agent reconciles, leaving their config secret stale/unbuilt.
 			key := fmt.Sprintf("%s/%s", ev.Object.GetNamespace(), ev.Object.GetName())
 			if _, ok := store[key]; !ok {
 				store[key] = ev

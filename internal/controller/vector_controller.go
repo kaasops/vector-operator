@@ -188,6 +188,16 @@ func (r *VectorReconciler) reconcileVectors(ctx context.Context, client client.C
 
 func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.Vector) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("Vector", v.Name)
+
+	// A terminating namespace rejects new content, so reconciling into it only produces
+	// errors and requeues that starve the (serial) worker until the namespace is gone.
+	if terminating, err := k8s.NamespaceIsTerminating(ctx, client, v.Namespace); err != nil {
+		return ctrl.Result{}, err
+	} else if terminating {
+		log.Info("Skip reconcile: namespace is terminating or gone", "namespace", v.Namespace)
+		return ctrl.Result{}, nil
+	}
+
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
 
@@ -243,6 +253,11 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 						return ctrl.Result{}, err
 					}
 					log.Error(err, "Invalid config")
+					return ctrl.Result{}, nil
+				}
+				if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+					// namespace is terminating; the Vector CR is on its way out, nothing to do
+					log.Info("ConfigCheck skipped, namespace is terminating")
 					return ctrl.Result{}, nil
 				}
 				return ctrl.Result{}, err

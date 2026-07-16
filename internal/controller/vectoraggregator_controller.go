@@ -187,6 +187,16 @@ func listVectorAggregators(ctx context.Context, client client.Client) (vectors [
 
 func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.Context, client client.Client, clientset *kubernetes.Clientset, v *v1alpha1.VectorAggregator) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("VectorAggregator", v.Name)
+
+	// A terminating namespace rejects new content, so reconciling into it only produces
+	// errors and requeues that starve the (serial) worker until the namespace is gone.
+	if terminating, err := k8s.NamespaceIsTerminating(ctx, client, v.Namespace); err != nil {
+		return ctrl.Result{}, err
+	} else if terminating {
+		log.Info("Skip reconcile: namespace is terminating or gone", "namespace", v.Namespace)
+		return ctrl.Result{}, nil
+	}
+
 	vaCtrl := aggregator.NewController(v, client, clientset)
 
 	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
@@ -238,6 +248,11 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 						return ctrl.Result{}, err
 					}
 					log.Error(err, "Invalid config")
+					return ctrl.Result{}, nil
+				}
+				if errors.Is(err, configcheck.ErrConfigcheckSkipped) {
+					// namespace is terminating; the aggregator is on its way out, nothing to do
+					log.Info("ConfigCheck skipped, namespace is terminating")
 					return ctrl.Result{}, nil
 				}
 				return ctrl.Result{}, err

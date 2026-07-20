@@ -31,6 +31,7 @@ Connect us in Telegram - https://t.me/+Y0PzGa1d5DFiYThi
 
 ## Documentation
 - Quick start [doc](https://github.com/kaasops/vector-operator/blob/main/docs/quick-start.md)
+- Upgrading [doc](https://github.com/kaasops/vector-operator/blob/main/docs/quick-start.md#upgrading)
 - Design [doc](https://github.com/kaasops/vector-operator/blob/main/docs/design.md)
 - Specification [doc](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md)
 - Secure credentials [doc](https://github.com/kaasops/vector-operator/blob/main/docs/secure-credential.md)

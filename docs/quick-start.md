@@ -3,6 +3,7 @@ Operator serves to make running Vector applications on top of Kubernetes as easy
 
 - [Installing by Helm](#installing-by-helm)
 - [Installing by Manifest](#installing-by-manifest)
+- [Upgrading](#upgrading)
 
 
 # Installing by Helm
@@ -390,6 +391,25 @@ Output
 ```
 
 You can see field `testfield`, which we add in transform section in VectorPipeline
+
+# Upgrading
+
+Upgrade the operator with Helm as usual:
+
+```sh
+helm repo update
+helm upgrade vector-operator vector-operator/vector-operator -n NAMESPACE
+```
+
+**Then update the CRDs — Helm does not upgrade them.** Helm installs the chart's `crds/` directory only on the first install and intentionally never touches it again on `helm upgrade`. New or changed CRD fields (and CRD schema fixes) therefore do not reach your cluster until you apply the CRDs yourself:
+
+```sh
+kubectl apply --server-side --force-conflicts -k "https://github.com/kaasops/vector-operator/config/crd?ref=<version-tag>"
+```
+
+Replace `<version-tag>` with the operator version you upgraded to (for example `v0.5.0`).
+
+Skipping the CRD update can break the operator in subtle ways. For example, versions up to v0.4.1 shipped CRDs that declared the pipeline hash status field as `format: int32`; Kubernetes versions that enforce integer formats (observed on v1.36) reject status updates for pipelines whose hash exceeds the int32 range, and such pipelines are silently excluded from the generated vector config. v0.5.0 fixes the schema, but only if the updated CRDs are applied.
 
 # Cleanup
 ```bash

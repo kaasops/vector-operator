@@ -37,7 +37,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: VERSION=${{ steps.tag.outputs.TAG }}
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.TAG }}
 
       - name: Build event-collector image and push to Docker Hub
         uses: docker/build-push-action@v7
@@ -47,7 +47,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: VERSION=${{ steps.tag.outputs.TAG }}
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/event-collector:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:${{ steps.tag.outputs.TAG }}
 
       - name: Build checkpoint-merger image and push to Docker Hub
         uses: docker/build-push-action@v7
@@ -57,4 +57,11 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: VERSION=${{ steps.tag.outputs.TAG }}
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:${{ steps.tag.outputs.TAG }},${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:${{ steps.tag.outputs.TAG }}
+
+      - name: Tag images as latest (skipped for pre-releases)
+        if: ${{ !startsWith(github.ref_name, 'pre-') }}
+        run: |
+          docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.TAG }}
+          docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:latest ${{ secrets.DOCKERHUB_USERNAME }}/event-collector:${{ steps.tag.outputs.TAG }}
+          docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:latest ${{ secrets.DOCKERHUB_USERNAME }}/checkpoint-merger:${{ steps.tag.outputs.TAG }}

@@ -44,11 +44,20 @@ spec:
         # failures (errors_total: refused/DNS/TLS/timeout) and error responses
         # (responses_total 5xx/429, which are retried, not counted as errors). HTTP-based
         # sinks only; component_id also covers any HTTP-based source (kubernetes_logs is not).
+        # Vector registers counters lazily, so a sink can have only one of the two failure
+        # metrics; each addend is padded with `or 0 *` over requests_sent, or adding an
+        # empty vector would drop the sink from the result and mute the alert.
         - alert: VectorSinkFailing
           expr: |-
             (
-              sum by (pod, component_id) (rate(vector_http_client_errors_total[{{ .Values.prometheusRule.window }}]))
-              + sum by (pod, component_id) (rate(vector_http_client_responses_total{status=~"5..|429"}[{{ .Values.prometheusRule.window }}]))
+              (
+                sum by (pod, component_id) (rate(vector_http_client_errors_total[{{ .Values.prometheusRule.window }}]))
+                or 0 * sum by (pod, component_id) (rate(vector_http_client_requests_sent_total[{{ .Values.prometheusRule.window }}]))
+              )
+              + (
+                sum by (pod, component_id) (rate(vector_http_client_responses_total{status=~"5..|429"}[{{ .Values.prometheusRule.window }}]))
+                or 0 * sum by (pod, component_id) (rate(vector_http_client_requests_sent_total[{{ .Values.prometheusRule.window }}]))
+              )
             )
             / sum by (pod, component_id) (rate(vector_http_client_requests_sent_total[{{ .Values.prometheusRule.window }}]))
             > 0.5

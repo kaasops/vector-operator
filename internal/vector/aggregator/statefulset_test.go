@@ -68,6 +68,20 @@ func TestStatefulSetReplicasNilWhenAutoscaling(t *testing.T) {
 	g.Expect(sts.Spec.Replicas).To(BeNil(), "replicas must be nil so the operator does not fight the HPA")
 }
 
+func TestStatefulSetTopologySpreadConstraints(t *testing.T) {
+	g := NewWithT(t)
+
+	constraint := zoneSpreadConstraint()
+	spec := persistentSpec()
+	spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{constraint}
+	ctrl := createTestController("test", "default", spec, false)
+
+	sts := ctrl.createVectorAggregatorStatefulSet()
+
+	// Both workloads share aggregatorPodTemplateSpec, so the persistent path spreads too.
+	g.Expect(sts.Spec.Template.Spec.TopologySpreadConstraints).To(Equal([]corev1.TopologySpreadConstraint{constraint}))
+}
+
 func TestVolumeClaimTemplatesEscapeHatch(t *testing.T) {
 	g := NewWithT(t)
 

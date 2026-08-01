@@ -106,3 +106,52 @@ spec:
         password: test-password
         strategy: basic
 ```
+
+## Spreading replicas across zones
+
+Both aggregator types accept `spec.topologySpreadConstraints`, passed straight to the pod
+template. Use it to keep replicas out of a single zone or node, for failure isolation and to
+avoid paying for cross zone traffic on every event.
+
+```yaml
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: vectorAggregator1
+  namespace: vector
+spec:
+  image: timberio/vector:0.48.0-debian
+  replicas: 6
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/instance: vectorAggregator1
+        app.kubernetes.io/component: Aggregator
+```
+
+The label selector decides which pods are counted per zone, so it has to match the aggregator
+pods. The operator labels them with `app.kubernetes.io/instance: <aggregator name>` and
+`app.kubernetes.io/component: Aggregator`. Select on both, so one aggregator is spread without
+catching another in the same namespace, and without counting the event collector pod, which
+shares the instance label but is labelled `component: EventCollector`.
+
+The constraints reach the event collector pod too, the same way `spec.affinity` and
+`spec.tolerations` already do. It runs a single replica, so there is nothing there to spread.
+
+`spec.affinity` cannot express this. Pod anti-affinity has two forms and neither fits:
+`preferredDuringSchedulingIgnoredDuringExecution` is only a scheduling score, so under a
+provisioner like Karpenter, which adds nodes to fit pending pods rather than to satisfy
+preferences, replicas still end up packed onto one node. `requiredDuringSchedulingIgnoredDuringExecution`
+has no count, so it allows a single pod per zone and any replica above the zone count stays
+Pending, which rules it out for [autoscaling](aggregator-autoscaling.md).
+
+Keep `whenUnsatisfiable: ScheduleAnyway`. With `DoNotSchedule` a zone outage or a scale up
+past what the zones can hold leaves pods Pending rather than merely unevenly placed.
+
+The field works the same way with [persistence](aggregator-persistence.md) enabled, since the
+Deployment and the StatefulSet share one pod template. Keep in mind that a volume is bound to
+the zone it was provisioned in, so a rescheduled replica goes back to its original zone no
+matter what the constraint says.

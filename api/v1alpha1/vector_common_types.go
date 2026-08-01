@@ -199,6 +199,14 @@ type VectorAggregatorCommon struct {
 	Selector       *VectorSelectorSpec         `json:"selector,omitempty"`
 	EventCollector EventCollector              `json:"eventCollector,omitempty"`
 	Autoscaling    VectorAggregatorAutoscaling `json:"autoscaling,omitempty"`
+	// TopologySpreadConstraints spreads the aggregator pods across failure domains
+	// such as zones or nodes. Pod anti-affinity cannot express this, because the
+	// preferred form is only a score and the required form allows just one pod per
+	// domain, which caps the replica count. A constraint with maxSkew and
+	// whenUnsatisfiable: ScheduleAnyway spreads evenly without ever leaving a pod
+	// Pending. When not set the scheduler places the pods freely.
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// Persistence gives the aggregator durable storage for its data_dir.
 	// When enabled the aggregator is rendered as a StatefulSet with a persistent
 	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.

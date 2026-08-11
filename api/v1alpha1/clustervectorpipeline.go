@@ -1,13 +1,7 @@
 package v1alpha1
 
 import (
-	"context"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (vp *ClusterVectorPipeline) GetSpec() VectorPipelineSpec {
@@ -43,10 +37,6 @@ func (vp *ClusterVectorPipeline) GetLastAppliedPipeline() *int64 {
 
 func (vp *ClusterVectorPipeline) SetLastAppliedPipeline(hash *int64) {
 	vp.Status.LastAppliedPipelineHash = hash
-}
-
-func (vp *ClusterVectorPipeline) UpdateStatus(ctx context.Context, c client.Client) error {
-	return k8s.UpdateStatus(ctx, vp, c)
 }
 
 func (vp *ClusterVectorPipeline) GetRole() VectorPipelineRole {

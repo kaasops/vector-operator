@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -60,19 +61,24 @@ func NewController(v *vectorv1alpha1.Vector, c client.Client, cs *kubernetes.Cli
 }
 
 func (ctrl *Controller) SetSuccessStatus(ctx context.Context, cfgHash, globCfgHash *int64) error {
+	base := ctrl.Vector.DeepCopy()
+	// A merge patch only clears the keys it mentions, and base can predate the reason it
+	// has to clear, so make the patch carry reason whatever base was read with.
+	base.Status.Reason = ptr.To("")
 	var status = true
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = nil
 	ctrl.Vector.Status.LastAppliedConfigHash = cfgHash
 	ctrl.Vector.Status.LastAppliedGlobalConfigHash = globCfgHash
 
-	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
+	return k8s.PatchStatus(ctx, ctrl.Vector, base, ctrl.Client)
 }
 
 func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) error {
+	base := ctrl.Vector.DeepCopy()
 	var status = false
 	ctrl.Vector.Status.ConfigCheckResult = &status
 	ctrl.Vector.Status.Reason = &reason
 
-	return k8s.UpdateStatus(ctx, ctrl.Vector, ctrl.Client)
+	return k8s.PatchStatus(ctx, ctrl.Vector, base, ctrl.Client)
 }

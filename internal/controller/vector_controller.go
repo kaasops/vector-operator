@@ -65,6 +65,13 @@ type VectorReconciler struct {
 	EnableConfigOptimization  bool
 	EnableCheckpointMigration bool
 	CheckpointMergerImage     string
+
+	// APIReader is an uncached read-only client (mgr.GetAPIReader()), used to resolve
+	// pipeline secrets: reads go through it for freshness and independence from cache
+	// scoping (namespace/label filters), not to keep secret payloads out of the
+	// controller-runtime cache - Owns(&corev1.Secret{}) below already puts them there in
+	// default mode.
+	APIReader client.Reader
 }
 
 // optimizeSources reports whether the agent config of the given Vector should be
@@ -200,27 +207,77 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 
 	// Init Controller for Vector Agent
 	vaCtrl := vectoragent.NewController(v, client, clientset)
+	// The write-order gate reads through this, never through the cached client -
+	// see the Controller field's own doc comment.
+	vaCtrl.APIReader = r.APIReader
 
-	// Get Vector Config file
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
+	// Set BEFORE anything below reads or writes secret-assets: getSecretAssetsName()
+	// (and therefore ExistingSecretAssets, called just below) is bound to
+	// CheckpointMigration/OptimizeSources, so setting these late (as a previous
+	// version of this function did, only right before EnsureVectorAgent) made
+	// ExistingSecretAssets read the assets Secret under the WRONG name whenever
+	// optimized mode was active - missing the variant actually mounted in pods and
+	// risking a prune computed against a target the operator had not actually
+	// checked for room.
+	optimize := optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector)
+	if r.EnableCheckpointMigration {
+		vaCtrl.CheckpointMigration = true
+		vaCtrl.CheckpointMergerImage = r.CheckpointMergerImage
+		vaCtrl.OptimizeSources = optimize
+	}
+
+	secretGetter := pipelineSecretGetter(r.APIReader, ctx)
+
+	// Get Vector Config file. resolveWorkloadPipelines also attributes any secret
+	// flat-key collision among the selected pipelines to the younger one instead of
+	// letting BuildAgentConfig fail the whole build below. reinstateCandidates'
+	// statuses are finalized further down, only once the build (and configcheck, if
+	// enabled) actually succeed - see reinstatePipelines' doc comment.
+	pipelines, reinstateCandidates, err := resolveWorkloadPipelines(ctx, vaCtrl.Client, secretGetter, pipeline.FilterPipelines{
 		Scope:    pipeline.AllPipelines,
 		Selector: vaCtrl.Vector.Spec.Selector,
 		Role:     v1alpha1.VectorPipelineRoleAgent,
-	})
+	}, "Vector", v.Namespace, v.Name, vaCtrl.SecretAssetsPrototype())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	// pipelines is the correct, deterministic target set - computed independently of
+	// the assets Secret's current contents (see resolveWorkloadPipelines' doc
+	// comment). Whether all of it can actually be PUBLISHED this round is a separate
+	// question: planSecretAssetsBridge may hold back a subset (bridgePipelines is the
+	// safe-to-publish-now part, waitingPipelines the rest) if staging their values
+	// alongside whatever the assets Secret currently, unprunably holds would itself
+	// overflow corev1.MaxSecretSize - see its doc comment for the full rationale and
+	// docs/secrets.md's "transitions that would themselves overflow" section.
+	existingPrimary, existingAlt, err := vaCtrl.ExistingSecretAssets(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	existingVariants := []map[string][]byte{existingPrimary}
+	if vaCtrl.CheckpointMigration {
+		existingVariants = append(existingVariants, existingAlt)
+	}
+	bridgeDataPerVariant, bridgePipelines, waitingPipelines, err := planSecretAssetsBridge(ctx, secretGetter, vaCtrl.SecretAssetsPrototype(), pipelines, existingVariants...)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := markWaitingPipelines(ctx, vaCtrl.Client, waitingPipelines, "Vector", v.Namespace, v.Name); err != nil {
+		return ctrl.Result{}, err
+	}
+	reinstateCandidates = intersectPipelinesByKey(reinstateCandidates, bridgePipelines)
+
 	// Get Config in Json ([]byte)
 	params := config.VectorConfigParams{
-		ApiEnabled:        vaCtrl.Vector.Spec.Agent.Api.Enabled,
-		PlaygroundEnabled: vaCtrl.Vector.Spec.Agent.Api.Playground,
-		UseApiServerCache: vaCtrl.Vector.Spec.UseApiServerCache,
-		InternalMetrics:   vaCtrl.Vector.Spec.Agent.InternalMetrics,
-		ExpireMetricsSecs: vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
-		OptimizeSources:   optimizeSources(r.EnableConfigOptimization, vaCtrl.Vector),
+		ApiEnabled:           vaCtrl.Vector.Spec.Agent.Api.Enabled,
+		PlaygroundEnabled:    vaCtrl.Vector.Spec.Agent.Api.Playground,
+		UseApiServerCache:    vaCtrl.Vector.Spec.UseApiServerCache,
+		InternalMetrics:      vaCtrl.Vector.Spec.Agent.InternalMetrics,
+		ExpireMetricsSecs:    vaCtrl.Vector.Spec.Agent.ExpireMetricsSecs,
+		OptimizeSources:      optimize,
+		PipelineSecretGetter: secretGetter,
 	}
-	cfg, byteConfig, err := config.BuildAgentConfig(params, pipelines...)
+	cfg, byteConfig, err := config.BuildAgentConfig(params, bridgePipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
 			return ctrl.Result{}, err
@@ -234,6 +291,19 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 
 	cfgHash := int64(hash.Get(byteConfig))
 
+	// configUnchanged tells us whether the config about to be (re-)written is
+	// byte-identical to the one ALREADY ACTUALLY PUBLISHED on the cluster - a direct
+	// read-and-compare (PublishedConfigMatches), not the status's LastAppliedConfigHash
+	// (a 32-bit CRC32, kept below only as a user-visible status field and as the
+	// configcheck-skip fast path's own historical signal). See PublishedConfigMatches'
+	// doc comment for why a hash collision here is a real, demonstrated risk once the
+	// signal also gates whether it is safe to prune the assets Secret - a false
+	// "unchanged" would prune a key the live, actually-different config still needs.
+	configUnchanged, err := vaCtrl.PublishedConfigMatches(ctx, byteConfig)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if !vaCtrl.Vector.Spec.Agent.ConfigCheck.Disabled {
 		if vaCtrl.Vector.Status.LastAppliedConfigHash == nil || *vaCtrl.Vector.Status.LastAppliedConfigHash != cfgHash {
 			configCheck := configcheck.New(
@@ -245,6 +315,7 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 				vaCtrl.Vector.Namespace,
 				r.ConfigCheckTimeout,
 				configcheck.ConfigCheckInitiatorVector,
+				cfg.SecretAssets(),
 			)
 			reason, err := configCheck.Run(ctx)
 			if err != nil {
@@ -268,10 +339,12 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	vaCtrl.ByteConfig = byteConfig
 	vaCtrl.Config = cfg
 
+	// Built here, BEFORE the prune decision below - moved up from after it so that
+	// allConfigsUnchanged (next) can already tell whether the alt variant has itself
+	// caught up, not just the active one. See allConfigsUnchanged's own comment for
+	// why checking only the active variant is not safe enough to gate a decision that
+	// affects both.
 	if r.EnableCheckpointMigration {
-		vaCtrl.CheckpointMigration = true
-		vaCtrl.CheckpointMergerImage = r.CheckpointMergerImage
-		vaCtrl.OptimizeSources = params.OptimizeSources
 		mode := "legacy"
 		if params.OptimizeSources {
 			mode = "optimized"
@@ -279,26 +352,123 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		log.Info("Checkpoint migration enabled; agent config secret bound to optimization mode",
 			"mode", mode, "activeSecret", vaCtrl.ConfigSecretName())
 		// the config of the opposite optimization mode: kept in the second
-		// Secret so pods not yet rolled after a mode switch stay up to date
+		// Secret so pods not yet rolled after a mode switch stay up to date. Built
+		// from bridgePipelines, the same set the active config uses this round -
+		// see planSecretAssetsBridge's doc comment on why both variants must agree
+		// on which pipelines are actually published.
+		//
+		// A build failure here is deliberately not fatal, and its effect on the grace
+		// period is accepted rather than worked around: AltByteConfig stays nil, which
+		// forces allConfigsUnchanged false, so every round claims to be publishing and
+		// keeps stamping a fresh LastConfigPublishedAt - the grace anchor moves forward
+		// and stale keys are never pruned while the alt build keeps failing. That is the
+		// conservative direction, and it does not spin: the prune decision requeues zero
+		// on this path, the status stamp is filtered by GenerationChangedPredicate, and
+		// republishing identical bytes is a no-op write, so only external events
+		// re-trigger the controller.
 		altParams := params
 		altParams.OptimizeSources = !params.OptimizeSources
-		if _, altBytes, err := config.BuildAgentConfig(altParams, pipelines...); err != nil {
+		if _, altBytes, err := config.BuildAgentConfig(altParams, bridgePipelines...); err != nil {
 			log.Error(err, "Build alternate config failed, checkpoint migration secret not updated")
 		} else {
 			vaCtrl.AltByteConfig = altBytes
 		}
 	}
 
-	// Start Reconcile Vector Agent
-	if err := vaCtrl.EnsureVectorAgent(ctx); err != nil {
+	// allConfigsUnchanged is configUnchanged broadened to every config Secret variant
+	// that might be mounted, not just the active one. Checking only the active
+	// variant is not safe enough to gate pruning or the publish mark: the two
+	// variants are independent objects that can fail to write independently of each
+	// other (see ensureVectorAgentSecretAssets' doc comment on why their assets are
+	// never computed against each other's content either), so a round where the alt
+	// write previously failed and the active write is simply retried would see
+	// configUnchanged flip true on the active side alone - even though the alt config
+	// Secret on the cluster is still the stale one, still referencing whatever it
+	// used to. Pruning (or even just marking the publish clock) on that signal alone
+	// would be free to drop a key the alt config secret was never actually updated to
+	// stop referencing.
+	//
+	// A round where the alt build itself failed (AltByteConfig is nil) cannot claim
+	// to know what alt should look like at all, so it is treated the same as "alt has
+	// not caught up" - never as "alt is fine, nothing to check".
+	allConfigsUnchanged := configUnchanged
+	if vaCtrl.CheckpointMigration {
+		if vaCtrl.AltByteConfig == nil {
+			allConfigsUnchanged = false
+		} else {
+			altUnchanged, err := vaCtrl.AltPublishedConfigMatches(ctx, vaCtrl.AltByteConfig)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			allConfigsUnchanged = allConfigsUnchanged && altUnchanged
+		}
+	}
+
+	// On a round that changes nothing AND has waited out SecretAssetsPruneGracePeriod
+	// since the live config was actually published, it is safe to prune ctrl.SecretAssets
+	// down to what that unchanged config references - the same exact target for every
+	// variant, since secret resolution does not depend on the optimization mode. On any
+	// other round publish each variant's own bridgeDataPerVariant entry instead, so
+	// nothing already staged in THAT variant is dropped before kubelet can catch up, and
+	// no variant's target is computed against another's contents.
+	//
+	// The grace/requeue dance itself is only entered when publishing the exact target
+	// would actually drop a key either variant currently has - see
+	// assetsWouldDropAKey's doc comment for why a workload that never triggers a real
+	// removal (no pipeline uses spec.secret at all, or this round is purely additive)
+	// must not pay for a deferred reconcile it has no use for.
+	targetAssets := cfg.SecretAssets()
+	wouldDrop := assetsWouldDropAKey(existingPrimary, targetAssets) ||
+		(vaCtrl.CheckpointMigration && assetsWouldDropAKey(existingAlt, targetAssets))
+
+	var prune bool
+	var requeueAfter time.Duration
+	if wouldDrop {
+		prune, requeueAfter = secretAssetsPruneDecision(allConfigsUnchanged, vaCtrl.Vector.Status.LastConfigPublishedAt)
+	} else {
+		prune = true
+	}
+	if prune {
+		vaCtrl.SecretAssets = targetAssets
+	} else {
+		vaCtrl.SecretAssets = bridgeDataPerVariant[0]
+		if vaCtrl.CheckpointMigration && len(bridgeDataPerVariant) > 1 {
+			vaCtrl.AltSecretAssets = bridgeDataPerVariant[1]
+		}
+	}
+
+	// Start Reconcile Vector Agent. configPublishing (!allConfigsUnchanged) tells it
+	// whether to stamp the publish mark right before its first config write - see
+	// StampConfigPublishing's doc comment for why that stamp has to live inside
+	// EnsureVectorAgent, immediately before that write, rather than out here.
+	if err := vaCtrl.EnsureVectorAgent(ctx, !allConfigsUnchanged); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, cfg.GetGlobalConfigHash()); err != nil {
+	// Only now - after EnsureVectorAgent has actually published the config and
+	// assets these candidates' references depend on - is it safe to mark them valid
+	// again. Running this any earlier (e.g. right after Build*Config/configcheck, as
+	// this used to) risks writing a green pipeline status the instant before the
+	// actual Secret writes fail (an RBAC/quota rejection, a write conflict, ...),
+	// leaving a lying "valid" pipeline next to a workload that never got its update -
+	// exactly the stale "valid" status this whole feature exists to prevent.
+	// See reinstatePipelines' doc comment. reinstateCandidates was already narrowed
+	// to bridgePipelines above, so a candidate the bridge held back this round is
+	// never reinstated on the strength of a build it is not actually part of.
+	if err := reinstatePipelines(ctx, vaCtrl.Client, reinstateCandidates); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, cfg.GetGlobalConfigHash(), !allConfigsUnchanged); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// requeueAfter is non-zero exactly when this round held off pruning solely to
+	// wait out SecretAssetsPruneGracePeriod - nothing else changed that would trigger
+	// a fresh reconcile on its own (no Secret write, no pipeline status change), so
+	// the operator has to explicitly ask to be woken up once the grace period is
+	// actually over.
+	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
 func setAgentTypeMetaIfNeeded(cr *v1alpha1.Vector) {

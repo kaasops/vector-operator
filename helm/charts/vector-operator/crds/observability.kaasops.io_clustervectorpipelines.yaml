@@ -52,6 +52,34 @@ spec:
           spec:
             description: VectorPipelineSpec defines the desired state of VectorPipeline
             properties:
+              secret:
+                additionalProperties:
+                  description: PipelineSecretBackend declares a named secret backend
+                    for a pipeline.
+                  properties:
+                    name:
+                      description: |-
+                        Name of the Kubernetes Secret. For VectorPipeline it is always resolved
+                        from the pipeline's own namespace.
+                      minLength: 1
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace of the Secret. Required in ClusterVectorPipeline, forbidden in
+                        VectorPipeline (enforced at reconcile time; the spec type is shared).
+                      type: string
+                    type:
+                      enum:
+                      - kubernetes_secret
+                      type: string
+                  required:
+                  - name
+                  - type
+                  type: object
+                type: object
+                x-kubernetes-validations:
+                - message: secret backend alias must match ^[A-Za-z0-9_]+$
+                  rule: self.all(k, k.matches('^[A-Za-z0-9_]+$'))
               sinks:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -77,6 +105,17 @@ spec:
                 type: boolean
               reason:
                 type: string
+              relatedSecretsHash:
+                description: |-
+                  RelatedSecretsHash holds an int64-folded sha256 over the identities (namespace,
+                  name, UID, resourceVersion) of every Secret the pipeline's SECRET[] references
+                  actually use - never over secret data, so the published value cannot fingerprint
+                  or brute-force secret contents. Any payload change bumps the Secret's
+                  resourceVersion, so the hash still changes whenever a referenced Secret rotates
+                  even though the pipeline spec itself did not, letting the reconciler detect that
+                  drift. Absent (nil) for pipelines whose config references no secrets.
+                format: int64
+                type: integer
               role:
                 type: string
             type: object

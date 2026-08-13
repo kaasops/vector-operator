@@ -1,0 +1,23 @@
+# Vector agent shared by the "cross-tenant size overflow" scenario (survivor +
+# victim pipelines). ConfigCheck is left at the operator default (enabled) -
+# unlike the envtest-only suites in internal/controller, this runs on a real kind
+# cluster with a real kubelet, so the live failure mode (a pod restarting into
+# CrashLoopBackOff on a config that references a missing secret key) is actually
+# observable here.
+#
+# selector scopes this agent to this scenario's own pipelines. A selector-less
+# Vector matches every VectorPipeline in the cluster (AllPipelines scope, filtered
+# only by label), which would ALSO pull in vlimits-swap's own pipeline (different
+# Vector, but no selector on either means both look cluster-wide) and silently
+# change the size-attribution math both scenarios depend on being exact, possibly
+# keeping the bridge scenario from ever converging.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: vlimits
+spec:
+  selector:
+    matchLabels:
+      e2e: pipeline-secrets-limits-crosstenant
+  agent:
+    image: timberio/vector:0.48.0-alpine

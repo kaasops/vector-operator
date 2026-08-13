@@ -5252,6 +5252,16 @@ spec:
                 type: integer
               configCheckResult:
                 type: boolean
+              lastConfigPublishedAt:
+                description: |-
+                  LastConfigPublishedAt records when the config Secret actually on the cluster was
+                  last (re-)written - i.e. the most recent reconcile where PublishedConfigMatches
+                  returned false. It gates how long the operator waits before pruning secret-assets
+                  keys a newer config no longer references, giving kubelet time to project both
+                  updated Secrets (config and assets) into already-running pods first. See
+                  ensureVectorAgentSecretAssets/ensureVectorAggregatorSecretAssets' doc comments.
+                format: date-time
+                type: string
               reason:
                 type: string
             type: object

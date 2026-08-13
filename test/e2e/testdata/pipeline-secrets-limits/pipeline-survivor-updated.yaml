@@ -1,0 +1,31 @@
+# Same as pipeline-survivor.yaml, with an added extra_label_selector - used to prove
+# the surviving pipeline keeps accepting ordinary spec changes while the younger
+# pipeline is excluded and waiting for room.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: limits-survivor
+  labels:
+    e2e: pipeline-secrets-limits-crosstenant
+spec:
+  secret:
+    es:
+      type: kubernetes_secret
+      name: survivor-creds
+  sources:
+    logsSurvivor:
+      type: kubernetes_logs
+      extra_label_selector: "app=survivor-update-marker"
+  sinks:
+    outSurvivor:
+      type: elasticsearch
+      inputs:
+        - logsSurvivor
+      endpoints:
+        - "http://elasticsearch.example.com:9200"
+      healthcheck:
+        enabled: false
+      auth:
+        strategy: basic
+        user: "SECRET[es.cert]"
+        password: "SECRET[es.cert]"

@@ -1,8 +1,12 @@
 # Secure credential
 
-If you need to use sensitive credentials (such as host, username, or password for Elasticsearch), you can consider the following approaches:
-- envFrom with secretRef (recommended)
+On Vector images below 0.57, you can use sensitive credentials (such as host, username, or password for Elasticsearch) through either of the following approaches:
+- envFrom with secretRef (recommended of the two - see why below)
 - environment variables.
+
+On Vector 0.57+, use [Pipeline secrets](secrets.md) (`spec.secret`) instead - it is the operator's primary way to handle credentials now and the only one of the three that works on 0.57+ without an opt-in flag; see the warning below for why.
+
+> **Warning: Vector 0.57+ breaks this mechanism by default.** Starting with Vector 0.57.0, `${VAR}` interpolation in configuration files is disabled by default (see the [0.57 upgrade guide](https://vector.dev/highlights/2026-07-14-0-57-0-upgrade-guide/)). The operator does not pass `--dangerously-allow-env-var-interpolation` to the vector containers, so on Vector images >= 0.57 the `${VAR}` references below reach the sinks as literal strings: Vector starts without a single warning, and `vector validate` (the operator's configcheck) still reports the config as valid, so the breakage is fully silent. If you rely on this mechanism, migrate to [Pipeline secrets](secrets.md), which uses Vector's secrets mechanism and works on 0.57+ without any opt-in flag. To keep the old behavior while you migrate, the flag has an environment-variable equivalent the operator does pass through: set `VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION` to `true` in the workload's `env` (`spec.agent.env` for a Vector, `spec.env` for an aggregator). It re-enables interpolation for the whole workload - every `${...}` in every pipeline sharing it - so it is a bridge for an image upgrade, not a destination. Pinning the image below 0.57 works too, for as long as that is an option.
 
 ## envFrom
 
@@ -96,3 +100,7 @@ spec:
 ```
 
 With this scheme, if developers have access only to CR `VectorPipeline`, they can use credential from ENVs, but don't see them.
+
+## See also
+
+If each pipeline needs its own credentials, scoped to its own namespace, without the Vector CR owner in the loop, see [Pipeline secrets](secrets.md) instead.

@@ -56,7 +56,7 @@ func TestSetSuccessStatusStaleVector(t *testing.T) {
 
 	ctrl := NewController(stale, cl, nil)
 	cfgHash, globalHash := int64(1), int64(2)
-	g.Expect(ctrl.SetSuccessStatus(ctx, &cfgHash, &globalHash)).To(Succeed())
+	g.Expect(ctrl.SetSuccessStatus(ctx, &cfgHash, &globalHash, false)).To(Succeed())
 
 	result := &vectorv1alpha1.Vector{}
 	g.Expect(cl.Get(ctx, key, result)).To(Succeed())
@@ -88,7 +88,7 @@ func TestSetSuccessStatusClearsUnobservedReason(t *testing.T) {
 
 	ctrl := NewController(stale, cl, nil)
 	cfgHash, globalHash := int64(1), int64(2)
-	g.Expect(ctrl.SetSuccessStatus(ctx, &cfgHash, &globalHash)).To(Succeed())
+	g.Expect(ctrl.SetSuccessStatus(ctx, &cfgHash, &globalHash, false)).To(Succeed())
 
 	result := &vectorv1alpha1.Vector{}
 	g.Expect(cl.Get(ctx, key, result)).To(Succeed())

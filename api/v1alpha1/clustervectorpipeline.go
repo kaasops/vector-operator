@@ -31,12 +31,24 @@ func (vp *ClusterVectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }
 
+func (vp *ClusterVectorPipeline) GetReason() *string {
+	return vp.Status.Reason
+}
+
 func (vp *ClusterVectorPipeline) GetLastAppliedPipeline() *int64 {
 	return vp.Status.LastAppliedPipelineHash
 }
 
 func (vp *ClusterVectorPipeline) SetLastAppliedPipeline(hash *int64) {
 	vp.Status.LastAppliedPipelineHash = hash
+}
+
+func (vp *ClusterVectorPipeline) GetRelatedSecretsHash() *int64 {
+	return vp.Status.RelatedSecretsHash
+}
+
+func (vp *ClusterVectorPipeline) SetRelatedSecretsHash(hash *int64) {
+	vp.Status.RelatedSecretsHash = hash
 }
 
 func (vp *ClusterVectorPipeline) GetRole() VectorPipelineRole {

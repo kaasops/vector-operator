@@ -1,0 +1,7 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: vagent
+spec:
+  agent:
+    image: timberio/vector:0.48.0-alpine

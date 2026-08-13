@@ -68,6 +68,8 @@ type ConfigCheck struct {
 	Labels                   map[string]string
 	Volumes                  []corev1.Volume
 	VolumeMounts             []corev1.VolumeMount
+	SecretAssetsSecretName   string
+	SecretAssets             map[string][]byte
 }
 
 func New(
@@ -78,6 +80,7 @@ func New(
 	name, namespace string,
 	timeout time.Duration,
 	initiator string,
+	secretAssets map[string][]byte,
 ) *ConfigCheck {
 	image := vc.Image
 	if vc.ConfigCheck.Image != nil {
@@ -120,6 +123,7 @@ func New(
 		Volumes:                  vc.Volumes,
 		VolumeMounts:             vc.VolumeMounts,
 		Initiator:                initiator,
+		SecretAssets:             secretAssets,
 	}
 }
 
@@ -131,7 +135,7 @@ func (cc *ConfigCheck) namespaceIsTerminating(ctx context.Context) (bool, error)
 	return k8s.NamespaceIsTerminating(ctx, cc.Client, cc.Namespace)
 }
 
-func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
+func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =================")
 
@@ -156,14 +160,41 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	var vectorSecretAssetsSecret *corev1.Secret
+	if len(cc.SecretAssets) > 0 {
+		vectorSecretAssetsSecret = cc.createVectorConfigCheckSecretAssets()
+		cc.SecretAssetsSecretName = vectorSecretAssetsSecret.Name
+	}
+
 	vectorConfigCheckPod := cc.createVectorConfigCheckPod()
 
+	// Named returns so this assignment actually reaches the caller: a plain
+	// `defer func() { err = ... }()` over unnamed returns only ever mutates a local
+	// variable that the already-evaluated return statement has no way to see again.
 	defer func() {
-		err = cc.cleanup(ctx, vectorConfigCheckSecret)
+		cleanupErr := cc.cleanup(ctx, vectorConfigCheckSecret, vectorSecretAssetsSecret)
+		if cleanupErr == nil {
+			return
+		}
+		if err == nil {
+			err = cleanupErr
+			return
+		}
+		err = errors.Join(err, cleanupErr)
 	}()
 
 	if err = k8s.CreateOrUpdateResource(ctx, vectorConfigCheckSecret, cc.Client); err != nil {
 		return "", err
+	}
+
+	// Create temporary secret assets secret if needed
+	if vectorSecretAssetsSecret != nil {
+		if err = controllerutil.SetOwnerReference(vectorConfigCheckSecret, vectorSecretAssetsSecret, cc.Client.Scheme()); err != nil {
+			return "", err
+		}
+		if err = k8s.CreateOrUpdateResource(ctx, vectorSecretAssetsSecret, cc.Client); err != nil {
+			return "", err
+		}
 	}
 
 	// Set OwnerReference to pod
@@ -176,7 +207,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	reason, err := cc.getCheckResult(ctx, vectorConfigCheckPod)
+	reason, err = cc.getCheckResult(ctx, vectorConfigCheckPod)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
 			return reason, err
@@ -329,18 +360,49 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 	}
 }
 
-func (cc *ConfigCheck) cleanup(ctx context.Context, secret *corev1.Secret) error {
+// cleanupTimeout bounds the detached cleanup below: long enough for a Delete against a
+// healthy API server, short enough that a wedged one cannot hold a shutting-down operator
+// open indefinitely.
+const cleanupTimeout = 30 * time.Second
 
-	nn := types.NamespacedName{
-		Name:      secret.Name,
-		Namespace: secret.Namespace,
+// cleanup removes the temporary Secrets a check created - the config one and, when the
+// pipelines reference secrets, the assets one holding their plaintext values.
+//
+// Deletes straight by name, with no Get first. Delete is idempotent and NotFound is
+// success, so the read bought nothing - and it could actively lose the objects: the
+// manager's client reads through the informer cache, which under --watch-name is
+// label-filtered to the operator's own objects, while configcheck objects carry
+// app.kubernetes.io/name=vector-configcheck. The Get then returned NotFound for a Secret
+// that really exists, cleanup skipped the Delete, and the plaintext copy stayed on the
+// cluster until the next operator start swept it.
+//
+// ctx is detached (context.WithoutCancel) and given its own deadline, because the caller's
+// reconcile ctx may already be cancelled by the time the deferred cleanup runs - which is
+// exactly when the check was interrupted and its Secrets are most likely to be left
+// behind. Deleting through a cancelled context fails every call for the same reason it was
+// cancelled, silently keeping the plaintext Secret alive.
+func (cc *ConfigCheck) cleanup(ctx context.Context, secrets ...*corev1.Secret) error {
+	l := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	defer cancel()
+
+	var errs []error
+	for _, secret := range secrets {
+		if secret == nil {
+			continue
+		}
+		nn := types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}
+		target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace}}
+		// One failure must not stop the rest: the assets Secret carries plaintext
+		// credentials and is the one that matters most to remove.
+		if err := k8s.DeleteSecret(ctx, target, cc.Client); err != nil && !api_errors.IsNotFound(err) {
+			l.Error(err, "failed to delete secret", "secret", nn)
+			errs = append(errs, err)
+		}
 	}
-	secret, err := k8s.GetSecret(ctx, nn, cc.Client)
-	if err != nil {
-		return err
-	}
-	if err := k8s.DeleteSecret(ctx, secret, cc.Client); err != nil {
-		return err
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 	return nil
 }
@@ -378,4 +440,41 @@ func (cc *ConfigCheck) configCheckListOpts() (client.ListOptions, error) {
 		LabelSelector: labelsSelector,
 		Namespace:     cc.Namespace,
 	}, nil
+}
+
+// orphanSweepLabels is the label set every configcheck Secret carries
+// (labelsForVectorConfigCheck's basic labels, before per-instance additions), used by
+// SweepOrphans to find leftovers from a previous operator process.
+func orphanSweepLabels() labels.Selector {
+	return labels.SelectorFromSet(map[string]string{
+		k8s.ManagedByLabelKey: "vector-operator",
+		k8s.NameLabelKey:      "vector-configcheck",
+		k8s.ComponentLabelKey: "ConfigCheck",
+	})
+}
+
+// SweepOrphans deletes configcheck Secrets left behind by a previous operator
+// process. Nothing owns the root configcheck Secret (the pod is owned by it, not the
+// other way around), so a crash between creating it and the process-local deferred
+// cleanup strands it - and with pipeline secrets in play the orphaned
+// configcheck-secret-assets child holds a plaintext copy of referenced credentials.
+// Only Secrets created before startedBefore (the current process start) are swept, so
+// configchecks racing with the sweep are never touched; the orphaned pod, if any,
+// follows its root Secret via ownerRef GC.
+func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, startedBefore time.Time) error {
+	var list corev1.SecretList
+	if err := reader.List(ctx, &list, &client.ListOptions{LabelSelector: orphanSweepLabels()}); err != nil {
+		return err
+	}
+	var errs []error
+	for i := range list.Items {
+		secret := &list.Items[i]
+		if !secret.CreationTimestamp.Time.Before(startedBefore) {
+			continue
+		}
+		if err := c.Delete(ctx, secret); err != nil && !api_errors.IsNotFound(err) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }

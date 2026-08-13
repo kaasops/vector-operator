@@ -1,0 +1,35 @@
+# Older of the two pipelines in the cross-tenant overflow scenario. Its own secret
+# value (survivor-creds, applied separately - see bigSecretYAML in the Go test) is
+# individually well under corev1.MaxSecretSize; only combined with the younger
+# pipeline's own value does the shared secret-assets Secret overflow.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: limits-survivor
+  labels:
+    e2e: pipeline-secrets-limits-crosstenant
+spec:
+  secret:
+    es:
+      type: kubernetes_secret
+      name: survivor-creds
+  sources:
+    logsSurvivor:
+      type: kubernetes_logs
+  sinks:
+    outSurvivor:
+      type: elasticsearch
+      inputs:
+        - logsSurvivor
+      endpoints:
+        - "http://elasticsearch.example.com:9200"
+      healthcheck:
+        enabled: false
+      auth:
+        strategy: basic
+        user: "SECRET[es.cert]"
+        # Both fields are required - vector's Auth::Basic has user AND password, and
+        # configcheck rejects the config outright without it. Pointing both at the same
+        # key is deliberate: it also exercises the reference/token deduplication path
+        # (same key referenced twice resolves to one flat key) against a live vector.
+        password: "SECRET[es.cert]"

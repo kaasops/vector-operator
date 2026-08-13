@@ -24,6 +24,20 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// PipelineSecretBackend declares a named secret backend for a pipeline.
+type PipelineSecretBackend struct {
+	// +kubebuilder:validation:Enum=kubernetes_secret
+	Type string `json:"type"`
+	// Name of the Kubernetes Secret. For VectorPipeline it is always resolved
+	// from the pipeline's own namespace.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// Namespace of the Secret. Required in ClusterVectorPipeline, forbidden in
+	// VectorPipeline (enforced at reconcile time; the spec type is shared).
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+}
+
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -32,6 +46,9 @@ type VectorPipelineSpec struct {
 	Transforms *runtime.RawExtension `json:"transforms,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Sinks *runtime.RawExtension `json:"sinks,omitempty"`
+	// +optional
+	// +kubebuilder:validation:XValidation:rule="self.all(k, k.matches('^[A-Za-z0-9_]+$'))",message="secret backend alias must match ^[A-Za-z0-9_]+$"
+	Secret map[string]PipelineSecretBackend `json:"secret,omitempty"`
 }
 
 // VectorPipelineStatus defines the observed state of VectorPipeline
@@ -44,6 +61,14 @@ type VectorPipelineStatus struct {
 	// int32 upper bound (2147483647); an int32 field would reject roughly half of all
 	// hash values and leave the pipeline stuck with configCheckResult=false. See #232.
 	LastAppliedPipelineHash *int64 `json:"LastAppliedPipelineHash,omitempty"`
+	// RelatedSecretsHash holds an int64-folded sha256 over the identities (namespace,
+	// name, UID, resourceVersion) of every Secret the pipeline's SECRET[] references
+	// actually use - never over secret data, so the published value cannot fingerprint
+	// or brute-force secret contents. Any payload change bumps the Secret's
+	// resourceVersion, so the hash still changes whenever a referenced Secret rotates
+	// even though the pipeline spec itself did not, letting the reconciler detect that
+	// drift. Absent (nil) for pipelines whose config references no secrets.
+	RelatedSecretsHash *int64 `json:"relatedSecretsHash,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -1,0 +1,36 @@
+# Runtime data-plane probe. The remap transform stamps every event with the value of
+# SECRET[probe.token] and the console sink prints it to the agent's stdout, so the
+# agent pod log is direct evidence that the running Vector read the secret through the
+# mounted directory backend - not just that the operator wrote the right config.
+#
+# extra_label_selector keeps the agent from tailing its own stdout, which would feed
+# the printed value back into the pipeline and amplify it on every pass.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: runtime-probe-pipeline
+  labels:
+    e2e: pipeline-secrets-runtime
+spec:
+  secret:
+    probe:
+      type: kubernetes_secret
+      name: probe-creds
+  sources:
+    logs:
+      type: kubernetes_logs
+      extra_label_selector: "app=log-producer"
+  transforms:
+    stamp:
+      type: remap
+      inputs:
+        - logs
+      source: |
+        .probe_token = "SECRET[probe.token]"
+  sinks:
+    out:
+      type: console
+      inputs:
+        - stamp
+      encoding:
+        codec: json

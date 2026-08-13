@@ -19,6 +19,9 @@ package configcheck
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (cc *ConfigCheck) createVectorConfigCheckPod() *corev1.Pod {
@@ -153,6 +156,20 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolume() []corev1.Volume {
 		})
 	}
 
+	// Operator-owned while pipeline secrets are in play: a same-named user volume
+	// would validate the config against the wrong source (see the workload
+	// generators, which apply the same rule).
+	if cc.SecretAssetsSecretName != "" {
+		volume = k8s.SetAuthoritativeVolume(volume, corev1.Volume{
+			Name: k8s.SecretAssetsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cc.SecretAssetsSecretName,
+				},
+			},
+		})
+	}
+
 	return volume
 }
 
@@ -205,6 +222,13 @@ func (cc *ConfigCheck) generateVectorConfigCheckVolumeMounts() []corev1.VolumeMo
 		volumeMount = append(volumeMount, corev1.VolumeMount{
 			Name:      "app-config-compress",
 			MountPath: "/tmp/archive",
+		})
+	}
+
+	if cc.SecretAssetsSecretName != "" {
+		volumeMount = k8s.SetAuthoritativeVolumeMount(volumeMount, corev1.VolumeMount{
+			Name:      k8s.SecretAssetsVolumeName,
+			MountPath: config.SecretsMountPath,
 		})
 	}
 

@@ -79,6 +79,7 @@ var _ = Describe("ClusterVectorAggregator Controller", func() {
 				EventChan:          make(chan event.GenericEvent, 1),
 				ConfigCheckTimeout: configCheckTimeout,
 				Clientset:          clientset,
+				APIReader:          k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -111,6 +112,7 @@ var _ = Describe("ClusterVectorAggregator Controller", func() {
 				EventChan:          make(chan event.GenericEvent, 10),
 				ConfigCheckTimeout: configCheckTimeout,
 				Clientset:          clientset,
+				APIReader:          mgr.GetAPIReader(),
 			}
 			Expect(reconciler.SetupWithManager(mgr)).To(Succeed())
 

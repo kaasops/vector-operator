@@ -39,12 +39,24 @@ func (vp *VectorPipeline) SetReason(reason *string) {
 	vp.Status.Reason = reason
 }
 
+func (vp *VectorPipeline) GetReason() *string {
+	return vp.Status.Reason
+}
+
 func (vp *VectorPipeline) GetLastAppliedPipeline() *int64 {
 	return vp.Status.LastAppliedPipelineHash
 }
 
 func (vp *VectorPipeline) SetLastAppliedPipeline(hash *int64) {
 	vp.Status.LastAppliedPipelineHash = hash
+}
+
+func (vp *VectorPipeline) GetRelatedSecretsHash() *int64 {
+	return vp.Status.RelatedSecretsHash
+}
+
+func (vp *VectorPipeline) SetRelatedSecretsHash(hash *int64) {
+	vp.Status.RelatedSecretsHash = hash
 }
 
 func (vp *VectorPipeline) GetRole() VectorPipelineRole {

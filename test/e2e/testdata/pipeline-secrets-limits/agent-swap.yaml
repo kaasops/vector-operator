@@ -1,0 +1,26 @@
+# A second, dedicated Vector agent for the "bridge convergence" scenario, kept
+# separate from vlimits (survivor/victim) so its secret-assets Secret starts empty:
+# the swap scenario needs to know exactly how much room its own 600 KiB value
+# takes, without any of vlimits' pipelines sharing the same 1 MiB budget.
+#
+# ConfigCheck is explicitly DISABLED here, unlike vlimits: the write-order/
+# missing-grace-period bug this scenario pins only shows up with configCheck
+# disabled - with it enabled, a bad config is normally caught by the ephemeral
+# validation pod before it ever reaches the live DaemonSet's config/assets Secrets,
+# which would mask exactly the class of bug this scenario exists to catch live.
+#
+# selector scopes this agent to its own pipeline only - see vlimits' identical
+# selector for why a selector-less Vector (matching every pipeline cluster-wide)
+# would let this "own, empty secret-assets budget" assumption silently break.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: vlimits-swap
+spec:
+  selector:
+    matchLabels:
+      e2e: pipeline-secrets-limits-swap
+  agent:
+    image: timberio/vector:0.48.0-alpine
+    configCheck:
+      disabled: true

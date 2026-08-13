@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"context"
+	"fmt"
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,6 +29,11 @@ type Aggregator interface {
 
 type Controller struct {
 	client.Client
+	// APIReader is an uncached read-only client (mgr.GetAPIReader()), used by every
+	// secret-assets safeguard - the write-order gate, the bridge plan and the prune gate -
+	// see the agent Controller's identical field and secretAssetsSafetyReader for why none
+	// of them may be answered from the cache, and why this is not defaulted to Client.
+	APIReader           client.Reader
 	id                  string
 	Name                string
 	Namespace           string
@@ -40,6 +46,11 @@ type Controller struct {
 	Config              *config.VectorConfig
 	ClientSet           kubernetes.Interface
 	isClusterAggregator bool
+
+	// SecretAssets holds the resolved pipeline secret data (cfg.SecretAssets()) to
+	// materialize into the secret-assets Secret and mount into the workload. Empty
+	// when no pipeline references a secret (zero-churn: no Secret, no volume, no mount).
+	SecretAssets map[string][]byte
 }
 
 func NewController(
@@ -78,7 +89,26 @@ func NewController(
 	return ctrl
 }
 
-func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
+// EnsureVectorAggregator reconciles the aggregator Deployment/StatefulSet and
+// everything it depends on.
+//
+// ctrl.SecretAssets is written before the config that may reference it - see
+// ensureVectorAggregatorSecretAssets' doc comment for why this order is the one that
+// cannot crash-loop the workload, and for why the CALLER (not this function) is
+// responsible for choosing exactly what ctrl.SecretAssets should contain this round.
+//
+// Where the workload's own pod template write falls relative to assets/config
+// depends on whether this round is CROSSING the secret-assets mount's
+// presence/absence boundary - see hasSecretAssetsMount and the agent's identical
+// EnsureVectorAgent for the full rationale (a new pod, created by ANY trigger, gets
+// whatever template happens to be persisted at that instant, so the mount must
+// never be behind what the config it will read references).
+//
+// configPublishing is true exactly when the caller's configUnchanged was false this
+// round - see the agent's identical EnsureVectorAgent and StampConfigPublishing's
+// doc comment for why, when true, the publish mark is stamped after assets succeeds
+// and immediately before the first config write.
+func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context, configPublishing bool) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator")
 
@@ -87,8 +117,78 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 		return err
 	}
 
-	if err = ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+	ensureWorkload := ctrl.ensureVectorAggregatorDeployment
+	if ctrl.persistenceEnabled() {
+		ensureWorkload = ctrl.ensureVectorAggregatorStatefulSet
+	}
+
+	// One uncached read of both potential workload kinds, serving two decisions that
+	// need DIFFERENT answers out of it - see secretAssetsMountState's doc comment.
+	mountState, err := ctrl.readSecretAssetsMountState(ctx)
+	if err != nil {
 		return err
+	}
+	willHaveMount := len(ctrl.SecretAssets) > 0
+	obsoleteWorkloadExists := mountState.obsoleteWorkloadExists(ctrl.persistenceEnabled())
+
+	stampBeforeConfig := func() error {
+		if !configPublishing {
+			return nil
+		}
+		return ctrl.StampConfigPublishing(ctx)
+	}
+
+	switch {
+	// Gaining the mount asks whether EVERY live workload already has it: a config
+	// that references a key is unsafe for any workload still missing the mount, so
+	// one unmounted kind is enough to require this order.
+	case willHaveMount && !mountState.allMounted():
+		if err := ctrl.ensureVectorAggregatorSecretAssets(ctx); err != nil {
+			return err
+		}
+		if err := ensureWorkload(ctx, obsoleteWorkloadExists); err != nil {
+			return err
+		}
+		if err := stampBeforeConfig(); err != nil {
+			return err
+		}
+		if err := ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+			return err
+		}
+	// Losing it asks the opposite question - whether ANY live workload still has it:
+	// the assets Secret may not be deleted while a single pod anywhere still mounts it.
+	case !willHaveMount && mountState.anyMounted():
+		// Stamped here too, and unconditionally - see the agent's identical branch in
+		// EnsureVectorAgent for why "this branch implies configPublishing is false" is
+		// not an invariant this switch can rely on.
+		if err := stampBeforeConfig(); err != nil {
+			return err
+		}
+		if err := ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+			return err
+		}
+		if err := ensureWorkload(ctx, obsoleteWorkloadExists); err != nil {
+			return err
+		}
+		if err := ctrl.ensureVectorAggregatorSecretAssets(ctx); err != nil {
+			return err
+		}
+	default:
+		if err := ctrl.ensureVectorAggregatorSecretAssets(ctx); err != nil {
+			return err
+		}
+		if err := stampBeforeConfig(); err != nil {
+			return err
+		}
+		if err := ctrl.ensureVectorAggregatorConfig(ctx); err != nil {
+			return err
+		}
+		// Kept right after config, before RBAC/Service/PodMonitor below - a
+		// non-essential step's transient failure must not withhold the template
+		// update indefinitely.
+		if err := ensureWorkload(ctx, obsoleteWorkloadExists); err != nil {
+			return err
+		}
 	}
 
 	if err := ctrl.ensureVectorAggregatorRBAC(ctx); err != nil {
@@ -101,16 +201,6 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 
 	if ctrl.Spec.InternalMetrics && monitoringCRD {
 		if err := ctrl.ensureVectorAggregatorPodMonitor(ctx); err != nil {
-			return err
-		}
-	}
-
-	if ctrl.persistenceEnabled() {
-		if err := ctrl.ensureVectorAggregatorStatefulSet(ctx); err != nil {
-			return err
-		}
-	} else {
-		if err := ctrl.ensureVectorAggregatorDeployment(ctx); err != nil {
 			return err
 		}
 	}
@@ -130,6 +220,112 @@ func (ctrl *Controller) EnsureVectorAggregator(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// secretAssetsMountState is what one uncached read of BOTH potential workload kinds
+// (Deployment and StatefulSet - they share a name, and a persistence toggle can
+// leave both alive at once) says about the operator's own secret-assets mount.
+//
+// It is kept as per-kind facts rather than a single boolean because the two write
+// orders it feeds ask genuinely different questions of it, and folding both kinds
+// into one "somebody has the mount" answer gets one of them wrong:
+//
+//   - Losing the mount is about ANY workload still having it (anyMounted): the assets
+//     Secret must not be deleted while a single live pod anywhere still mounts it.
+//   - Gaining it is about EVERY workload already having it (allMounted): a config that
+//     references a key is unsafe for any workload that does NOT mount it, so one
+//     unmounted kind is enough to require the gaining order.
+//
+// That mixed state is reachable, not theoretical: ensureWorkload writes the new kind
+// BEFORE deleting the old one, so a failed or not-yet-run delete leaves both alive with
+// independent pod templates - a Deployment still carrying the mount next to a StatefulSet
+// created on a round without secrets. Folded with OR, the next round that adds a secret
+// back would answer "already mounted", take the ordinary order, and publish a config
+// referencing a key the StatefulSet's pods cannot resolve.
+type secretAssetsMountState struct {
+	deploymentExists   bool
+	deploymentMounted  bool
+	statefulSetExists  bool
+	statefulSetMounted bool
+}
+
+// anyMounted reports whether at least one live workload carries the mount.
+func (s secretAssetsMountState) anyMounted() bool {
+	return s.deploymentMounted || s.statefulSetMounted
+}
+
+// allMounted reports whether every live workload carries the mount. A workload that
+// does not exist at all makes this false rather than vacuously true: the very first
+// reconcile of a fresh aggregator has to take the gaining order (assets, then the
+// workload that mounts them, then the config that references them), exactly like a
+// workload whose template predates the feature.
+func (s secretAssetsMountState) allMounted() bool {
+	if !s.deploymentExists && !s.statefulSetExists {
+		return false
+	}
+	return (!s.deploymentExists || s.deploymentMounted) &&
+		(!s.statefulSetExists || s.statefulSetMounted)
+}
+
+// obsoleteWorkloadExists reports whether the kind the CURRENT persistence setting does
+// not select is still on the cluster - the leftover deleteObsoleteWorkload has to
+// remove. Answering from this snapshot is what keeps that decision off the cache; see
+// deleteObsoleteWorkload's doc comment.
+func (s secretAssetsMountState) obsoleteWorkloadExists(persistenceEnabled bool) bool {
+	if persistenceEnabled {
+		return s.deploymentExists
+	}
+	return s.statefulSetExists
+}
+
+// readSecretAssetsMountState takes that snapshot: both kinds CURRENTLY PERSISTED on
+// the cluster - not the one this reconcile is about to write - and whether each has
+// the OPERATOR'S OWN secret-assets mount in its pod template (see
+// k8s.HasOperatorSecretAssetsMount's doc comment for why a bare volume-name match is
+// not enough).
+//
+// Both reads go through ctrl.APIReader - an uncached snapshot from the API server at
+// decision time - see the agent's hasSecretAssetsMount for why a gate that picks the
+// write order must not be decided off the informer cache, and why a read failure
+// aborts the round before any of the writes it orders instead of falling back to the
+// cache.
+//
+// Both kinds are read unconditionally and the order is immaterial - there is nothing to
+// short-circuit. Only anyMounted() could stop at the first mounted kind; allMounted()
+// must know about the other kind (an unmounted leftover is what it exists to notice), and
+// obsoleteWorkloadExists() asks about the kind persistenceEnabled() does NOT select, so
+// it needs exactly the read a current-kind-first order would have skipped. Two reads
+// always, served from the API server rather than the cache - the deliberate price of not
+// deciding a safeguard off possibly stale data.
+func (ctrl *Controller) readSecretAssetsMountState(ctx context.Context) (secretAssetsMountState, error) {
+	var state secretAssetsMountState
+	if ctrl.APIReader == nil {
+		return state, fmt.Errorf("APIReader is not set: the secret-assets write-order gate must not be decided from the cache")
+	}
+	key := client.ObjectKey{Namespace: ctrl.Namespace, Name: ctrl.getNameVectorAggregator()}
+	secretName := ctrl.getSecretAssetsName()
+
+	dep := &appsv1.Deployment{}
+	if err := ctrl.APIReader.Get(ctx, key, dep); err != nil {
+		if !api_errors.IsNotFound(err) {
+			return state, err
+		}
+	} else {
+		state.deploymentExists = true
+		state.deploymentMounted = k8s.HasOperatorSecretAssetsMount(dep.Spec.Template.Spec, secretName, config.SecretsMountPath)
+	}
+
+	sts := &appsv1.StatefulSet{}
+	if err := ctrl.APIReader.Get(ctx, key, sts); err != nil {
+		if !api_errors.IsNotFound(err) {
+			return state, err
+		}
+	} else {
+		state.statefulSetExists = true
+		state.statefulSetMounted = k8s.HasOperatorSecretAssetsMount(sts.Spec.Template.Spec, secretName, config.SecretsMountPath)
+	}
+
+	return state, nil
 }
 
 func (ctrl *Controller) DeleteVectorAggregator(ctx context.Context) error {
@@ -301,14 +497,68 @@ func (ctrl *Controller) statusPatchBase() client.Object {
 	return base
 }
 
-func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *int64) error {
+// configPublished is true when the config Secret was actually (re-)written this
+// round (i.e. the caller's configUnchanged was false) - see the agent's identical
+// SetSuccessStatus for the full rationale, including why LastConfigPublishedAt is
+// also seeded when still nil regardless of configPublished.
+func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *int64, configPublished bool) error {
 	base := ctrl.statusPatchBase()
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = nil
 	ctrl.Status.LastAppliedConfigHash = hash
 	ctrl.Status.LastAppliedGlobalConfigHash = globCfgHash
+	if configPublished || ctrl.Status.LastConfigPublishedAt == nil {
+		now := metav1.Now()
+		ctrl.Status.LastConfigPublishedAt = &now
+	}
 	return k8s.PatchStatus(ctx, ctrl.VectorAggregator, base, ctrl.Client)
+}
+
+// StampConfigPublishing writes ONLY LastConfigPublishedAt - see the agent's
+// identical StampConfigPublishing for the full rationale (the gap SetSuccessStatus
+// alone leaves between a successful config write and the end-of-reconcile status
+// update, and why this must run after assets are staged and immediately before the
+// first config write, never before or after) and for why it has to write through a
+// DEEP COPY of the underlying CR, never ctrl.VectorAggregator itself: the same
+// controller-runtime behavior applies here (Status().Update() decodes the server's
+// full response, including the not-actually-persisted-yet spec defaults
+// setDefault() applied only in memory, back into whatever pointer it was given),
+// and ensureVectorAggregatorConfig/the workload write immediately after this call
+// would otherwise build from a silently reverted spec.
+func (ctrl *Controller) StampConfigPublishing(ctx context.Context) error {
+	now := metav1.Now()
+	stamped, ok := ctrl.VectorAggregator.DeepCopyObject().(Aggregator)
+	if !ok {
+		return fmt.Errorf("StampConfigPublishing: %T does not deep-copy into an Aggregator", ctrl.VectorAggregator)
+	}
+
+	base, ok := ctrl.VectorAggregator.DeepCopyObject().(client.Object)
+	if !ok {
+		return fmt.Errorf("StampConfigPublishing: %T does not deep-copy into a client.Object", ctrl.VectorAggregator)
+	}
+
+	var resourceVersion string
+	switch agg := stamped.(type) {
+	case *vectorv1alpha1.VectorAggregator:
+		agg.Status.LastConfigPublishedAt = &now
+		if err := k8s.PatchStatus(ctx, agg, base, ctrl.Client); err != nil {
+			return err
+		}
+		resourceVersion = agg.ResourceVersion
+	case *vectorv1alpha1.ClusterVectorAggregator:
+		agg.Status.LastConfigPublishedAt = &now
+		if err := k8s.PatchStatus(ctx, agg, base, ctrl.Client); err != nil {
+			return err
+		}
+		resourceVersion = agg.ResourceVersion
+	default:
+		return fmt.Errorf("StampConfigPublishing: unsupported Aggregator type %T", stamped)
+	}
+
+	ctrl.VectorAggregator.SetResourceVersion(resourceVersion)
+	ctrl.Status.LastConfigPublishedAt = &now
+	return nil
 }
 
 func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) error {
@@ -355,6 +605,20 @@ func (ctrl *Controller) getNameVectorAggregator() string {
 	return name
 }
 
+// getSecretAssetsName returns the name of the Secret that materializes the
+// pipeline secret data mounted at config.SecretsMountPath.
+func (ctrl *Controller) getSecretAssetsName() string {
+	return ctrl.getNameVectorAggregator() + "-secret-assets"
+}
+
+// SecretAssetsPrototype returns the assets Secret as this controller would build it,
+// minus the data - see the agent Controller's identical accessor.
+func (ctrl *Controller) SecretAssetsPrototype() *corev1.Secret {
+	prototype := ctrl.createSecretAssetsSecret()
+	prototype.Data = nil
+	return prototype
+}
+
 // getHeadlessServiceName returns the name of the headless service that governs
 // the StatefulSet, providing stable per replica DNS in persistent mode.
 func (ctrl *Controller) getHeadlessServiceName() string {
@@ -388,17 +652,25 @@ func (ctrl *Controller) persistenceEnabled() bool {
 // deleteObsoleteWorkload removes a workload of the opposite kind left over from a
 // previous persistence mode. Toggling persistence switches between a Deployment
 // and a StatefulSet that share a name and pod labels, so the stale one must be
-// removed or its pods keep serving alongside the new workload.
+// removed or its pods keep serving alongside the new workload - and, while pipeline
+// secrets are in play, keep mounting an assets Secret the mount-losing order is about
+// to delete.
+//
+// It issues the DELETE unconditionally and treats a server-side NotFound as success.
+// It used to preflight with a cached GET and return early on NotFound, which made a
+// cache lag decide a safety step: a workload the API server still has, but the
+// informer has not observed yet, was reported gone, no DELETE was sent, and the round
+// continued as if the old kind were retired - publishing a config, or deleting the
+// assets Secret, out from under its still-running pods. Callers instead gate this on
+// secretAssetsMountState's uncached snapshot, so the "skip the no-op DELETE in steady
+// state" economy is kept without the cache getting a vote (an extra DELETE per
+// reconcile per aggregator is not free on a busy API server, which is why the guard
+// was moved rather than dropped). The NotFound tolerance covers the remaining gap:
+// the snapshot is taken before the new workload is written, and the leftover may be
+// gone by the time this runs.
 func (ctrl *Controller) deleteObsoleteWorkload(ctx context.Context, obj client.Object) error {
-	key := types.NamespacedName{Name: ctrl.getNameVectorAggregator(), Namespace: ctrl.Namespace}
-	// Read from the cache the Owns() watch already maintains, so a steady-state
-	// reconcile skips the DELETE instead of firing one that just returns NotFound.
-	if err := ctrl.Get(ctx, key, obj); err != nil {
-		if api_errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
+	obj.SetName(ctrl.getNameVectorAggregator())
+	obj.SetNamespace(ctrl.Namespace)
 	if err := ctrl.Delete(ctx, obj); err != nil && !api_errors.IsNotFound(err) {
 		return err
 	}

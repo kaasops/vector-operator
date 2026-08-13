@@ -74,6 +74,7 @@ var _ = Describe("VectorAggregator Controller", func() {
 				Clientset:          clientset,
 				ConfigCheckTimeout: time.Second * 10,
 				EventChan:          make(chan event.GenericEvent, 1),
+				APIReader:          k8sClient,
 			}
 			// remove finalizer
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -89,6 +90,7 @@ var _ = Describe("VectorAggregator Controller", func() {
 				Clientset:          clientset,
 				ConfigCheckTimeout: time.Second * 10,
 				EventChan:          make(chan event.GenericEvent, 1),
+				APIReader:          k8sClient,
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,

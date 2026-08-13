@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
@@ -39,6 +40,7 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 	// sources of pipelines that opted out of config optimization via annotation; kept
 	// out of source collapsing so they keep a dedicated source (backpressure isolation)
 	var optOutSources map[string]struct{}
+	var pendingSecrets []pendingSecretRef
 
 	for _, pipeline := range pipelines {
 		p := &PipelineConfig{}
@@ -46,6 +48,7 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
 		}
 		optedOut := pipeline.GetAnnotations()[common.AnnotationConfigOptimization] == common.AnnotationValueDisabled
+		var comps []map[string]any
 		for k, v := range p.Sources {
 			// Validate source
 			if _, ok := pipeline.(*vectorv1alpha1.VectorPipeline); ok {
@@ -72,6 +75,7 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 			}
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
 			cfg.Sources[v.Name] = v
+			comps = append(comps, v.Options)
 			if optedOut {
 				if optOutSources == nil {
 					optOutSources = make(map[string]struct{})
@@ -85,6 +89,7 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 			}
 			cfg.Transforms[v.Name] = v
+			comps = append(comps, v.Options)
 		}
 		for k, v := range p.Sinks {
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
@@ -92,6 +97,10 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 			}
 			cfg.Sinks[v.Name] = v
+			comps = append(comps, v.Options)
+		}
+		if err := processPipelineSecrets(pipeline, params.PipelineSecretGetter, comps, &pendingSecrets); err != nil {
+			return nil, err
 		}
 	}
 
@@ -107,6 +116,10 @@ func buildAgentConfig(params VectorConfigParams, pipelines ...pipeline.Pipeline)
 
 	if len(cfg.Sources) == 0 && len(cfg.Sinks) == 0 {
 		cfg.PipelineConfig = defaultAgentPipelineConfig
+	}
+
+	if err := resolvePendingSecrets(context.Background(), cfg, params.PipelineSecretGetter, pendingSecrets); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil

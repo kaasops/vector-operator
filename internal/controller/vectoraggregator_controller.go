@@ -60,6 +60,13 @@ type VectorAggregatorReconciler struct {
 	Clientset          *kubernetes.Clientset
 	ConfigCheckTimeout time.Duration
 	EventChan          chan event.GenericEvent
+
+	// APIReader is an uncached read-only client (mgr.GetAPIReader()), used to resolve
+	// pipeline secrets: reads go through it for freshness and independence from cache
+	// scoping (namespace/label filters), not to keep secret payloads out of the
+	// controller-runtime cache - Owns(&corev1.Secret{}) below already puts them there in
+	// default mode.
+	APIReader client.Reader
 }
 
 // +kubebuilder:rbac:groups=observability.kaasops.io,resources=vectoraggregators,verbs=get;list;watch;create;update;patch;delete
@@ -198,24 +205,53 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	}
 
 	vaCtrl := aggregator.NewController(v, client, clientset)
+	// The write-order gate reads through this, never through the cached client -
+	// see the Controller field's own doc comment.
+	vaCtrl.APIReader = r.APIReader
 
-	pipelines, err := pipeline.GetValidPipelines(ctx, vaCtrl.Client, pipeline.FilterPipelines{
+	secretGetter := pipelineSecretGetter(r.APIReader, ctx)
+
+	// resolveWorkloadPipelines also attributes any secret flat-key collision among the
+	// selected pipelines to the younger one instead of letting BuildAggregatorConfig
+	// fail the whole build below. reinstateCandidates' statuses are finalized further
+	// down, only once the build (and configcheck, if enabled) actually succeed - see
+	// reinstatePipelines' doc comment.
+	pipelines, reinstateCandidates, err := resolveWorkloadPipelines(ctx, vaCtrl.Client, secretGetter, pipeline.FilterPipelines{
 		Scope:     pipeline.NamespacedPipeline,
 		Selector:  v.Spec.Selector,
 		Role:      v1alpha1.VectorPipelineRoleAggregator,
 		Namespace: vaCtrl.Namespace,
-	})
+	}, "VectorAggregator", v.Namespace, v.Name, vaCtrl.SecretAssetsPrototype())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	// pipelines is the correct, deterministic target set. planSecretAssetsBridge may
+	// hold back a subset (waitingPipelines) if staging their values alongside
+	// whatever the assets Secret currently, unprunably holds would itself overflow
+	// corev1.MaxSecretSize - see its doc comment and docs/secrets.md's "transitions
+	// that would themselves overflow" section.
+	existingAssets, err := vaCtrl.ExistingSecretAssets(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	bridgeDataPerVariant, bridgePipelines, waitingPipelines, err := planSecretAssetsBridge(ctx, secretGetter, vaCtrl.SecretAssetsPrototype(), pipelines, existingAssets)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := markWaitingPipelines(ctx, vaCtrl.Client, waitingPipelines, "VectorAggregator", v.Namespace, v.Name); err != nil {
+		return ctrl.Result{}, err
+	}
+	reinstateCandidates = intersectPipelinesByKey(reinstateCandidates, bridgePipelines)
+
 	cfg, err := config.BuildAggregatorConfig(config.VectorConfigParams{
-		AggregatorName:    vaCtrl.Name,
-		ApiEnabled:        vaCtrl.Spec.Api.Enabled,
-		PlaygroundEnabled: vaCtrl.Spec.Api.Playground,
-		InternalMetrics:   vaCtrl.Spec.InternalMetrics,
-		ExpireMetricsSecs: vaCtrl.Spec.ExpireMetricsSecs,
-	}, pipelines...)
+		AggregatorName:       vaCtrl.Name,
+		ApiEnabled:           vaCtrl.Spec.Api.Enabled,
+		PlaygroundEnabled:    vaCtrl.Spec.Api.Playground,
+		InternalMetrics:      vaCtrl.Spec.InternalMetrics,
+		ExpireMetricsSecs:    vaCtrl.Spec.ExpireMetricsSecs,
+		PipelineSecretGetter: secretGetter,
+	}, bridgePipelines...)
 	if err != nil {
 		if err := vaCtrl.SetFailedStatus(ctx, err.Error()); err != nil {
 			return ctrl.Result{}, err
@@ -230,6 +266,15 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	}
 	cfgHash := int64(hash.Get(byteCfg))
 
+	// configUnchanged tells us whether the config about to be (re-)written is
+	// byte-identical to the one ALREADY ACTUALLY PUBLISHED on the cluster - see the
+	// agent's identical PublishedConfigMatches for why a status hash is not safe
+	// enough for this specific, safety-critical decision.
+	configUnchanged, err := vaCtrl.PublishedConfigMatches(ctx, byteCfg)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if !vaCtrl.Spec.ConfigCheck.Disabled {
 		if vaCtrl.Status.LastAppliedConfigHash == nil || *vaCtrl.Status.LastAppliedConfigHash != cfgHash {
 			reason, err := configcheck.New(
@@ -241,6 +286,7 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 				vaCtrl.Namespace,
 				r.ConfigCheckTimeout,
 				configcheck.ConfigCheckInitiatorVector,
+				cfg.SecretAssets(),
 			).Run(ctx)
 			if err != nil {
 				if errors.Is(err, configcheck.ErrValidation) {
@@ -263,15 +309,42 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	vaCtrl.ConfigBytes = byteCfg
 	vaCtrl.Config = cfg
 
-	if err := vaCtrl.EnsureVectorAggregator(ctx); err != nil {
+	// See vector_controller.go's identical branch for the full rationale, including
+	// secretAssetsPruneDecision's grace period and assetsWouldDropAKey's zero-churn
+	// fast path. The aggregator has only one assets Secret variant (no checkpoint
+	// migration), so there is only ever one entry and no cross-variant check is needed.
+	targetAssets := cfg.SecretAssets()
+	var prune bool
+	var requeueAfter time.Duration
+	if assetsWouldDropAKey(existingAssets, targetAssets) {
+		prune, requeueAfter = secretAssetsPruneDecision(configUnchanged, vaCtrl.Status.LastConfigPublishedAt)
+	} else {
+		prune = true
+	}
+	if prune {
+		vaCtrl.SecretAssets = targetAssets
+	} else {
+		vaCtrl.SecretAssets = bridgeDataPerVariant[0]
+	}
+
+	if err := vaCtrl.EnsureVectorAggregator(ctx, !configUnchanged); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, vaCtrl.Config.GetGlobalConfigHash()); err != nil {
+	// Only now - after EnsureVectorAggregator has actually published the config and
+	// assets these candidates' references depend on - is it safe to mark them valid
+	// again (see reinstatePipelines' doc comment).
+	if err := reinstatePipelines(ctx, vaCtrl.Client, reinstateCandidates); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, vaCtrl.Config.GetGlobalConfigHash(), !configUnchanged); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// See vector_controller.go's identical return for why a pending grace period must
+	// be requeued explicitly.
+	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
 func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Context, c client.Client, clientset *kubernetes.Clientset, aggregators ...*v1alpha1.VectorAggregator) (ctrl.Result, error) {

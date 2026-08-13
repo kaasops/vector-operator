@@ -8,3 +8,4 @@
 - Aggregator persistent disk buffers [doc](https://github.com/kaasops/vector-operator/blob/main/docs/aggregator-persistence.md)
 - Monitoring and Grafana dashboard [doc](https://github.com/kaasops/vector-operator/blob/main/docs/monitoring.md)
 - Force ConfigCheck via annotation [doc](https://github.com/kaasops/vector-operator/blob/main/docs/force-configcheck.md)
+- Pipeline secrets [doc](https://github.com/kaasops/vector-operator/blob/main/docs/secrets.md)

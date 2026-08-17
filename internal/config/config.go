@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	goyaml "sigs.k8s.io/yaml"
 
 	vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
@@ -44,6 +46,10 @@ type VectorConfigParams struct {
 	InternalMetrics   bool
 	ExpireMetricsSecs *int
 	OptimizeSources   bool
+	// PipelineSecretGetter resolves a pipeline secret backend to the referenced
+	// Kubernetes Secret. nil means secrets are unsupported in this context: any
+	// pipeline that declares spec.secret fails config generation.
+	PipelineSecretGetter func(ctx context.Context, namespace, name string) (*corev1.Secret, error)
 }
 
 func newVectorConfig(p VectorConfigParams) *VectorConfig {

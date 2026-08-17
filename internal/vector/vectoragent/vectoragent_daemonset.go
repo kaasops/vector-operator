@@ -23,6 +23,7 @@ import (
 
 	"github.com/kaasops/vector-operator/internal/buildinfo"
 	"github.com/kaasops/vector-operator/internal/config"
+	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
 func (ctrl *Controller) createVectorAgentDaemonSet() *appsv1.DaemonSet {
@@ -147,6 +148,22 @@ func (ctrl *Controller) generateVectorAgentVolume() []corev1.Volume {
 		})
 	}
 
+	// Only mounted when a pipeline actually references a secret, so pods of
+	// non-users of the feature keep an unchanged pod template (zero churn). While in
+	// use the volume is operator-owned: a same-named user volume would silently
+	// shadow the credentials source (the generated config still reads
+	// config.SecretsMountPath), so it is replaced rather than honored.
+	if len(ctrl.SecretAssets) > 0 {
+		volume = k8s.SetAuthoritativeVolume(volume, corev1.Volume{
+			Name: k8s.SecretAssetsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ctrl.getSecretAssetsName(),
+				},
+			},
+		})
+	}
+
 	return volume
 }
 
@@ -192,6 +209,13 @@ func (ctrl *Controller) generateVectorAgentVolumeMounts() []corev1.VolumeMount {
 		volumeMount = append(volumeMount, corev1.VolumeMount{
 			Name:      "app-config-compress",
 			MountPath: "/tmp/archive",
+		})
+	}
+
+	if len(ctrl.SecretAssets) > 0 {
+		volumeMount = k8s.SetAuthoritativeVolumeMount(volumeMount, corev1.VolumeMount{
+			Name:      k8s.SecretAssetsVolumeName,
+			MountPath: config.SecretsMountPath,
 		})
 	}
 

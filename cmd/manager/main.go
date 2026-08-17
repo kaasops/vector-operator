@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/kaasops/vector-operator/internal/buildinfo"
+	"github.com/kaasops/vector-operator/internal/pipeline"
 
 	monitorv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,6 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/kaasops/vector-operator/internal/config/configcheck"
 
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 
@@ -203,6 +207,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Sweep configcheck Secrets orphaned by a previous operator process (crash
+	// between creating them and the process-local deferred cleanup): nothing owns the
+	// root configcheck Secret, and with pipeline secrets the orphan can include a
+	// plaintext copy of referenced credentials. Runs under leader election; only
+	// Secrets older than this process are touched, so live configchecks are safe.
+	operatorStart := time.Now()
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		if err := configcheck.SweepOrphans(ctx, mgr.GetAPIReader(), mgr.GetClient(), operatorStart); err != nil {
+			setupLog.Error(err, "failed to sweep orphaned configcheck secrets")
+		}
+		<-ctx.Done()
+		return nil
+	})); err != nil {
+		setupLog.Error(err, "unable to add configcheck orphan sweep")
+		os.Exit(1)
+	}
+
 	vectorAgentEventCh := make(chan event.GenericEvent, 400)
 	defer close(vectorAgentEventCh)
 
@@ -216,6 +237,7 @@ func main() {
 		CheckpointMergerImage:     checkpointMergerImage,
 		DiscoveryClient:           dc,
 		EventChan:                 vectorAgentEventCh,
+		APIReader:                 mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vector")
 		os.Exit(1)
@@ -239,6 +261,14 @@ func main() {
 		ClusterVectorAggregatorsEventCh:          clusterVectorAggregatorsPipelineEventCh,
 		EnableReconciliationInvalidPipelines:     enableReconciliationInvalidPipelines,
 		ReconciliationInvalidPipelinesRetryDelay: reconciliationRetryDelay,
+		APIReader:                                mgr.GetAPIReader(),
+		SecretIndex:                              pipeline.NewSecretIndex(),
+		// Scoped mode is exactly the configuration where the Secret watch cannot be
+		// relied on to report a rotation - setupCustomCache narrows the Secret informer
+		// to one namespace and/or to operator-managed objects - so pipelines that
+		// actually reference Secrets get a periodic re-check instead. See
+		// PollSecretRotation and secretRotationPollInterval.
+		PollSecretRotation: watchNamespace != "" || watchLabel != "",
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorPipeline")
 		os.Exit(1)
@@ -253,6 +283,7 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          vectorAggregatorsEventCh,
+		APIReader:          mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VectorAggregator")
 		os.Exit(1)
@@ -267,6 +298,7 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		ConfigCheckTimeout: configCheckTimeout,
 		EventChan:          clusterVectorAggregatorsEventCh,
+		APIReader:          mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterVectorAggregator")
 		os.Exit(1)

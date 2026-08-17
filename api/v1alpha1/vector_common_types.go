@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -17,6 +18,14 @@ type VectorCommonStatus struct {
 	// wedging the reconcile loop with configCheckResult=false. See #232.
 	LastAppliedConfigHash       *int64 `json:"LastAppliedConfigHash,omitempty"`
 	LastAppliedGlobalConfigHash *int64 `json:"LastAppliedGlobalConfigHash,omitempty"`
+	// LastConfigPublishedAt records when the config Secret actually on the cluster was
+	// last (re-)written - i.e. the most recent reconcile where PublishedConfigMatches
+	// returned false. It gates how long the operator waits before pruning secret-assets
+	// keys a newer config no longer references, giving kubelet time to project both
+	// updated Secrets (config and assets) into already-running pods first. See
+	// ensureVectorAgentSecretAssets/ensureVectorAggregatorSecretAssets' doc comments.
+	// +optional
+	LastConfigPublishedAt *metav1.Time `json:"lastConfigPublishedAt,omitempty"`
 }
 
 type VectorCommon struct {

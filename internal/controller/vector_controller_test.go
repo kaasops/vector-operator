@@ -84,6 +84,7 @@ var _ = Describe("Vector Controller", func() {
 				ConfigCheckTimeout: configCheckTimeout,
 				DiscoveryClient:    clientset.DiscoveryClient,
 				EventChan:          make(chan event.GenericEvent, 1),
+				APIReader:          k8sClient,
 			}
 
 			// First reconcile adds finalizer

@@ -34,7 +34,11 @@ type VectorConfig struct {
 	globalOptions  `yaml:",inline"`
 	Api            *ApiSpec `yaml:"api"`
 	PipelineConfig `yaml:",inline"`
-	internal       internalConfig `yaml:"-"`
+	// Secret holds the secret backend section (e.g. the k8s directory backend), set
+	// only when at least one pipeline references a SECRET[] value. Absent otherwise,
+	// so configs without secrets stay byte-identical to pre-secrets behavior.
+	Secret   map[string]any `yaml:"secret,omitempty"`
+	internal internalConfig `yaml:"-"`
 }
 
 type PipelineConfig struct {
@@ -94,6 +98,16 @@ type internalConfig struct {
 	servicePort      map[string]*ServicePort
 	optimizedSources int
 	sourceGroups     int
+	// secretAssets holds the resolved secret data (flatKey -> value) to be materialized
+	// into the aggregated Secret mounted at SecretsMountPath. Empty when no pipeline
+	// references a secret.
+	secretAssets map[string][]byte
+}
+
+// SecretAssets returns the resolved secret data (flatKey -> value) collected while
+// building this config. Empty when no pipeline referenced a SECRET[] value.
+func (c *VectorConfig) SecretAssets() map[string][]byte {
+	return c.internal.secretAssets
 }
 
 func (c *internalConfig) addServicePort(port *ServicePort) error {

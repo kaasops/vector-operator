@@ -1,0 +1,19 @@
+# Negative case: references a secret backend alias ("undeclared") that spec.secret
+# never declares. Should fail config build (not vector validate) with a reason that
+# names the alias.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: undeclared-secret-pipeline
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    out:
+      type: console
+      inputs:
+        - logs
+      encoding:
+        codec: json
+      tenant_id: "SECRET[undeclared.key]"

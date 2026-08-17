@@ -1,0 +1,33 @@
+# Bridge-convergence scenario, phase B: same pipeline, now referencing
+# SECRET[es.newval] instead of SECRET[es.oldval]. Applied once swap-creds has been
+# replaced to hold "newval" (600 KiB) instead of "oldval" - see the Go test. Staging
+# the old flat key (still resident, not yet pruned) alongside the new one would
+# itself overflow the shared limit, so this pipeline must wait a few reconciles
+# rather than publish immediately - see planSecretAssetsBridge/secretAssetsPruneDecision.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: limits-swap
+  labels:
+    e2e: pipeline-secrets-limits-swap
+spec:
+  secret:
+    es:
+      type: kubernetes_secret
+      name: swap-creds
+  sources:
+    logsSwap:
+      type: kubernetes_logs
+  sinks:
+    outSwap:
+      type: elasticsearch
+      inputs:
+        - logsSwap
+      endpoints:
+        - "http://elasticsearch.example.com:9200"
+      healthcheck:
+        enabled: false
+      auth:
+        strategy: basic
+        user: "SECRET[es.newval]"
+        password: "SECRET[es.newval]"

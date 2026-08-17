@@ -100,11 +100,13 @@ test-e2e: ginkgo
 		echo "==> Label filter: $(E2E_LABEL_FILTER)"; \
 		GINKGO_FLAGS="$$GINKGO_FLAGS --label-filter=\"$(E2E_LABEL_FILTER)\""; \
 	fi; \
-	cd test/e2e && $(GINKGO) $$GINKGO_FLAGS \
+	cd test/e2e && { $(GINKGO) $$GINKGO_FLAGS \
 		--junit-report="../../$$RUN_DIR/reports/junit-report.xml" \
-		--json-report="../../$$RUN_DIR/reports/report.json" \
+		--json-report="../../$$RUN_DIR/reports/report.json"; \
+		echo $$? > "../../$$RUN_DIR/reports/.exit-code"; } \
 		| tee "../../$$RUN_DIR/reports/test-output.log"; \
-	EXIT_CODE=$$?; \
+	EXIT_CODE=$$(cat "../../$$RUN_DIR/reports/.exit-code" 2>/dev/null || echo 1); \
+	rm -f "../../$$RUN_DIR/reports/.exit-code"; \
 	echo ""; \
 	echo "==> Test run complete!"; \
 	echo "==> All results in one place: $$RUN_DIR"; \

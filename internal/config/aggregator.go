@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -24,6 +25,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 	cfg.internal.servicePort = make(map[string]*ServicePort)
 
 	var kubernetesEventsPort int32 = 42000
+	var pendingSecrets []pendingSecretRef
 
 	for _, pipeline := range pipelines {
 		kubernetesEventsAlreadyExists := false
@@ -31,6 +33,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 		if err := UnmarshalJson(pipeline.GetSpec(), p); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pipeline %s: %w", pipeline.GetName(), err)
 		}
+		var comps []map[string]any
 		for k, v := range p.Sources {
 			settings := v
 
@@ -91,6 +94,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
 			cfg.Sources[v.Name] = settings
+			comps = append(comps, settings.Options)
 		}
 		for k, v := range p.Transforms {
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
@@ -98,6 +102,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 			}
 			cfg.Transforms[v.Name] = v
+			comps = append(comps, v.Options)
 		}
 		for k, v := range p.Sinks {
 			v.Name = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), k)
@@ -105,6 +110,10 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 				v.Inputs[i] = addPrefix(pipeline.GetNamespace(), pipeline.GetName(), inputName)
 			}
 			cfg.Sinks[v.Name] = v
+			comps = append(comps, v.Options)
+		}
+		if err := processPipelineSecrets(pipeline, params.PipelineSecretGetter, comps, &pendingSecrets); err != nil {
+			return nil, err
 		}
 	}
 
@@ -126,6 +135,10 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if err := resolvePendingSecrets(context.Background(), cfg, params.PipelineSecretGetter, pendingSecrets); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil

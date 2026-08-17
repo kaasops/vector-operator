@@ -14,7 +14,10 @@ import (
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
-func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) error {
+// obsoleteWorkloadExists comes from the round's uncached workload snapshot (see
+// secretAssetsMountState): it is what keeps the leftover-StatefulSet decision from
+// being answered by a lagging cache, while still skipping the DELETE in steady state.
+func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context, obsoleteWorkloadExists bool) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-deployment", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator Deployment")
 	deployment := ctrl.createVectorAggregatorDeployment()
@@ -30,6 +33,9 @@ func (ctrl *Controller) ensureVectorAggregatorDeployment(ctx context.Context) er
 	}
 	// Remove a StatefulSet left over from before persistence was disabled. Its
 	// PVCs are kept, since the default retention policy is Retain.
+	if !obsoleteWorkloadExists {
+		return nil
+	}
 	return ctrl.deleteObsoleteWorkload(ctx, &appsv1.StatefulSet{})
 }
 
@@ -252,6 +258,22 @@ func (ctrl *Controller) generateVectorAggregatorVolume() []corev1.Volume {
 		})
 	}
 
+	// Only mounted when a pipeline actually references a secret, so pods of
+	// non-users of the feature keep an unchanged pod template (zero churn). While in
+	// use the volume is operator-owned: a same-named user volume would silently
+	// shadow the credentials source (the generated config still reads
+	// config.SecretsMountPath), so it is replaced rather than honored.
+	if len(ctrl.SecretAssets) > 0 {
+		volume = k8s.SetAuthoritativeVolume(volume, corev1.Volume{
+			Name: k8s.SecretAssetsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ctrl.getSecretAssetsName(),
+				},
+			},
+		})
+	}
+
 	return volume
 }
 
@@ -297,6 +319,13 @@ func (ctrl *Controller) generateVectorAggregatorVolumeMounts() []corev1.VolumeMo
 		volumeMount = append(volumeMount, corev1.VolumeMount{
 			Name:      "app-config-compress",
 			MountPath: "/tmp/archive",
+		})
+	}
+
+	if len(ctrl.SecretAssets) > 0 {
+		volumeMount = k8s.SetAuthoritativeVolumeMount(volumeMount, corev1.VolumeMount{
+			Name:      k8s.SecretAssetsVolumeName,
+			MountPath: config.SecretsMountPath,
 		})
 	}
 

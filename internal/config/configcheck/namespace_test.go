@@ -91,6 +91,7 @@ func TestRunSkipsTerminatingNamespace(t *testing.T) {
 	}}
 	cc := newCCWithNamespace(ns)
 	cc.Name = "agent"
+	cc.SecretAssets = make(map[string][]byte)
 
 	_, err := cc.Run(context.Background())
 	if !errors.Is(err, ErrConfigcheckSkipped) {

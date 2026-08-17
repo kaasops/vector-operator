@@ -34,8 +34,11 @@ type Pipeline interface {
 	GetSpec() v1alpha1.VectorPipelineSpec
 	SetConfigCheck(bool)
 	SetReason(*string)
+	GetReason() *string
 	GetLastAppliedPipeline() *int64
 	SetLastAppliedPipeline(*int64)
+	GetRelatedSecretsHash() *int64
+	SetRelatedSecretsHash(*int64)
 	GetConfigCheckResult() *bool
 	IsValid() bool
 	IsDeleted() bool
@@ -60,7 +63,21 @@ const (
 )
 
 func GetValidPipelines(ctx context.Context, client client.Client, filter FilterPipelines) ([]Pipeline, error) {
-	var validPipelines []Pipeline
+	return listPipelines(ctx, client, filter, true)
+}
+
+// GetAllPipelines returns every non-deleted pipeline matching filter's role/scope/
+// selector, regardless of IsValid(). A workload reconciler uses it to find pipelines
+// it previously excluded from its build and marked failed due to a secret flat-key
+// collision (see config.DetectSecretCollisions): those pipelines are individually
+// spec-valid but globally IsValid()==false, so GetValidPipelines alone can never
+// surface them again for the reconsideration that resolves the collision.
+func GetAllPipelines(ctx context.Context, client client.Client, filter FilterPipelines) ([]Pipeline, error) {
+	return listPipelines(ctx, client, filter, false)
+}
+
+func listPipelines(ctx context.Context, client client.Client, filter FilterPipelines, requireValid bool) ([]Pipeline, error) {
+	var result []Pipeline
 
 	matchLabels := map[string]string{}
 	if filter.Selector != nil && filter.Selector.MatchLabels != nil {
@@ -80,11 +97,11 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 		if len(vps) != 0 {
 			for _, vp := range vps {
 				if !vp.IsDeleted() &&
-					vp.IsValid() &&
+					(!requireValid || vp.IsValid()) &&
 					vp.GetRole() == filter.Role &&
 					(filter.Scope == AllPipelines || vp.Namespace == filter.Namespace) &&
 					k8s.MatchLabels(matchLabels, vp.Labels) {
-					validPipelines = append(validPipelines, vp.DeepCopy())
+					result = append(result, vp.DeepCopy())
 				}
 			}
 		}
@@ -98,15 +115,15 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 		if len(cvps) != 0 {
 			for _, cvp := range cvps {
 				if !cvp.IsDeleted() &&
-					cvp.IsValid() &&
+					(!requireValid || cvp.IsValid()) &&
 					cvp.GetRole() == filter.Role &&
 					k8s.MatchLabels(matchLabels, cvp.Labels) {
-					validPipelines = append(validPipelines, cvp.DeepCopy())
+					result = append(result, cvp.DeepCopy())
 				}
 			}
 		}
 	}
-	return validPipelines, nil
+	return result, nil
 }
 
 // base is the pipeline as it was read at the start of the reconcile, so the patch carries

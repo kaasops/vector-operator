@@ -49,6 +49,21 @@ func (ctrl *Controller) createVectorAgentConfig(ctx context.Context, name string
 	return secret, nil
 }
 
+// createSecretAssetsSecret builds the Secret that materializes ctrl.SecretAssets
+// (resolved pipeline secret data) for mounting at config.SecretsMountPath. Uses the
+// same ownerRef/labels mechanism as the config Secret.
+func (ctrl *Controller) createSecretAssetsSecret(name string) *corev1.Secret {
+	labels := ctrl.labelsForVectorAgent()
+	annotations := ctrl.annotationsForVectorAgent()
+	meta := ctrl.objectMetaVectorAgent(labels, annotations, ctrl.Vector.Namespace)
+	meta.Name = name
+
+	return &corev1.Secret{
+		ObjectMeta: meta,
+		Data:       ctrl.SecretAssets,
+	}
+}
+
 // deleteAgentConfigSecret best-effort removes a config Secret by name. Used to
 // clean up the standby (-opt) Secret once checkpoint migration is disabled, so
 // the feature gate leaves nothing behind.

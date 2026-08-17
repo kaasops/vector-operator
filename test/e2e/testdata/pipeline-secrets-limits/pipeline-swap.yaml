@@ -1,0 +1,32 @@
+# Bridge-convergence scenario, phase A: references SECRET[es.oldval] from the
+# swap-creds Secret (applied separately - see bigSecretYAML in the Go test).
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: limits-swap
+  labels:
+    e2e: pipeline-secrets-limits-swap
+spec:
+  secret:
+    es:
+      type: kubernetes_secret
+      name: swap-creds
+  sources:
+    logsSwap:
+      type: kubernetes_logs
+  sinks:
+    outSwap:
+      type: elasticsearch
+      inputs:
+        - logsSwap
+      endpoints:
+        - "http://elasticsearch.example.com:9200"
+      healthcheck:
+        enabled: false
+      auth:
+        strategy: basic
+        user: "SECRET[es.oldval]"
+        # Same key on purpose - see pipeline-survivor.yaml. Using the phase's OWN key
+        # for both fields is what keeps this scenario about one flat key being swapped
+        # for another; a second, unrelated key would change the sizes under test.
+        password: "SECRET[es.oldval]"

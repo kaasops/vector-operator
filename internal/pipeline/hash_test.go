@@ -199,3 +199,17 @@ func TestIsPipelineChangedDetectsForceConfigCheckToggle(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, unchanged)
 }
+
+// The Secret field must not appear in the marshaled spec when unset, to ensure
+// pipelines without secrets keep a stable hash on upgrade (no configcheck storm).
+func TestPipelineHashStableWithoutSecrets(t *testing.T) {
+	vp := &v1alpha1.VectorPipeline{}
+	vp.Spec.Sources = &runtime.RawExtension{Raw: []byte(`{"s":{"type":"kubernetes_logs"}}`)}
+	h1, err := GetPipelineHash(vp)
+	require.NoError(t, err)
+	// Marshaled spec must not mention the new field when it is unset,
+	// otherwise every existing pipeline re-hashes on upgrade (configcheck storm).
+	b, _ := json.Marshal(tmp{Spec: vp.Spec})
+	require.NotContains(t, string(b), "secret")
+	require.NotNil(t, h1)
+}

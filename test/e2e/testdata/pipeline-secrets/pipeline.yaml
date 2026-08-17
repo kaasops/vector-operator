@@ -1,0 +1,25 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: es-pipeline
+spec:
+  secret:
+    es:
+      type: kubernetes_secret
+      name: creds
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    out:
+      type: elasticsearch
+      inputs:
+        - logs
+      endpoints:
+        - "http://elasticsearch.example.com:9200"
+      healthcheck:
+        enabled: false
+      auth:
+        strategy: basic
+        user: "SECRET[es.username]"
+        password: "SECRET[es.password]"

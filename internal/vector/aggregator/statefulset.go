@@ -19,7 +19,9 @@ import (
 // StatefulSet paths, so a persistent volume claim must use this exact name.
 const dataVolumeName = "data"
 
-func (ctrl *Controller) ensureVectorAggregatorStatefulSet(ctx context.Context) error {
+// See ensureVectorAggregatorDeployment for what obsoleteWorkloadExists is and why the
+// leftover check is not made here.
+func (ctrl *Controller) ensureVectorAggregatorStatefulSet(ctx context.Context, obsoleteWorkloadExists bool) error {
 	log := log.FromContext(ctx).WithValues(ctrl.prefix()+"vector-aggregator-statefulset", ctrl.Name)
 	log.Info("start Reconcile Vector Aggregator StatefulSet")
 	if err := ctrl.validatePersistence(); err != nil {
@@ -37,6 +39,9 @@ func (ctrl *Controller) ensureVectorAggregatorStatefulSet(ctx context.Context) e
 		return err
 	}
 	// Remove a Deployment left over from before persistence was enabled.
+	if !obsoleteWorkloadExists {
+		return nil
+	}
 	return ctrl.deleteObsoleteWorkload(ctx, &appsv1.Deployment{})
 }
 

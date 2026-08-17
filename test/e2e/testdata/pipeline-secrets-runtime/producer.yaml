@@ -1,0 +1,21 @@
+# Log source for the probe: kubernetes_logs needs a steady stream of events for the
+# agent to stamp, both before and after the Secret rotation.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-producer
+  labels:
+    app: log-producer
+spec:
+  containers:
+  - name: log-generator
+    image: busybox:1.36
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo "pipeline-secrets-runtime-probe"
+          sleep 3
+        done
+  restartPolicy: Always

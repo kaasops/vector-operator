@@ -50,3 +50,23 @@ func (cc *ConfigCheck) createVectorConfigCheckConfig(ctx context.Context) (*core
 
 	return secret, nil
 }
+
+func (cc *ConfigCheck) createVectorConfigCheckSecretAssets() *corev1.Secret {
+	labels := cc.labelsForVectorConfigCheck()
+	secretName := cc.getNameVectorConfigCheckSecretAssets()
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: cc.Namespace,
+			Labels:    labels,
+		},
+		Data: cc.SecretAssets,
+	}
+
+	return secret
+}
+
+func (cc *ConfigCheck) getNameVectorConfigCheckSecretAssets() string {
+	return "configcheck-secret-assets-" + cc.Name + "-" + cc.Hash
+}

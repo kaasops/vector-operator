@@ -1,0 +1,14 @@
+# Vector agent for the runtime data-plane probe. The selector scopes it to this
+# spec's pipeline: a selector-less Vector picks up every valid pipeline in the
+# cluster, and this spec reads the agent's stdout, so foreign pipelines must not
+# be able to add sinks to it.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: rtprobe
+spec:
+  selector:
+    matchLabels:
+      e2e: pipeline-secrets-runtime
+  agent:
+    image: timberio/vector:0.48.0-alpine

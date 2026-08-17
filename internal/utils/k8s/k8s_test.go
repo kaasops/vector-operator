@@ -1028,15 +1028,18 @@ func TestDeleteSecret(t *testing.T) {
 	}
 }
 
-func TestUpdateStatus(t *testing.T) {
-	updateStatusCase := func(objInit, obj client.Object, expected error) func(t *testing.T) {
+func TestPatchStatus(t *testing.T) {
+	patchStatusCase := func(objInit, obj client.Object, expected error) func(t *testing.T) {
 		return func(t *testing.T) {
 			t.Helper()
 			t.Parallel()
 			req := require.New(t)
 
-			cl := fake.NewClientBuilder().WithObjects(objInit).Build()
-			actualErr := k8s.UpdateStatus(context.Background(), obj, cl)
+			cl := fake.NewClientBuilder().
+				WithStatusSubresource(&appsv1.Deployment{}).
+				WithObjects(objInit).
+				Build()
+			actualErr := k8s.PatchStatus(context.Background(), obj, objInit.DeepCopyObject().(client.Object), cl)
 			switch {
 			case expected == nil && actualErr != nil:
 				t.Errorf("unexpected error: '%v'", actualErr)
@@ -1077,16 +1080,6 @@ func TestUpdateStatus(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Update without Name case",
-			initObj: &appsv1.Deployment{
-				ObjectMeta: getInitObjectMeta(),
-			},
-			updateObj: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{},
-			},
-			err: nameRequiredError(schema.GroupKind{Group: "apps", Kind: "Deployment"}),
-		},
-		{
 			name: "Update status case",
 			initObj: &appsv1.Deployment{
 				ObjectMeta: getInitObjectMeta(),
@@ -1102,8 +1095,40 @@ func TestUpdateStatus(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, updateStatusCase(tc.initObj, tc.updateObj, tc.err))
+		t.Run(tc.name, patchStatusCase(tc.initObj, tc.updateObj, tc.err))
 	}
+}
+
+// A reconcile holds the object across the whole configcheck, so the status write must
+// land on an object another writer has changed in the meantime, and must not carry the
+// stale copy of the rest of the object with it.
+func TestPatchStatusStaleObject(t *testing.T) {
+	req := require.New(t)
+	ctx := context.Background()
+
+	stored := &appsv1.Deployment{ObjectMeta: getInitObjectMeta()}
+	cl := fake.NewClientBuilder().
+		WithStatusSubresource(&appsv1.Deployment{}).
+		WithObjects(stored).
+		Build()
+
+	key := client.ObjectKeyFromObject(stored)
+	stale := &appsv1.Deployment{}
+	req.NoError(cl.Get(ctx, key, stale))
+	base := stale.DeepCopy()
+
+	edited := &appsv1.Deployment{}
+	req.NoError(cl.Get(ctx, key, edited))
+	edited.Labels = map[string]string{"edited": "by-someone-else"}
+	req.NoError(cl.Update(ctx, edited))
+
+	stale.Status.Replicas = 10
+	req.NoError(k8s.PatchStatus(ctx, stale, base, cl))
+
+	result := &appsv1.Deployment{}
+	req.NoError(cl.Get(ctx, key, result))
+	req.Equal(int32(10), result.Status.Replicas)
+	req.Equal("by-someone-else", result.Labels["edited"])
 }
 
 func TestNamespaceNameToLabel(t *testing.T) {

@@ -110,6 +110,8 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
+	basePipeline := pipelineCR.DeepCopyObject().(pipeline.Pipeline)
+
 	if !r.EnableReconciliationInvalidPipelines || pipelineCR.IsValid() {
 		notChanged, err := pipeline.IsPipelineChanged(pipelineCR)
 		if err != nil {
@@ -123,7 +125,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	p := &config.PipelineConfig{}
 	if err := config.UnmarshalJson(pipelineCR.GetSpec(), p); err != nil {
-		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, fmt.Sprintf("Failed to unmarshal vector pipeline %s", err.Error())); err != nil {
+		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, fmt.Sprintf("Failed to unmarshal vector pipeline %s", err.Error()), basePipeline); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to set pipeline status %s: %w", pipelineCR.GetName(), err)
 		}
 		return ctrl.Result{}, nil
@@ -131,7 +133,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	pipelineVectorRole, err := p.VectorRole()
 	if err != nil {
-		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
+		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error(), basePipeline); err != nil {
 			log.Error(err, "Failed to set pipeline status")
 			return ctrl.Result{}, err
 		}
@@ -316,7 +318,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	if err = eg.Wait(); err != nil {
 		log.Error(err, "Configcheck error")
-		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error()); err != nil {
+		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error(), basePipeline); err != nil {
 			return ctrl.Result{}, err
 		}
 		if errors.Is(err, ErrBuildConfigFailed) {
@@ -328,7 +330,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	if err = pipeline.SetSuccessStatus(ctx, r.Client, pipelineCR); err != nil {
+	if err = pipeline.SetSuccessStatus(ctx, r.Client, pipelineCR, basePipeline); err != nil {
 		return ctrl.Result{}, err
 	}
 

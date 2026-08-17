@@ -287,20 +287,36 @@ func (ctrl *Controller) setDefault() {
 	}
 }
 
+// statusPatchBase returns the patch base for a status write that clears the reason. A merge
+// patch only clears the keys it mentions, and the base can predate the reason it has to
+// clear, so the base carries a reason whatever it was read with.
+func (ctrl *Controller) statusPatchBase() client.Object {
+	base := ctrl.VectorAggregator.DeepCopyObject().(client.Object)
+	switch agg := base.(type) {
+	case *vectorv1alpha1.VectorAggregator:
+		agg.Status.Reason = ptr.To("")
+	case *vectorv1alpha1.ClusterVectorAggregator:
+		agg.Status.Reason = ptr.To("")
+	}
+	return base
+}
+
 func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash *int64) error {
+	base := ctrl.statusPatchBase()
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = nil
 	ctrl.Status.LastAppliedConfigHash = hash
 	ctrl.Status.LastAppliedGlobalConfigHash = globCfgHash
-	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
+	return k8s.PatchStatus(ctx, ctrl.VectorAggregator, base, ctrl.Client)
 }
 
 func (ctrl *Controller) SetFailedStatus(ctx context.Context, reason string) error {
+	base := ctrl.VectorAggregator.DeepCopyObject().(client.Object)
 	var status = false
 	ctrl.Status.ConfigCheckResult = &status
 	ctrl.Status.Reason = &reason
-	return k8s.UpdateStatus(ctx, ctrl.VectorAggregator, ctrl.Client)
+	return k8s.PatchStatus(ctx, ctrl.VectorAggregator, base, ctrl.Client)
 }
 
 func (ctrl *Controller) matchLabelsForVectorAggregator() map[string]string {

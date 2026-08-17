@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -38,7 +39,6 @@ type Pipeline interface {
 	GetConfigCheckResult() *bool
 	IsValid() bool
 	IsDeleted() bool
-	UpdateStatus(context.Context, client.Client) error
 	GetRole() v1alpha1.VectorPipelineRole
 	SetRole(*v1alpha1.VectorPipelineRole)
 	GetTypeMeta() v1.TypeMeta
@@ -109,7 +109,12 @@ func GetValidPipelines(ctx context.Context, client client.Client, filter FilterP
 	return validPipelines, nil
 }
 
-func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) error {
+// base is the pipeline as it was read at the start of the reconcile, so the patch carries
+// every status field the reconcile has touched since, the role included. A merge patch only
+// clears the keys it mentions, and base can predate the reason it has to clear, so the base
+// carries a reason whatever it was read with.
+func SetSuccessStatus(ctx context.Context, c client.Client, p Pipeline, base Pipeline) error {
+	base.SetReason(ptr.To(""))
 	p.SetConfigCheck(true)
 	p.SetReason(nil)
 	hash, err := GetPipelineHash(p)
@@ -118,10 +123,10 @@ func SetSuccessStatus(ctx context.Context, client client.Client, p Pipeline) err
 	}
 	p.SetLastAppliedPipeline(hash)
 
-	return p.UpdateStatus(ctx, client)
+	return k8s.PatchStatus(ctx, p, base, c)
 }
 
-func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reason string) error {
+func SetFailedStatus(ctx context.Context, c client.Client, p Pipeline, reason string, base Pipeline) error {
 
 	p.SetConfigCheck(false)
 	p.SetReason(&reason)
@@ -131,7 +136,7 @@ func SetFailedStatus(ctx context.Context, client client.Client, p Pipeline, reas
 	}
 	p.SetLastAppliedPipeline(hash)
 
-	return p.UpdateStatus(ctx, client)
+	return k8s.PatchStatus(ctx, p, base, c)
 }
 
 func GetVectorPipelines(ctx context.Context, client client.Client) ([]v1alpha1.VectorPipeline, error) {

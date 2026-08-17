@@ -120,3 +120,69 @@ func TestDeleteObsoleteWorkload_SkipsDeleteWhenAbsent(t *testing.T) {
 	g.Expect(ctrl.deleteObsoleteWorkload(context.Background(), &appsv1.Deployment{})).To(Succeed())
 	g.Expect(deleteCalls).To(Equal(0), "no DELETE should be issued when the workload is absent")
 }
+
+// The reason can be written by a reconcile the current one read the aggregator before, so
+// the success patch has to clear a reason that was never in hand. Both kinds share the path.
+func TestSetSuccessStatusClearsUnobservedReason(t *testing.T) {
+	testCases := []struct {
+		name  string
+		seed  client.Object
+		empty func() client.Object
+		read  func(client.Object) *vectorv1alpha1.VectorCommonStatus
+	}{
+		{
+			name:  "VectorAggregator",
+			seed:  &vectorv1alpha1.VectorAggregator{ObjectMeta: metav1.ObjectMeta{Name: "va", Namespace: "default"}},
+			empty: func() client.Object { return &vectorv1alpha1.VectorAggregator{} },
+			read: func(o client.Object) *vectorv1alpha1.VectorCommonStatus {
+				return &o.(*vectorv1alpha1.VectorAggregator).Status.VectorCommonStatus
+			},
+		},
+		{
+			name: "ClusterVectorAggregator",
+			seed: &vectorv1alpha1.ClusterVectorAggregator{
+				ObjectMeta: metav1.ObjectMeta{Name: "cva"},
+				Spec: vectorv1alpha1.ClusterVectorAggregatorSpec{
+					ResourceNamespace: "default",
+				},
+			},
+			empty: func() client.Object { return &vectorv1alpha1.ClusterVectorAggregator{} },
+			read: func(o client.Object) *vectorv1alpha1.VectorCommonStatus {
+				return &o.(*vectorv1alpha1.ClusterVectorAggregator).Status.VectorCommonStatus
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+			ctx := context.Background()
+
+			s := runtime.NewScheme()
+			g.Expect(clientgoscheme.AddToScheme(s)).To(Succeed())
+			g.Expect(vectorv1alpha1.AddToScheme(s)).To(Succeed())
+			cl := crfake.NewClientBuilder().
+				WithScheme(s).
+				WithStatusSubresource(&vectorv1alpha1.VectorAggregator{}, &vectorv1alpha1.ClusterVectorAggregator{}).
+				WithObjects(tc.seed).
+				Build()
+			key := client.ObjectKeyFromObject(tc.seed)
+
+			stale := tc.empty()
+			g.Expect(cl.Get(ctx, key, stale)).To(Succeed())
+			g.Expect(tc.read(stale).Reason).To(BeNil(), "the read must predate the failure")
+
+			failing := NewController(stale.DeepCopyObject().(client.Object), cl, k8sfake.NewSimpleClientset())
+			g.Expect(failing.SetFailedStatus(ctx, "config check failed")).To(Succeed())
+
+			ctrl := NewController(stale, cl, k8sfake.NewSimpleClientset())
+			cfgHash, globalHash := int64(1), int64(2)
+			g.Expect(ctrl.SetSuccessStatus(ctx, &cfgHash, &globalHash)).To(Succeed())
+
+			result := tc.empty()
+			g.Expect(cl.Get(ctx, key, result)).To(Succeed())
+			g.Expect(tc.read(result).ConfigCheckResult).To(HaveValue(BeTrue()))
+			g.Expect(tc.read(result).Reason).To(BeNil(), "a success must not keep a failure reason")
+		})
+	}
+}

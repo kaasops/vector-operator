@@ -295,10 +295,6 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 	}
 
 	if err := vaCtrl.SetSuccessStatus(ctx, &cfgHash, cfg.GetGlobalConfigHash()); err != nil {
-		// TODO: Handle err: Operation cannot be fulfilled on vectors.observability.kaasops.io \"vector-sample\": the object has been modified; please apply your changes to the latest version and try again
-		if api_errors.IsConflict(err) {
-			return ctrl.Result{}, err
-		}
 		return ctrl.Result{}, err
 	}
 

@@ -435,8 +435,12 @@ func GetPodLogs(ctx context.Context, pod *corev1.Pod, cs kubernetes.Interface) (
 	return str, nil
 }
 
-func UpdateStatus(ctx context.Context, obj client.Object, c client.Client) error {
-	return c.Status().Update(ctx, obj)
+// PatchStatus sends the status diff between base and obj, without a resourceVersion
+// precondition. The operator owns these status fields exclusively, and a reconcile holds
+// the object from the initial read until after configcheck, so a read-modify-write loses
+// to any edit of the object made in that window.
+func PatchStatus(ctx context.Context, obj, base client.Object, c client.Client) error {
+	return c.Status().Patch(ctx, obj, client.MergeFrom(base))
 }
 
 func NamespaceNameToLabel(namespace string) string {

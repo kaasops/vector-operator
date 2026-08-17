@@ -53,6 +53,14 @@ spec:
           spec:
             description: VectorPipelineSpec defines the desired state of VectorPipeline
             properties:
+              role:
+                description: |-
+                  Role pins the pipeline to a Vector role. When empty, the operator infers the role
+                  from the source types.
+                enum:
+                - agent
+                - aggregator
+                type: string
               secret:
                 additionalProperties:
                   description: PipelineSecretBackend declares a named secret backend

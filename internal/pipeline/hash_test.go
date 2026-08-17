@@ -106,6 +106,27 @@ func TestGetPipelineHashStableWithoutAnnotation(t *testing.T) {
 	assert.Equal(t, int64(hash.Get(legacy)), *h)
 }
 
+// Pinning spec.role must change the hash so the pipeline is revalidated and rerouted.
+func TestGetPipelineHashTracksRole(t *testing.T) {
+	spec := func(role *v1alpha1.VectorPipelineRole) *v1alpha1.VectorPipeline {
+		return &v1alpha1.VectorPipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"},
+			Spec: v1alpha1.VectorPipelineSpec{
+				Role:    role,
+				Sources: &runtime.RawExtension{Raw: []byte(`{"logs":{"type":"kubernetes_logs"}}`)},
+			},
+		}
+	}
+	aggregator := v1alpha1.VectorPipelineRoleAggregator
+
+	h1, err := GetPipelineHash(spec(nil))
+	require.NoError(t, err)
+	h2, err := GetPipelineHash(spec(&aggregator))
+	require.NoError(t, err)
+
+	assert.NotEqual(t, *h1, *h2)
+}
+
 // Toggling the annotation must read as "changed" (IsPipelineChanged == false) so the
 // pipeline reconcile propagates to an agent rebuild.
 func TestIsPipelineChangedDetectsConfigOptimizationToggle(t *testing.T) {

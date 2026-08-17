@@ -31,7 +31,7 @@ Specification access to [this](https://github.com/kaasops/vector-operator/blob/m
 The `VectorPipeline` is a namespace-scoped CRD.
 The `VectorPipeline` CRD defines Sources, Transforms and Sinks rules for Vector.
 All `VectorPipelines`, with validated configuration file, added to Vector configuration file.
-The pipeline role is determined automatically based on source types:
+The pipeline role is determined automatically based on source types, or pinned with `spec.role`:
 
 **Agent role** (routed to Vector DaemonSet):
 - Only [kubernetes_logs](https://vector.dev/docs/reference/configuration/sources/kubernetes_logs/) source type is allowed
@@ -44,6 +44,9 @@ The pipeline role is determined automatically based on source types:
 
 ## Restrictions
 - All sources in a pipeline must belong to the same role. Mixing agent and aggregator source types is not allowed.
+- With `spec.role`, every source must still be a known type that runs in the pinned role. A pinned
+  aggregator cannot use a source that reads the node (`kubernetes_logs`, `file`, `journald`,
+  `docker_logs`, `host_metrics`).
 
 ## Specification
 Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page
@@ -52,7 +55,7 @@ Specification access to [this](https://github.com/kaasops/vector-operator/blob/m
 The `ClusterVectorPipeline` is a cluster-scoped CRD.
 The `ClusterVectorPipeline` CRD defines Sources, Transforms and Sinks rules for Vector.
 All `ClusterVectorPipelines`, with validated configuration file, added to Vector configuration file.
-The pipeline role is determined automatically based on source types:
+The pipeline role is determined automatically based on source types, or pinned with `spec.role`:
 
 **Agent role** (routed to Vector DaemonSet):
 - Supports all agent source types: `kubernetes_logs`, `file`, `journald`, `host_metrics`, `docker_logs`, etc.
@@ -64,6 +67,9 @@ The pipeline role is determined automatically based on source types:
 
 ## Restrictions
 - All sources in a pipeline must belong to the same role. Mixing agent and aggregator source types is not allowed.
+- With `spec.role`, every source must still be a known type that runs in the pinned role. A pinned
+  aggregator cannot use a source that reads the node (`kubernetes_logs`, `file`, `journald`,
+  `docker_logs`, `host_metrics`).
 
 ## Specification
 Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page

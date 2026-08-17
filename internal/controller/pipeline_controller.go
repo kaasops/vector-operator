@@ -319,7 +319,7 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	pipelineVectorRole, err := p.VectorRole()
+	pipelineVectorRole, err := p.VectorRole(pipelineCR.GetSpec().Role)
 	if err != nil {
 		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error(), basePipeline); err != nil {
 			log.Error(err, "Failed to set pipeline status")

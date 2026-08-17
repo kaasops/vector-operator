@@ -1,5 +1,7 @@
 package config
 
+import vectorv1alpha1 "github.com/kaasops/vector-operator/api/v1alpha1"
+
 const (
 	// types
 	AMQPType                  = "amqp"
@@ -68,6 +70,19 @@ var aggregatorTypes = map[string]struct{}{
 	SyslogType:             {},
 	VectorType:             {},
 	kubernetesEventsType:   {},
+
+	// Every agent type except the host sources (docker_logs, file, host_metrics, journald,
+	// kubernetes_logs) also runs on an aggregator. Inference already counts them as one.
+	ApacheMetricsType:         {},
+	DNSTapType:                {},
+	DemoLogsType:              {},
+	EventStoreDBMetricsType:   {},
+	MongoDBMetricsType:        {},
+	NginxMetricsType:          {},
+	PostgreSQLMetricsType:     {},
+	PrometheusPushgatewayType: {},
+	PrometheusRemoteWriteType: {},
+	PrometheusScrapeType:      {},
 }
 
 var agentTypes = map[string]struct{}{
@@ -100,4 +115,11 @@ func isAggregator(name string) bool {
 func isAgent(name string) bool {
 	_, ok := agentTypes[name]
 	return ok
+}
+
+func runsInRole(name string, role vectorv1alpha1.VectorPipelineRole) bool {
+	if role == vectorv1alpha1.VectorPipelineRoleAggregator {
+		return isAggregator(name)
+	}
+	return isAgent(name)
 }

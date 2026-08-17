@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
+	"slices"
 	"strconv"
 
 	"github.com/mitchellh/mapstructure"
@@ -119,9 +121,24 @@ func (c *VectorConfig) MarshalJSON() ([]byte, error) {
 	return jsonByte, nil
 }
 
-func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error) {
+// VectorRole infers the role from the source types unless the pipeline pins one. A pinned role
+// still needs every source type to run in that role.
+func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (*vectorv1alpha1.VectorPipelineRole, error) {
 	if len(c.Sources) == 0 {
 		return nil, fmt.Errorf("sources list is empty")
+	}
+	if pinned != nil {
+		// Sorted, so a pipeline with several bad sources reports the same one on every reconcile.
+		for _, name := range slices.Sorted(maps.Keys(c.Sources)) {
+			s := c.Sources[name]
+			if !isAgent(s.Type) && !isAggregator(s.Type) {
+				return nil, fmt.Errorf("unsupported source type: %s", s.Type)
+			}
+			if !runsInRole(s.Type, *pinned) {
+				return nil, fmt.Errorf("source %s has type %s, which does not run in the %s role", name, s.Type, *pinned)
+			}
+		}
+		return pinned, nil
 	}
 	agentCount := 0
 	aggregatorCount := 0

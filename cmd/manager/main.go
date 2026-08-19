@@ -207,17 +207,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Sweep configcheck Secrets orphaned by a previous operator process (crash
-	// between creating them and the process-local deferred cleanup): nothing owns the
-	// root configcheck Secret, and with pipeline secrets the orphan can include a
-	// plaintext copy of referenced credentials. Runs under leader election; only
-	// Secrets older than this process are touched, so live configchecks are safe.
-	operatorStart := time.Now()
+	// Sweep configcheck Secrets orphaned by a dead operator process (crash between
+	// creating them and the process-local deferred cleanup): nothing owns the root
+	// configcheck Secret, and with pipeline secrets the orphan can include a plaintext
+	// copy of referenced credentials. Only Secrets older than the configcheck timeout
+	// are swept, so a check running in this process - or in the one this process is
+	// replacing during a rolling update - is never touched.
 	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		if err := configcheck.SweepOrphans(ctx, mgr.GetAPIReader(), mgr.GetClient(), operatorStart); err != nil {
-			setupLog.Error(err, "failed to sweep orphaned configcheck secrets")
-		}
-		<-ctx.Done()
+		configcheck.RunOrphanSweeper(ctx, mgr.GetAPIReader(), mgr.GetClient(), configCheckTimeout, configcheck.OrphanSweepInterval)
 		return nil
 	})); err != nil {
 		setupLog.Error(err, "unable to add configcheck orphan sweep")

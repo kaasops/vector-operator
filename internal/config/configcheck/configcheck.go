@@ -453,23 +453,40 @@ func orphanSweepLabels() labels.Selector {
 	})
 }
 
-// SweepOrphans deletes configcheck Secrets left behind by a previous operator
-// process. Nothing owns the root configcheck Secret (the pod is owned by it, not the
-// other way around), so a crash between creating it and the process-local deferred
-// cleanup strands it - and with pipeline secrets in play the orphaned
+// minOrphanAge floors the sweep window. The window is the configcheck timeout, which an
+// operator can set arbitrarily low, and a degenerate window would sweep running checks.
+// A var, not a const, so tests can exercise the sweeper on a timescale they can wait for.
+var minOrphanAge = time.Minute
+
+// OrphanSweepInterval is how often orphans are looked for once the process is running.
+const OrphanSweepInterval = time.Hour
+
+// SweepOrphans deletes configcheck Secrets left behind by a dead operator process.
+// Nothing owns the root configcheck Secret (the pod is owned by it, not the other way
+// around), so a crash between creating it and the process-local deferred cleanup
+// strands it - and with pipeline secrets in play the orphaned
 // configcheck-secret-assets child holds a plaintext copy of referenced credentials.
-// Only Secrets created before startedBefore (the current process start) are swept, so
-// configchecks racing with the sweep are never touched; the orphaned pod, if any,
+//
+// Only Secrets older than configCheckTimeout are swept. A check cannot outlive its own
+// timeout, so a younger Secret still belongs to a running one - not necessarily ours:
+// two operator processes overlap on every rolling update of the Deployment, and
+// deleting the older process' Secret garbage-collects its configcheck pod, failing the
+// check with "pod was deleted before producing a result". The orphaned pod, if any,
 // follows its root Secret via ownerRef GC.
-func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, startedBefore time.Time) error {
+func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, configCheckTimeout time.Duration) error {
 	var list corev1.SecretList
 	if err := reader.List(ctx, &list, &client.ListOptions{LabelSelector: orphanSweepLabels()}); err != nil {
 		return err
 	}
+	window := configCheckTimeout
+	if window < minOrphanAge {
+		window = minOrphanAge
+	}
+	cutoff := time.Now().Add(-window)
 	var errs []error
 	for i := range list.Items {
 		secret := &list.Items[i]
-		if !secret.CreationTimestamp.Time.Before(startedBefore) {
+		if !secret.CreationTimestamp.Time.Before(cutoff) {
 			continue
 		}
 		if err := c.Delete(ctx, secret); err != nil && !api_errors.IsNotFound(err) {
@@ -477,4 +494,26 @@ func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, st
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// RunOrphanSweeper sweeps on start and then every interval until ctx is done. A single
+// pass at startup would never reach an orphan stranded moments before this process
+// started: it is younger than the window then, and nothing looks at it again. Repeating
+// lets it age into a later pass. The interval is deliberately not the window - a sweep
+// lists Secrets cluster-wide, and the label selector is applied by the API server after
+// reading them all, so it is far too expensive to repeat every few minutes.
+func RunOrphanSweeper(ctx context.Context, reader client.Reader, c client.Client, configCheckTimeout, interval time.Duration) {
+	log := log.FromContext(ctx)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		if err := SweepOrphans(ctx, reader, c, configCheckTimeout); err != nil {
+			log.Error(err, "failed to sweep orphaned configcheck secrets")
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

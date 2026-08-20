@@ -365,7 +365,10 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod, dead
 				return "", fmt.Errorf("configcheck: pod %s was deleted before producing a result", pod.Name)
 			}
 		case <-ctx.Done():
-			return "", nil
+			// The caller gave up - shutdown, a cancelled reconcile. Reporting no error
+			// here reads as a passing check, and the reconciler publishes a config that
+			// was never validated.
+			return "", fmt.Errorf("configcheck: %w while waiting for pod %s", ctx.Err(), pod.Name)
 		case <-timer.C:
 			return "", ErrConfigcheckTimeout
 		}

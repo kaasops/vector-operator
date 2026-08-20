@@ -26,7 +26,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8stesting "k8s.io/client-go/testing"
 )
 
@@ -195,4 +197,77 @@ func TestGetCheckResultEndsOnAnExpiredDeadline(t *testing.T) {
 	if !errors.Is(r.err, ErrConfigcheckTimeout) {
 		t.Fatalf("want ErrConfigcheckTimeout, got err=%v reason=%q", r.err, r.reason)
 	}
+}
+
+// podWatchCtxRecorder captures the context Watch is called with. The fake clientset's
+// reactors never see that context, and what matters here is exactly that the request
+// establishing the watch carries the check budget: a hung request would otherwise sit
+// outside both the budget context and the timer.
+type podWatchCtxRecorder struct {
+	kubernetes.Interface
+	got chan context.Context
+}
+
+func (r *podWatchCtxRecorder) CoreV1() corev1client.CoreV1Interface {
+	return &recordingCoreV1{r.Interface.CoreV1(), r}
+}
+
+type recordingCoreV1 struct {
+	corev1client.CoreV1Interface
+	rec *podWatchCtxRecorder
+}
+
+func (c *recordingCoreV1) Pods(namespace string) corev1client.PodInterface {
+	return &recordingPods{c.CoreV1Interface.Pods(namespace), c.rec}
+}
+
+type recordingPods struct {
+	corev1client.PodInterface
+	rec *podWatchCtxRecorder
+}
+
+func (p *recordingPods) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	select {
+	case p.rec.got <- ctx:
+	default:
+	}
+	return p.PodInterface.Watch(ctx, opts)
+}
+
+// Establishing the watch is an HTTP request of its own, and it must be bounded by the
+// same budget as the rest of the check: if it hangs, neither the timer (not created
+// yet) nor the caller's ctx would end it.
+func TestGetCheckResultBoundsTheWatchRequestByTheBudget(t *testing.T) {
+	cs := k8sfake.NewSimpleClientset()
+	fw := watch.NewRaceFreeFake()
+	defer fw.Stop()
+	cs.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fw, nil))
+	rec := &podWatchCtxRecorder{Interface: cs, got: make(chan context.Context, 1)}
+
+	cc := &ConfigCheck{ClientSet: rec, Namespace: "ns", ConfigCheckTimeout: time.Hour}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "configcheck-x"}}
+	deadline := time.Now().Add(300 * time.Millisecond)
+
+	res := make(chan checkResult, 1)
+	go func() {
+		reason, err := cc.getCheckResult(context.Background(), pod, deadline)
+		res <- checkResult{reason, err}
+	}()
+
+	var watchCtx context.Context
+	select {
+	case watchCtx = <-rec.got:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Watch was never called")
+	}
+
+	got, ok := watchCtx.Deadline()
+	if !ok {
+		t.Fatal("the request establishing the watch must carry the check budget")
+	}
+	if got.After(deadline.Add(50 * time.Millisecond)) {
+		t.Fatalf("watch deadline %v runs past the check budget %v", got, deadline)
+	}
+
+	waitResult(t, res, 3*time.Second)
 }

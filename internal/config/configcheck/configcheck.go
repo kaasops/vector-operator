@@ -294,7 +294,14 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod, dead
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
 
-	watcher, err := cc.ClientSet.CoreV1().Pods(cc.Namespace).Watch(ctx, metav1.ListOptions{
+	// Establishing the watch is a request of its own and belongs inside the budget:
+	// it happens before the timer exists, so a hung one would sit outside every bound.
+	// Only the request gets this context - the select below keeps the caller's ctx,
+	// where cancellation means "give up", and lets the timer produce the verdict.
+	watchCtx, cancelWatch := context.WithDeadline(ctx, deadline)
+	defer cancelWatch()
+
+	watcher, err := cc.ClientSet.CoreV1().Pods(cc.Namespace).Watch(watchCtx, metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(metav1.ObjectNameField, pod.Name).String(),
 		// LabelSelector: labelsForVectorConfigCheck(),
 	})

@@ -36,6 +36,7 @@ import (
 var (
 	ErrNotAllowedSourceType   = errors.New("type kubernetes_logs only allowed")
 	ErrClusterScopeNotAllowed = errors.New("logs from external namespace not allowed")
+	ErrHostSourceNotAllowed   = errors.New("host source types not allowed on a namespaced pipeline")
 )
 
 type VectorConfigParams struct {
@@ -119,9 +120,14 @@ func (c *VectorConfig) MarshalJSON() ([]byte, error) {
 	return jsonByte, nil
 }
 
-func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error) {
+// VectorRole infers the role from the source types unless the pipeline pins one. Pinning skips
+// classification, so it also covers types the operator does not know and types in both maps.
+func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (*vectorv1alpha1.VectorPipelineRole, error) {
 	if len(c.Sources) == 0 {
 		return nil, fmt.Errorf("sources list is empty")
+	}
+	if pinned != nil {
+		return pinned, nil
 	}
 	agentCount := 0
 	aggregatorCount := 0
@@ -145,6 +151,16 @@ func (c *PipelineConfig) VectorRole() (*vectorv1alpha1.VectorPipelineRole, error
 		return &role, nil
 	}
 	return nil, fmt.Errorf("unknown vector role")
+}
+
+// ValidateAggregatorSources rejects host sources. Callers apply it to namespaced pipelines only.
+func (c *PipelineConfig) ValidateAggregatorSources() error {
+	for name, s := range c.Sources {
+		if isHostSource(s.Type) {
+			return fmt.Errorf("source %s has type %s: %w", name, s.Type, ErrHostSourceNotAllowed)
+		}
+	}
+	return nil
 }
 
 type SPGroup struct {

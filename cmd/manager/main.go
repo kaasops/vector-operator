@@ -101,7 +101,7 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "Namespace to filter the list of watched objects")
-	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by checking the app.kubernetes.io/managed-by label")
+	flag.StringVar(&watchLabel, "watch-name", "", "Filter the list of watched objects by the value of their app.kubernetes.io/name label; they must also carry app.kubernetes.io/managed-by=vector-operator")
 	flag.DurationVar(&configCheckTimeout, "configcheck-timeout", 300*time.Second, "configcheck timeout")
 	flag.BoolVar(&enableReconciliationInvalidPipelines, "enable-reconciliation-invalid-pipelines", false,
 		"Enable the reconciliation process for pipelines with invalid configurations")

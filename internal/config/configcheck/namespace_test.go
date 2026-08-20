@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func newCCWithNamespace(objs ...client.Object) *ConfigCheck {
@@ -96,5 +98,50 @@ func TestRunSkipsTerminatingNamespace(t *testing.T) {
 	_, err := cc.Run(context.Background())
 	if !errors.Is(err, ErrConfigcheckSkipped) {
 		t.Fatalf("want ErrConfigcheckSkipped, got %v", err)
+	}
+}
+
+// The budget must cover the preparation calls, not just the wait for the result: the
+// root Secret is already on the cluster while the pod is being created, and its age is
+// what the orphan sweep judges. A preparation call that hangs must end the check on the
+// deadline instead of holding the reconcile worker while that Secret ages past its
+// window - and past the point where another operator process may sweep it.
+func TestRunBudgetCoversPreparationCalls(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "target"}}
+
+	hangOnPod := interceptor.Funcs{
+		Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			if _, ok := obj.(*corev1.Pod); ok {
+				<-ctx.Done()
+				return ctx.Err()
+			}
+			return c.Create(ctx, obj, opts...)
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ns).
+		WithInterceptorFuncs(hangOnPod).Build()
+
+	cc := &ConfigCheck{
+		Client:             cl,
+		Namespace:          "target",
+		Name:               "agent",
+		ConfigCheckTimeout: 200 * time.Millisecond,
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := cc.Run(context.Background())
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("want the budget to end the check, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run outlived its budget while a preparation call hung")
 	}
 }

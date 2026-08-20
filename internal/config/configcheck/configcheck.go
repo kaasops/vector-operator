@@ -139,23 +139,34 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =================")
 
+	// The budget covers the whole check, not just the wait for its result: the root
+	// Secret is created below and its age is what the orphan sweep judges, so the check
+	// must be over by the time that age reaches ConfigCheckTimeout. budgetCtx carries
+	// that deadline into every preparation call; cleanup below deliberately keeps the
+	// caller's ctx, so a check that runs out of budget still removes what it created.
+	// getCheckResult keeps the caller's ctx too - a cancelled ctx means "give up", not
+	// "the config is valid" - and bounds itself with what is left of the budget.
+	deadline := time.Now().Add(cc.ConfigCheckTimeout)
+	budgetCtx, cancelBudget := context.WithDeadline(ctx, deadline)
+	defer cancelBudget()
+
 	// A terminating namespace cannot accept new content, so the configcheck pod and
 	// secret would never be admitted and getCheckResult would block until
 	// ConfigCheckTimeout, holding the reconcile worker. Skip instead.
-	if terminating, err := cc.namespaceIsTerminating(ctx); err != nil {
+	if terminating, err := cc.namespaceIsTerminating(budgetCtx); err != nil {
 		return "", err
 	} else if terminating {
 		log.Info("Skipping ConfigCheck: namespace is terminating or gone", "namespace", cc.Namespace)
 		return "", ErrConfigcheckSkipped
 	}
 
-	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
+	if err := cc.ensureVectorConfigCheckRBAC(budgetCtx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
 		return "", err
 	}
 
 	cc.Hash = randStringRunes()
 
-	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig(ctx)
+	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig(budgetCtx)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +194,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		err = errors.Join(err, cleanupErr)
 	}()
 
-	if err = k8s.CreateOrUpdateResource(ctx, vectorConfigCheckSecret, cc.Client); err != nil {
+	if err = k8s.CreateOrUpdateResource(budgetCtx, vectorConfigCheckSecret, cc.Client); err != nil {
 		return "", err
 	}
 
@@ -192,7 +203,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		if err = controllerutil.SetOwnerReference(vectorConfigCheckSecret, vectorSecretAssetsSecret, cc.Client.Scheme()); err != nil {
 			return "", err
 		}
-		if err = k8s.CreateOrUpdateResource(ctx, vectorSecretAssetsSecret, cc.Client); err != nil {
+		if err = k8s.CreateOrUpdateResource(budgetCtx, vectorSecretAssetsSecret, cc.Client); err != nil {
 			return "", err
 		}
 	}
@@ -202,12 +213,12 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		return "", err
 	}
 
-	err = k8s.CreatePod(ctx, vectorConfigCheckPod, cc.Client)
+	err = k8s.CreatePod(budgetCtx, vectorConfigCheckPod, cc.Client)
 	if err != nil {
 		return "", err
 	}
 
-	reason, err = cc.getCheckResult(ctx, vectorConfigCheckPod)
+	reason, err = cc.getCheckResult(ctx, vectorConfigCheckPod, deadline)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
 			return reason, err
@@ -279,11 +290,18 @@ func unstartableReason(pod *corev1.Pod) (string, bool) {
 	return "", false
 }
 
-func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (reason string, err error) {
+func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod, deadline time.Time) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
 
-	watcher, err := cc.ClientSet.CoreV1().Pods(cc.Namespace).Watch(ctx, metav1.ListOptions{
+	// Establishing the watch is a request of its own and belongs inside the budget:
+	// it happens before the timer exists, so a hung one would sit outside every bound.
+	// Only the request gets this context - the select below keeps the caller's ctx,
+	// where cancellation means "give up", and lets the timer produce the verdict.
+	watchCtx, cancelWatch := context.WithDeadline(ctx, deadline)
+	defer cancelWatch()
+
+	watcher, err := cc.ClientSet.CoreV1().Pods(cc.Namespace).Watch(watchCtx, metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(metav1.ObjectNameField, pod.Name).String(),
 		// LabelSelector: labelsForVectorConfigCheck(),
 	})
@@ -295,10 +313,12 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 
 	defer watcher.Stop()
 
-	// Use time.NewTimer instead of time.After to prevent memory leak.
-	// time.After() creates a new timer on each select iteration that won't be GC'd
-	// until it fires, causing ~280 bytes leak per iteration.
-	timer := time.NewTimer(cc.ConfigCheckTimeout)
+	// What is left of the budget started in Run, never reset: the timeout bounds the
+	// check, not the gap between pod events. A pod that keeps emitting status updates
+	// would otherwise hold the reconcile worker indefinitely.
+	// (time.NewTimer rather than time.After, which leaks ~280 bytes per select
+	// iteration until it fires.)
+	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
 
 	for {
@@ -344,14 +364,6 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 			case watch.Deleted:
 				return "", fmt.Errorf("configcheck: pod %s was deleted before producing a result", pod.Name)
 			}
-			// Reset timer after processing event to restart timeout window
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			timer.Reset(cc.ConfigCheckTimeout)
 		case <-ctx.Done():
 			return "", nil
 		case <-timer.C:
@@ -453,23 +465,40 @@ func orphanSweepLabels() labels.Selector {
 	})
 }
 
-// SweepOrphans deletes configcheck Secrets left behind by a previous operator
-// process. Nothing owns the root configcheck Secret (the pod is owned by it, not the
-// other way around), so a crash between creating it and the process-local deferred
-// cleanup strands it - and with pipeline secrets in play the orphaned
+// minOrphanAge floors the sweep window. The window is the configcheck timeout, which an
+// operator can set arbitrarily low, and a degenerate window would sweep running checks.
+// A var, not a const, so tests can exercise the sweeper on a timescale they can wait for.
+var minOrphanAge = time.Minute
+
+// OrphanSweepInterval is how often orphans are looked for once the process is running.
+const OrphanSweepInterval = time.Hour
+
+// SweepOrphans deletes configcheck Secrets left behind by a dead operator process.
+// Nothing owns the root configcheck Secret (the pod is owned by it, not the other way
+// around), so a crash between creating it and the process-local deferred cleanup
+// strands it - and with pipeline secrets in play the orphaned
 // configcheck-secret-assets child holds a plaintext copy of referenced credentials.
-// Only Secrets created before startedBefore (the current process start) are swept, so
-// configchecks racing with the sweep are never touched; the orphaned pod, if any,
+//
+// Only Secrets older than configCheckTimeout are swept. A check cannot outlive its own
+// timeout, so a younger Secret still belongs to a running one - not necessarily ours:
+// two operator processes overlap on every rolling update of the Deployment, and
+// deleting the older process' Secret garbage-collects its configcheck pod, failing the
+// check with "pod was deleted before producing a result". The orphaned pod, if any,
 // follows its root Secret via ownerRef GC.
-func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, startedBefore time.Time) error {
+func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, configCheckTimeout time.Duration) error {
 	var list corev1.SecretList
 	if err := reader.List(ctx, &list, &client.ListOptions{LabelSelector: orphanSweepLabels()}); err != nil {
 		return err
 	}
+	window := configCheckTimeout
+	if window < minOrphanAge {
+		window = minOrphanAge
+	}
+	cutoff := time.Now().Add(-window)
 	var errs []error
 	for i := range list.Items {
 		secret := &list.Items[i]
-		if !secret.CreationTimestamp.Time.Before(startedBefore) {
+		if !secret.CreationTimestamp.Time.Before(cutoff) {
 			continue
 		}
 		if err := c.Delete(ctx, secret); err != nil && !api_errors.IsNotFound(err) {
@@ -477,4 +506,26 @@ func SweepOrphans(ctx context.Context, reader client.Reader, c client.Client, st
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// RunOrphanSweeper sweeps on start and then every interval until ctx is done. A single
+// pass at startup would never reach an orphan stranded moments before this process
+// started: it is younger than the window then, and nothing looks at it again. Repeating
+// lets it age into a later pass. The interval is deliberately not the window - a sweep
+// lists Secrets cluster-wide, and the label selector is applied by the API server after
+// reading them all, so it is far too expensive to repeat every few minutes.
+func RunOrphanSweeper(ctx context.Context, reader client.Reader, c client.Client, configCheckTimeout, interval time.Duration) {
+	log := log.FromContext(ctx)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		if err := SweepOrphans(ctx, reader, c, configCheckTimeout); err != nil {
+			log.Error(err, "failed to sweep orphaned configcheck secrets")
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

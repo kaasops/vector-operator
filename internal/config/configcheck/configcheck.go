@@ -141,26 +141,32 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 
 	// The budget covers the whole check, not just the wait for its result: the root
 	// Secret is created below and its age is what the orphan sweep judges, so the check
-	// must be over by the time that age reaches ConfigCheckTimeout.
+	// must be over by the time that age reaches ConfigCheckTimeout. budgetCtx carries
+	// that deadline into every preparation call; cleanup below deliberately keeps the
+	// caller's ctx, so a check that runs out of budget still removes what it created.
+	// getCheckResult keeps the caller's ctx too - a cancelled ctx means "give up", not
+	// "the config is valid" - and bounds itself with what is left of the budget.
 	deadline := time.Now().Add(cc.ConfigCheckTimeout)
+	budgetCtx, cancelBudget := context.WithDeadline(ctx, deadline)
+	defer cancelBudget()
 
 	// A terminating namespace cannot accept new content, so the configcheck pod and
 	// secret would never be admitted and getCheckResult would block until
 	// ConfigCheckTimeout, holding the reconcile worker. Skip instead.
-	if terminating, err := cc.namespaceIsTerminating(ctx); err != nil {
+	if terminating, err := cc.namespaceIsTerminating(budgetCtx); err != nil {
 		return "", err
 	} else if terminating {
 		log.Info("Skipping ConfigCheck: namespace is terminating or gone", "namespace", cc.Namespace)
 		return "", ErrConfigcheckSkipped
 	}
 
-	if err := cc.ensureVectorConfigCheckRBAC(ctx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
+	if err := cc.ensureVectorConfigCheckRBAC(budgetCtx); err != nil && !api_errors.IsAlreadyExists(err) { // TODO(aa1ex): error is silenced, is that ok?
 		return "", err
 	}
 
 	cc.Hash = randStringRunes()
 
-	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig(ctx)
+	vectorConfigCheckSecret, err := cc.createVectorConfigCheckConfig(budgetCtx)
 	if err != nil {
 		return "", err
 	}
@@ -188,7 +194,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		err = errors.Join(err, cleanupErr)
 	}()
 
-	if err = k8s.CreateOrUpdateResource(ctx, vectorConfigCheckSecret, cc.Client); err != nil {
+	if err = k8s.CreateOrUpdateResource(budgetCtx, vectorConfigCheckSecret, cc.Client); err != nil {
 		return "", err
 	}
 
@@ -197,7 +203,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		if err = controllerutil.SetOwnerReference(vectorConfigCheckSecret, vectorSecretAssetsSecret, cc.Client.Scheme()); err != nil {
 			return "", err
 		}
-		if err = k8s.CreateOrUpdateResource(ctx, vectorSecretAssetsSecret, cc.Client); err != nil {
+		if err = k8s.CreateOrUpdateResource(budgetCtx, vectorSecretAssetsSecret, cc.Client); err != nil {
 			return "", err
 		}
 	}
@@ -207,7 +213,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		return "", err
 	}
 
-	err = k8s.CreatePod(ctx, vectorConfigCheckPod, cc.Client)
+	err = k8s.CreatePod(budgetCtx, vectorConfigCheckPod, cc.Client)
 	if err != nil {
 		return "", err
 	}

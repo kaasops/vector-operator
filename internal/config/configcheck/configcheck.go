@@ -139,6 +139,11 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", cc.Initiator)
 	log.Info("================= Started ConfigCheck =================")
 
+	// The budget covers the whole check, not just the wait for its result: the root
+	// Secret is created below and its age is what the orphan sweep judges, so the check
+	// must be over by the time that age reaches ConfigCheckTimeout.
+	deadline := time.Now().Add(cc.ConfigCheckTimeout)
+
 	// A terminating namespace cannot accept new content, so the configcheck pod and
 	// secret would never be admitted and getCheckResult would block until
 	// ConfigCheckTimeout, holding the reconcile worker. Skip instead.
@@ -207,7 +212,7 @@ func (cc *ConfigCheck) Run(ctx context.Context) (reason string, err error) {
 		return "", err
 	}
 
-	reason, err = cc.getCheckResult(ctx, vectorConfigCheckPod)
+	reason, err = cc.getCheckResult(ctx, vectorConfigCheckPod, deadline)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
 			return reason, err
@@ -279,7 +284,7 @@ func unstartableReason(pod *corev1.Pod) (string, bool) {
 	return "", false
 }
 
-func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (reason string, err error) {
+func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod, deadline time.Time) (reason string, err error) {
 	log := log.FromContext(ctx).WithValues("Vector ConfigCheck", pod.Name)
 	log.Info("Trying to get configcheck result")
 
@@ -295,12 +300,12 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 
 	defer watcher.Stop()
 
-	// One timer for the whole check, never reset: the timeout is the budget for the
-	// check, not for the gap between pod events. A pod that keeps emitting status
-	// updates would otherwise hold the reconcile worker indefinitely.
+	// What is left of the budget started in Run, never reset: the timeout bounds the
+	// check, not the gap between pod events. A pod that keeps emitting status updates
+	// would otherwise hold the reconcile worker indefinitely.
 	// (time.NewTimer rather than time.After, which leaks ~280 bytes per select
 	// iteration until it fires.)
-	timer := time.NewTimer(cc.ConfigCheckTimeout)
+	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
 
 	for {

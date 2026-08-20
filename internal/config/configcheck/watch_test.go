@@ -36,19 +36,21 @@ type checkResult struct {
 }
 
 // startGetCheckResult runs getCheckResult against a fake watcher the test controls.
-// The timeout is short so a starved wait surfaces as ErrConfigcheckTimeout quickly.
-func startGetCheckResult(t *testing.T, timeout time.Duration) (*watch.FakeWatcher, *corev1.Pod, chan checkResult) {
+// The budget is short so a starved wait surfaces as ErrConfigcheckTimeout quickly.
+// The watcher is race-free: getCheckResult stops it on return, and a test that keeps
+// feeding events would otherwise send on a closed channel.
+func startGetCheckResult(t *testing.T, budget time.Duration) (*watch.RaceFreeFakeWatcher, *corev1.Pod, chan checkResult) {
 	t.Helper()
 	cs := k8sfake.NewSimpleClientset()
-	fw := watch.NewFakeWithChanSize(4, false)
+	fw := watch.NewRaceFreeFake()
 	cs.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fw, nil))
 
-	cc := &ConfigCheck{ClientSet: cs, Namespace: "ns", ConfigCheckTimeout: timeout}
+	cc := &ConfigCheck{ClientSet: cs, Namespace: "ns", ConfigCheckTimeout: budget}
 	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "configcheck-x"}}
 
 	res := make(chan checkResult, 1)
 	go func() {
-		reason, err := cc.getCheckResult(context.Background(), pod)
+		reason, err := cc.getCheckResult(context.Background(), pod, time.Now().Add(budget))
 		res <- checkResult{reason, err}
 	}()
 	return fw, pod, res
@@ -167,5 +169,30 @@ func TestGetCheckResultTimeoutBoundsTheWholeCheck(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed > 4*timeout {
 		t.Fatalf("check ran for %v, the timeout must bound it at about %v", elapsed, timeout)
+	}
+}
+
+// The budget starts in Run, before the configcheck Secret is even created, and
+// getCheckResult only gets what is left of it. A deadline that already passed by the
+// time the watch is established must end the check at once - the Secret is by then as
+// old as the whole timeout, which is exactly when the orphan sweep may remove it.
+func TestGetCheckResultEndsOnAnExpiredDeadline(t *testing.T) {
+	cs := k8sfake.NewSimpleClientset()
+	fw := watch.NewRaceFreeFake()
+	defer fw.Stop()
+	cs.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fw, nil))
+
+	cc := &ConfigCheck{ClientSet: cs, Namespace: "ns", ConfigCheckTimeout: time.Hour}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "configcheck-x"}}
+
+	res := make(chan checkResult, 1)
+	go func() {
+		reason, err := cc.getCheckResult(context.Background(), pod, time.Now().Add(-time.Second))
+		res <- checkResult{reason, err}
+	}()
+
+	r := waitResult(t, res, 2*time.Second)
+	if !errors.Is(r.err, ErrConfigcheckTimeout) {
+		t.Fatalf("want ErrConfigcheckTimeout, got err=%v reason=%q", r.err, r.reason)
 	}
 }

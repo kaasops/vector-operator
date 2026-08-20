@@ -295,9 +295,11 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 
 	defer watcher.Stop()
 
-	// Use time.NewTimer instead of time.After to prevent memory leak.
-	// time.After() creates a new timer on each select iteration that won't be GC'd
-	// until it fires, causing ~280 bytes leak per iteration.
+	// One timer for the whole check, never reset: the timeout is the budget for the
+	// check, not for the gap between pod events. A pod that keeps emitting status
+	// updates would otherwise hold the reconcile worker indefinitely.
+	// (time.NewTimer rather than time.After, which leaks ~280 bytes per select
+	// iteration until it fires.)
 	timer := time.NewTimer(cc.ConfigCheckTimeout)
 	defer timer.Stop()
 
@@ -344,14 +346,6 @@ func (cc *ConfigCheck) getCheckResult(ctx context.Context, pod *corev1.Pod) (rea
 			case watch.Deleted:
 				return "", fmt.Errorf("configcheck: pod %s was deleted before producing a result", pod.Name)
 			}
-			// Reset timer after processing event to restart timeout window
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			timer.Reset(cc.ConfigCheckTimeout)
 		case <-ctx.Done():
 			return "", nil
 		case <-timer.C:

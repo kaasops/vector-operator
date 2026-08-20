@@ -133,3 +133,39 @@ func TestGetCheckResultErrsOnClosedWatchChannel(t *testing.T) {
 		t.Fatalf("want error on closed watch, got success (reason=%q)", r.reason)
 	}
 }
+
+// ConfigCheckTimeout must bound the whole check, not the gap between pod events.
+// A pod that keeps emitting status updates - image pull progress, repeated scheduling
+// attempts - would otherwise extend the check indefinitely: it holds the reconcile
+// worker, and it outlives the age window the orphan sweep relies on to tell a running
+// check from a leftover.
+func TestGetCheckResultTimeoutBoundsTheWholeCheck(t *testing.T) {
+	const timeout = 300 * time.Millisecond
+	fw, pod, res := startGetCheckResult(t, timeout)
+
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		tick := time.NewTicker(timeout / 6)
+		defer tick.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-tick.C:
+				pending := pod.DeepCopy()
+				pending.Status.Phase = corev1.PodPending
+				fw.Modify(pending)
+			}
+		}
+	}()
+
+	start := time.Now()
+	r := waitResult(t, res, 3*time.Second)
+	if !errors.Is(r.err, ErrConfigcheckTimeout) {
+		t.Fatalf("want ErrConfigcheckTimeout, got err=%v reason=%q", r.err, r.reason)
+	}
+	if elapsed := time.Since(start); elapsed > 4*timeout {
+		t.Fatalf("check ran for %v, the timeout must bound it at about %v", elapsed, timeout)
+	}
+}

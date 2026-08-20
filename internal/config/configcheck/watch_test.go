@@ -271,3 +271,34 @@ func TestGetCheckResultBoundsTheWatchRequestByTheBudget(t *testing.T) {
 
 	waitResult(t, res, 3*time.Second)
 }
+
+// A cancelled context means the caller gave up, not that the config is valid.
+// getCheckResult used to return ("", nil) there, which the pipeline reconciler reads
+// as a passing check and turns into a success status - a config that was never
+// validated would be published as validated.
+func TestGetCheckResultDoesNotReportSuccessOnCancellation(t *testing.T) {
+	cs := k8sfake.NewSimpleClientset()
+	fw := watch.NewRaceFreeFake()
+	defer fw.Stop()
+	cs.PrependWatchReactor("pods", k8stesting.DefaultWatchReactor(fw, nil))
+
+	cc := &ConfigCheck{ClientSet: cs, Namespace: "ns", ConfigCheckTimeout: time.Hour}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "configcheck-x"}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	res := make(chan checkResult, 1)
+	go func() {
+		reason, err := cc.getCheckResult(ctx, pod, time.Now().Add(time.Hour))
+		res <- checkResult{reason, err}
+	}()
+
+	cancel()
+
+	r := waitResult(t, res, 2*time.Second)
+	if r.err == nil {
+		t.Fatalf("a cancelled check must not look like a passing one, got reason=%q err=nil", r.reason)
+	}
+	if !errors.Is(r.err, context.Canceled) {
+		t.Fatalf("want an error carrying context.Canceled, got %v", r.err)
+	}
+}

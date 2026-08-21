@@ -69,7 +69,7 @@ annotations: {}
 # Args to path to operator
 args:
 #  - "-watch-namespace=vector" # Namespace to filter the list of watched objects
-#  - "-watch-name=vector-operator" # Filter the list of watched objects by checking the app.kubernetes.io/managed-by label
+#  - "-watch-name=vector-operator" # Filter the list of watched objects by the value of their app.kubernetes.io/name label; they must also carry app.kubernetes.io/managed-by=vector-operator
 #  - "-enable-reconciliation-invalid-pipelines=true" # Enable the reconciliation process for pipelines with invalid configurations
 #  - "-reconciliation-retry-delay=120s" # Specify the delay before retrying the reconciliation process for pipelines
 #  - "-enable-config-optimization" # Collapse kubernetes_logs sources with identical settings into one source per group (opt out per Vector CR or per (Cluster)VectorPipeline with the vector-operator.kaasops.io/config-optimization=disabled annotation)

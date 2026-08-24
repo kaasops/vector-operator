@@ -319,7 +319,7 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	pipelineVectorRole, err := p.VectorRole()
+	pipelineVectorRole, err := resolvePipelineRole(p, pipelineCR)
 	if err != nil {
 		if err := pipeline.SetFailedStatus(ctx, r.Client, pipelineCR, err.Error(), basePipeline); err != nil {
 			log.Error(err, "Failed to set pipeline status")
@@ -558,6 +558,21 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 
 	log.Info("finish Reconcile Pipeline")
 	return ctrl.Result{}, nil
+}
+
+// resolvePipelineRole pins or infers the pipeline role. Validating here rather than in the config
+// builder fails only the offending pipeline, not the aggregator's whole config.
+func resolvePipelineRole(cfg *config.PipelineConfig, p pipeline.Pipeline) (*v1alpha1.VectorPipelineRole, error) {
+	role, err := cfg.VectorRole(p.GetSpec().Role)
+	if err != nil {
+		return nil, err
+	}
+	if *role == v1alpha1.VectorPipelineRoleAggregator && p.GetNamespace() != "" {
+		if err := cfg.ValidateAggregatorSources(); err != nil {
+			return nil, err
+		}
+	}
+	return role, nil
 }
 
 func (r *PipelineReconciler) getPipeline(ctx context.Context, req ctrl.Request) (pipeline pipeline.Pipeline, err error) {

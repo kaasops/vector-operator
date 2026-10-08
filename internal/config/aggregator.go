@@ -75,7 +75,7 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 							if err != nil {
 								return nil, fmt.Errorf("failed to parse port %s: %w", port, err)
 							}
-							protocol := extractProtocol(v.Options)
+							protocol := extractProtocol(v.Type, v.Options)
 							err = cfg.internal.addServicePort(&ServicePort{
 								Port:         portN,
 								Protocol:     protocol,
@@ -155,7 +155,10 @@ func parsePort(port string) (int32, error) {
 	return int32(p), nil
 }
 
-func extractProtocol(opts map[string]any) corev1.Protocol {
+func extractProtocol(sourceType string, opts map[string]any) corev1.Protocol {
+	if _, ok := udpOnlyTypes[sourceType]; ok {
+		return corev1.ProtocolUDP
+	}
 	protocol := corev1.ProtocolTCP
 	if val, ok := opts["mode"]; ok {
 		if s, ok := val.(string); ok && strings.ToLower(s) == "udp" {

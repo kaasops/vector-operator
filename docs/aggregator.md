@@ -175,3 +175,48 @@ The field works the same way with [persistence](aggregator-persistence.md) enabl
 Deployment and the StatefulSet share one pod template. Keep in mind that a volume is bound to
 the zone it was provisioned in, so a rescheduled replica goes back to its original zone no
 matter what the constraint says.
+
+## Draining pods on shutdown
+
+Both aggregator types accept `spec.terminationGracePeriodSeconds` and `spec.lifecycle`. The
+pod template receives the grace period, and the `vector` container receives the lifecycle.
+Use them to keep a terminating pod serving while load balancers stop routing to it, so a
+rolling restart or a scale down does not fail in-flight requests when Vector closes its
+listeners.
+
+```yaml
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: vectorAggregator1
+  namespace: vector
+spec:
+  image: timberio/vector:0.48.0-debian
+  replicas: 3
+  terminationGracePeriodSeconds: 60
+  lifecycle:
+    preStop:
+      sleep:
+        seconds: 30
+```
+
+The grace period starts before the `preStop` hook runs and covers the hook and Vector's own
+shutdown together. Allow enough time for both, or Vector may be killed before it finishes
+draining. Vector's own shutdown timeout defaults to 60 seconds. Kubernetes uses 30 seconds
+when the grace period is not set, so a 30-second sleep uses all of it.
+
+Constraints the API server enforces on the CR:
+
+- `sleep.seconds` must not exceed `terminationGracePeriodSeconds`, or 30 when it is not set.
+  Kubernetes also rejects such a pod. The rule reports the error when you run `kubectl apply`.
+- `sleep.seconds` must be greater than 0. Kubernetes before 1.33 rejects a zero sleep by
+  default.
+- `lifecycle.stopSignal` is rejected, because it needs pod `spec.os.name` and the operator
+  does not set it.
+
+The native `sleep` action needs no shell in the image and works with the distroless Vector
+images. It is available in Kubernetes 1.30 and later.
+
+The lifecycle applies only to the Vector container. The grace period is a pod setting, so it
+also applies to the config reloader sidecar. These fields are not passed to the event
+collector. It runs one replica and does not accept ingest traffic.

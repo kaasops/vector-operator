@@ -200,6 +200,13 @@ type VectorAggregatorAutoscaling struct {
 	Behavior *autoscaling.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
 
+// Kubernetes rejects a pod whose sleep hook is longer than its grace period.
+// These rules check the same limit on the CR, so kubectl apply shows the error immediately.
+// They also require a positive sleep, since Kubernetes before 1.33 rejects zero by default.
+// +kubebuilder:validation:XValidation:rule="!has(self.lifecycle) || !has(self.lifecycle.preStop) || !has(self.lifecycle.preStop.sleep) || self.lifecycle.preStop.sleep.seconds <= (has(self.terminationGracePeriodSeconds) ? self.terminationGracePeriodSeconds : 30)",message="lifecycle.preStop.sleep.seconds must not exceed terminationGracePeriodSeconds, which defaults to 30"
+// +kubebuilder:validation:XValidation:rule="!has(self.lifecycle) || !has(self.lifecycle.preStop) || !has(self.lifecycle.preStop.sleep) || self.lifecycle.preStop.sleep.seconds > 0",message="lifecycle.preStop.sleep.seconds must be greater than 0"
+// +kubebuilder:validation:XValidation:rule="!has(self.lifecycle) || !has(self.lifecycle.postStart) || !has(self.lifecycle.postStart.sleep) || self.lifecycle.postStart.sleep.seconds <= (has(self.terminationGracePeriodSeconds) ? self.terminationGracePeriodSeconds : 30)",message="lifecycle.postStart.sleep.seconds must not exceed terminationGracePeriodSeconds, which defaults to 30"
+// +kubebuilder:validation:XValidation:rule="!has(self.lifecycle) || !has(self.lifecycle.postStart) || !has(self.lifecycle.postStart.sleep) || self.lifecycle.postStart.sleep.seconds > 0",message="lifecycle.postStart.sleep.seconds must be greater than 0"
 type VectorAggregatorCommon struct {
 	VectorCommon `json:",inline"`
 	Replicas     *int32 `json:"replicas,omitempty"`
@@ -216,6 +223,21 @@ type VectorAggregatorCommon struct {
 	// Pending. When not set the scheduler places the pods freely.
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// TerminationGracePeriodSeconds is how long Kubernetes waits for an aggregator pod
+	// to stop before it sends SIGKILL. The period starts when the preStop hook starts,
+	// so set it above the preStop duration plus the time Vector needs to drain. When
+	// not set the Kubernetes default of 30 seconds applies.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// Lifecycle sets the lifecycle hooks of the vector container. A preStop sleep keeps
+	// a terminating pod serving while load balancers stop routing to it, before Vector
+	// closes its listeners. It does not apply to the event collector or the config
+	// reloader containers. stopSignal is rejected because it needs pod spec.os.name,
+	// which the operator does not set.
+	// +kubebuilder:validation:XValidation:rule="!has(self.stopSignal)",message="lifecycle.stopSignal is not supported"
+	// +optional
+	Lifecycle *v1.Lifecycle `json:"lifecycle,omitempty"`
 	// Persistence gives the aggregator durable storage for its data_dir.
 	// When enabled the aggregator is rendered as a StatefulSet with a persistent
 	// volume per replica instead of a Deployment. See VectorAggregatorPersistence.

@@ -198,3 +198,54 @@ func TestDeploymentSecretAssetsMountPathIsAuthoritative(t *testing.T) {
 	g.Expect(mounts).To(HaveLen(1))
 	g.Expect(mounts[0].Name).To(Equal("secret-assets"))
 }
+
+// preStopSleep is the hook that holds a terminating pod in service while load
+// balancers stop routing to it.
+func preStopSleep() *corev1.Lifecycle {
+	return &corev1.Lifecycle{
+		PreStop: &corev1.LifecycleHandler{
+			Sleep: &corev1.SleepAction{Seconds: 30},
+		},
+	}
+}
+
+func TestDeploymentTerminationLifecycle(t *testing.T) {
+	g := NewWithT(t)
+
+	ctrl := createTestController("test", "default", &vectorv1alpha1.VectorAggregatorCommon{
+		TerminationGracePeriodSeconds: ptr.To(int64(60)),
+		Lifecycle:                     preStopSleep(),
+	}, false)
+
+	deployment := ctrl.createVectorAggregatorDeployment()
+
+	g.Expect(deployment.Spec.Template.Spec.TerminationGracePeriodSeconds).To(Equal(ptr.To(int64(60))))
+	g.Expect(deployment.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(preStopSleep()))
+}
+
+func TestDeploymentTerminationLifecycleUnset(t *testing.T) {
+	g := NewWithT(t)
+
+	ctrl := createTestController("test", "default", &vectorv1alpha1.VectorAggregatorCommon{}, false)
+
+	deployment := ctrl.createVectorAggregatorDeployment()
+
+	// An unset field must leave the pod spec untouched, so existing aggregators do
+	// not roll on operator upgrade.
+	g.Expect(deployment.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNil())
+	g.Expect(deployment.Spec.Template.Spec.Containers[0].Lifecycle).To(BeNil())
+}
+
+func TestEventCollectorIgnoresTerminationLifecycle(t *testing.T) {
+	g := NewWithT(t)
+
+	ctrl := createTestController("test", "default", &vectorv1alpha1.VectorAggregatorCommon{
+		TerminationGracePeriodSeconds: ptr.To(int64(60)),
+		Lifecycle:                     preStopSleep(),
+	}, false)
+
+	deployment := ctrl.createEventCollectorDeployment()
+
+	g.Expect(deployment.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNil())
+	g.Expect(deployment.Spec.Template.Spec.Containers[0].Lifecycle).To(BeNil())
+}

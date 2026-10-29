@@ -175,3 +175,45 @@ The field works the same way with [persistence](aggregator-persistence.md) enabl
 Deployment and the StatefulSet share one pod template. Keep in mind that a volume is bound to
 the zone it was provisioned in, so a rescheduled replica goes back to its original zone no
 matter what the constraint says.
+
+## Draining pods on shutdown
+
+Both aggregator types accept `spec.terminationGracePeriodSeconds` and `spec.lifecycle`. The
+pod template receives the grace period, and the `vector` container receives the lifecycle.
+Use them to keep a terminating pod serving while load balancers stop routing to it, so a
+rolling restart or a scale down does not fail in-flight requests when Vector closes its
+listeners.
+
+```yaml
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorAggregator
+metadata:
+  name: vectorAggregator1
+  namespace: vector
+spec:
+  image: timberio/vector:0.48.0-debian
+  replicas: 3
+  terminationGracePeriodSeconds: 60
+  lifecycle:
+    preStop:
+      sleep:
+        seconds: 30
+```
+
+The grace period starts before the `preStop` hook runs and covers the hook and Vector's own
+shutdown together. Set it above the sleep plus the time Vector needs to drain, or the kubelet
+sends SIGKILL while the sleep is still running. Kubernetes defaults to 30 seconds when the
+field is not set, so a 30 second sleep with no grace period leaves no time to drain.
+
+Constraints the API server enforces on the CR:
+
+- `sleep.seconds` must not exceed `terminationGracePeriodSeconds`, or 30 when it is not set.
+  Kubernetes would otherwise reject every pod and stall the rollout.
+- `lifecycle.stopSignal` is rejected, because it needs pod `spec.os.name` and the operator
+  does not set it.
+
+The native `sleep` action needs no shell in the image and works with the distroless Vector
+images. It is available in Kubernetes 1.30 and later.
+
+Neither field reaches the event collector pod or the config reloader containers. The event
+collector runs a single replica that does not serve ingest traffic.

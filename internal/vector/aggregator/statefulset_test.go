@@ -82,6 +82,20 @@ func TestStatefulSetTopologySpreadConstraints(t *testing.T) {
 	g.Expect(sts.Spec.Template.Spec.TopologySpreadConstraints).To(Equal([]corev1.TopologySpreadConstraint{constraint}))
 }
 
+func TestStatefulSetTerminationLifecycle(t *testing.T) {
+	g := NewWithT(t)
+
+	spec := persistentSpec()
+	spec.TerminationGracePeriodSeconds = ptr.To(int64(60))
+	spec.Lifecycle = preStopSleep()
+	ctrl := createTestController("test", "default", spec, false)
+
+	sts := ctrl.createVectorAggregatorStatefulSet()
+
+	g.Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(Equal(ptr.To(int64(60))))
+	g.Expect(sts.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(preStopSleep()))
+}
+
 func TestVolumeClaimTemplatesEscapeHatch(t *testing.T) {
 	g := NewWithT(t)
 

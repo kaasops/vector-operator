@@ -27,6 +27,7 @@ const (
 	LogstashType              = "logstash"
 	MongoDBMetricsType        = "mongodb_metrics"
 	NATSType                  = "nats"
+	NetflowType               = "netflow"
 	NginxMetricsType          = "nginx_metrics"
 	OpenTelemetryType         = "opentelemetry"
 	PostgreSQLMetricsType     = "postgresql_metrics"
@@ -59,6 +60,7 @@ var aggregatorTypes = map[string]struct{}{
 	KafkaType:              {},
 	LogstashType:           {},
 	NATSType:               {},
+	NetflowType:            {},
 	OpenTelemetryType:      {},
 	PulsarType:             {},
 	RedisType:              {},
@@ -90,6 +92,11 @@ var agentTypes = map[string]struct{}{
 	PrometheusPushgatewayType: {},
 	PrometheusRemoteWriteType: {},
 	PrometheusScrapeType:      {},
+}
+
+// udpOnlyTypes are the sources that listen on UDP and have no `mode` option to say so.
+var udpOnlyTypes = map[string]struct{}{
+	NetflowType: {},
 }
 
 func isAggregator(name string) bool {

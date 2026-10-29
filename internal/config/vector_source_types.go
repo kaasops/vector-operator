@@ -92,6 +92,22 @@ var agentTypes = map[string]struct{}{
 	PrometheusScrapeType:      {},
 }
 
+// Host sources read the node or the container runtime instead of receiving data over the network.
+// An aggregator is shared and mounts the host log paths, so one of these in a namespaced pipeline
+// would collect data from other namespaces.
+var hostSourceTypes = map[string]struct{}{
+	DockerLogsType:     {},
+	FileType:           {},
+	HostMetricsType:    {},
+	JournaldType:       {},
+	KubernetesLogsType: {},
+}
+
+func isHostSource(name string) bool {
+	_, ok := hostSourceTypes[name]
+	return ok
+}
+
 func isAggregator(name string) bool {
 	_, ok := aggregatorTypes[name]
 	return ok

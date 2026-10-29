@@ -3,7 +3,7 @@ IMG ?= controller:latest
 IMG_COLLECTOR ?= collector:latest
 IMG_MERGER ?= checkpoint-merger:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.36.2
+ENVTEST_K8S_VERSION = 1.37.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -248,7 +248,7 @@ GINKGO ?= $(LOCALBIN)/ginkgo
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.21.0
-ENVTEST_VERSION ?= release-0.24
+ENVTEST_VERSION ?= release-0.25
 GOLANGCI_LINT_VERSION ?= v2.12.2
 GINKGO_VERSION ?= v2.32.0
 

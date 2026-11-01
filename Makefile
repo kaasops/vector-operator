@@ -48,8 +48,9 @@ help: ## Display this help.
 HELM_CRD_DIR = helm/charts/vector-operator/crds
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: controller-gen generate ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	GOOS= GOARCH= go run ./hack/crdstrip -dir config/crd/bases
 	rm -f $(HELM_CRD_DIR)/*.yaml && cp config/crd/bases/*.yaml $(HELM_CRD_DIR)/
 
 .PHONY: generate

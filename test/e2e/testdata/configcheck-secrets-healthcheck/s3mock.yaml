@@ -1,0 +1,51 @@
+# S3 mock for the configcheck healthcheck probe. versitygw verifies SigV4 signatures
+# like S3 does, so the aws_s3 healthcheck (HeadBucket) only passes when it signs with
+# the real keys - a literal SECRET[...] placeholder or a wrong key is rejected. The
+# posix backend serves a bucket per directory, so the init container creates "logs".
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3
+  template:
+    metadata:
+      labels:
+        app: s3
+    spec:
+      initContainers:
+        - name: mkbucket
+          image: busybox:1.36
+          command: ["mkdir", "-p", "/data/logs"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: s3
+          image: versity/versitygw:v1.10.0
+          args: ["--access", "e2e-access-key", "--secret", "e2e-secret-key", "--port", ":9000", "posix", "--nometa", "/data"]
+          ports:
+            - containerPort: 9000
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3
+spec:
+  selector:
+    app: s3
+  ports:
+    - port: 9000
+      targetPort: 9000

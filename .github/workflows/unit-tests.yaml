@@ -30,6 +30,11 @@ jobs:
       - name: Run unit tests
         run: make test
 
+      - name: Check generated CRDs are up to date
+        run: |
+          git add -N config/crd helm/charts/vector-operator/crds
+          git diff --exit-code -- config/crd helm/charts/vector-operator/crds
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7

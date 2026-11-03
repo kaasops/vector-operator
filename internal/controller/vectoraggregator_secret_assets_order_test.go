@@ -47,6 +47,17 @@ import (
 // would compile and pass every other test in this package, since with no injected
 // failure the order never becomes observable.
 var _ = Describe("VectorAggregatorReconciler secret-assets write-order fault injection", func() {
+	newReconciler := func(c client.Client) *VectorAggregatorReconciler {
+		return &VectorAggregatorReconciler{
+			Client:             c,
+			Scheme:             k8sClient.Scheme(),
+			Clientset:          clientset,
+			ConfigCheckTimeout: configCheckTimeout,
+			EventChan:          make(chan event.GenericEvent, 1),
+			APIReader:          k8sClient,
+		}
+	}
+
 	setupFixture := func(ns, aggName string) (vp *v1alpha1.VectorPipeline, agg *v1alpha1.VectorAggregator) {
 		Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})).To(Succeed())
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}) })
@@ -86,19 +97,15 @@ var _ = Describe("VectorAggregatorReconciler secret-assets write-order fault inj
 			},
 		}
 		Expect(k8sClient.Create(ctx, agg)).To(Succeed())
-		DeferCleanup(func() { _ = k8sClient.Delete(ctx, agg) })
+		DeferCleanup(func() {
+			req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: aggName}}
+			Expect(k8sClient.Delete(ctx, agg)).To(Succeed())
+			// envtest runs no controller, so the aggregator would otherwise stay with its finalizer.
+			_, err := newReconciler(k8sClient).Reconcile(context.Background(), req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(api_errors.IsNotFound(k8sClient.Get(ctx, req.NamespacedName, &v1alpha1.VectorAggregator{}))).To(BeTrue())
+		})
 		return vp, agg
-	}
-
-	newReconciler := func(c client.Client) *VectorAggregatorReconciler {
-		return &VectorAggregatorReconciler{
-			Client:             c,
-			Scheme:             k8sClient.Scheme(),
-			Clientset:          clientset,
-			ConfigCheckTimeout: configCheckTimeout,
-			EventChan:          make(chan event.GenericEvent, 1),
-			APIReader:          k8sClient,
-		}
 	}
 
 	It("has already published assets when an injected config-write failure aborts the reconcile", func() {

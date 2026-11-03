@@ -26,6 +26,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -111,7 +112,6 @@ var _ = Describe("VectorAggregatorReconciler secret-assets mount gate across a p
 			},
 		}
 		Expect(k8sClient.Create(ctx, agg)).To(Succeed())
-		DeferCleanup(func() { _ = k8sClient.Delete(ctx, agg) })
 
 		newReconciler := func(c client.Client) *VectorAggregatorReconciler {
 			return &VectorAggregatorReconciler{
@@ -124,6 +124,13 @@ var _ = Describe("VectorAggregatorReconciler secret-assets mount gate across a p
 			}
 		}
 		req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: aggName}}
+		DeferCleanup(func() {
+			Expect(k8sClient.Delete(ctx, agg)).To(Succeed())
+			// envtest runs no controller, so the aggregator would otherwise stay with its finalizer.
+			_, err := newReconciler(k8sClient).Reconcile(context.Background(), req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(api_errors.IsNotFound(k8sClient.Get(ctx, req.NamespacedName, &v1alpha1.VectorAggregator{}))).To(BeTrue())
+		})
 
 		By("reconcile #1: the first round of a fresh aggregator only adds the finalizer")
 		_, err := newReconciler(k8sClient).Reconcile(context.Background(), req)

@@ -1,0 +1,61 @@
+# Two aws_s3 sinks with the healthcheck left enabled (the default) and credentials
+# only via SECRET[...]: one backed by the keys the mock accepts, one by a wrong
+# secret key. The second must fail configcheck, which shows the healthcheck really
+# reached the mock. The first must pass, which shows it signed with the resolved keys.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: s3-valid
+  labels:
+    e2e: configcheck-secrets-healthcheck
+spec:
+  secret:
+    s3:
+      type: kubernetes_secret
+      name: s3-creds
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    s3:
+      type: aws_s3
+      inputs:
+        - logs
+      endpoint: http://s3:9000
+      region: us-east-1
+      force_path_style: true
+      bucket: logs
+      encoding:
+        codec: json
+      auth:
+        access_key_id: "SECRET[s3.id]"
+        secret_access_key: "SECRET[s3.key]"
+---
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: s3-wrong
+  labels:
+    e2e: configcheck-secrets-healthcheck
+spec:
+  secret:
+    s3:
+      type: kubernetes_secret
+      name: s3-creds-wrong
+  sources:
+    logs:
+      type: kubernetes_logs
+  sinks:
+    s3:
+      type: aws_s3
+      inputs:
+        - logs
+      endpoint: http://s3:9000
+      region: us-east-1
+      force_path_style: true
+      bucket: logs
+      encoding:
+        codec: json
+      auth:
+        access_key_id: "SECRET[s3.id]"
+        secret_access_key: "SECRET[s3.key]"

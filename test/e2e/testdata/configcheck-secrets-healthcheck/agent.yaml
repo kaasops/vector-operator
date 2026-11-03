@@ -1,0 +1,15 @@
+# The agent stays on the operator's usual Vector line; only the configcheck pod runs
+# CONFIGCHECK_IMAGE, the Vector release under test. Before 0.59 `vector validate` did
+# not resolve SECRET[...] and ran the sink healthcheck with the literal placeholder.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: cchc
+spec:
+  selector:
+    matchLabels:
+      e2e: configcheck-secrets-healthcheck
+  agent:
+    image: timberio/vector:0.48.0-alpine
+    configCheck:
+      image: CONFIGCHECK_IMAGE

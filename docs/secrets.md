@@ -53,6 +53,8 @@ spec:
 
 The backend alias (`es` above) must match `^[A-Za-z0-9_]+$`, enforced by a CEL rule on the CRD. `SECRET[...]` references only work inside string option values.
 
+If the config check runs Vector older than 0.59, this example fails the check unless the sink's healthcheck is disabled. This includes the operator's default image (0.48). See [Config check and sink healthchecks](#config-check-and-sink-healthchecks).
+
 At config-build time the operator resolves every `SECRET[alias.key]` reference, rewrites it to Vector's native secrets mechanism (a `directory` backend), and copies only the referenced keys into an operator-managed aggregated Secret named `<workload>-secret-assets` in the Vector/aggregator workload's own namespace, mounted read-only at `/etc/vector/secrets`. The generated Vector config that ends up in the config Secret never contains the resolved values, only the rewritten `SECRET[...]` reference.
 
 For VectorPipeline the Secret is always read from the pipeline's own namespace; `namespace` is forbidden in `spec.secret` for VectorPipeline, which is what keeps one namespace from reading another's Secrets.
@@ -80,7 +82,7 @@ If a rotation removes a key that a running pipeline still references, the reload
 
 ## Validation and troubleshooting
 
-The operator validates `spec.secret` references at config-build time, before `vector validate` runs — `vector validate` itself does not resolve secrets. A `SECRET[alias.key]` reference to an alias not declared in `spec.secret`, or to a Secret/key that does not exist, marks that one pipeline invalid; other pipelines sharing the same Vector/aggregator are unaffected. Check:
+The operator validates `spec.secret` references at config-build time, before `vector validate` runs. The config check itself resolves secrets only on Vector 0.59 or newer. See [Config check and sink healthchecks](#config-check-and-sink-healthchecks). A `SECRET[alias.key]` reference to an alias not declared in `spec.secret`, or to a Secret/key that does not exist, marks that one pipeline invalid; other pipelines sharing the same Vector/aggregator are unaffected. Check:
 
 - `.status.configCheckResult` and `.status.reason` on the pipeline for the validation error.
 - `.status.relatedSecretsHash` on the pipeline, which tracks the identity and version of every Secret its `SECRET[...]` references actually use and changes whenever a referenced Secret rotates (even though the pipeline spec itself did not change). The value is derived only from Secret metadata, never from secret data, so it reveals nothing about the contents.
@@ -94,6 +96,33 @@ Transient failures (the referenced Secret temporarily missing, or an API error w
 Vector `>= v0.43.0` is required for the `directory` secrets backend that this feature relies on. The operator's default images already satisfy this.
 
 The feature is also compatible with Vector 0.57+, which disables `${VAR}` environment-variable interpolation by default: `SECRET[...]` is Vector's separate secrets mechanism and keeps working without any opt-in flag, and the operator only ever writes references into string values, in line with 0.57's deprecation of placeholders in non-string positions.
+
+### Config check and sink healthchecks
+
+The config check pod runs `vector validate`. Before Vector 0.59, it does not resolve `SECRET[...]` and runs sink healthchecks with the literal placeholder. A sink that authenticates in its healthcheck then fails the check. The pipeline stays invalid, even though the running Vector would resolve the secret correctly. This applies to the operator's default image (0.48). For the quickstart example above, the pipeline's `.status.reason` shows an error like `Health check for "team-a-es-pipeline-out" failed: Unexpected status: 401 Unauthorized`. For `aws_s3`, the error ends with `Invalid credentials`.
+
+There are two ways to fix it:
+
+- run the config check on Vector 0.59 or newer. To change only the check pod, set `configCheck.image`. If it is not set, the check uses the workload `image`. For a Vector these fields are under `spec.agent`, for an aggregator under `spec`. If other pipelines of the same Vector use `${VAR}` credentials, read [Pipelines with `${VAR}` credentials](#pipelines-with-var-credentials) first;
+- disable the healthcheck on the sink: `healthcheck: {enabled: false}`. This works for the `aws_s3` and `elasticsearch` cases above. The running Vector still resolves the secret, but it does not run this healthcheck either. With the default `api_version: auto`, the `elasticsearch` sink still asks the server for its version during the check, using the placeholder as credentials. This request fails and Vector logs a warning, but the check passes.
+
+By default, a pipeline that has already failed the check is not checked again when only the image changes. After switching the image, set or change the `vector-operator.kaasops.io/force-configcheck` annotation on that pipeline to check it again. See [Force ConfigCheck](force-configcheck.md).
+
+#### Pipelines with `${VAR}` credentials
+
+Since Vector 0.57, `${VAR}` interpolation is off by default, also in `vector validate`. The check pod gets the Vector's `env` and `envFrom`, but a 0.59 check does not put their values into the config. `${VAR}` stays literal text, even when the agent itself runs an older Vector that replaces it. So after you set `configCheck.image` to 0.59, a sink whose healthcheck authenticates with `${VAR}` credentials can fail the check. For example, `elasticsearch` with basic auth fails with `401 Unauthorized`.
+
+Changing only `configCheck.image` does not check pipelines again. If such a healthcheck fails, the failure shows up at the next check:
+
+- a new pipeline, or one that is checked again, fails its own check. It is marked invalid and left out of the next agent config, and it does not block other pipelines. If it was already running, it keeps running until the agent gets a new config;
+- a pipeline that was running and was not checked again keeps its valid status and stays in the agent config. Before the operator publishes a new agent config, it checks the whole config of the Vector. This check now fails. The Vector's `.status.configCheckResult` becomes `false`, and the agent keeps its old config. Pipelines added or changed after that can pass their own check and show as valid, but the agent does not get them.
+
+To avoid this, do one of these together with the image change:
+
+- set `VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION` to `"true"` in `spec.agent.env`. This turns on `${VAR}` interpolation for every pipeline of this Vector. See [Secure credential](secure-credential.md);
+- move these credentials to `spec.secret`. See [what a value may contain](#limitation-what-a-value-may-contain).
+
+If the Vector is already blocked, adding the variable unblocks it. For a pipeline that was already marked invalid, also set or change its `vector-operator.kaasops.io/force-configcheck` annotation to check it again.
 
 ## Limitation: `--watch-namespace`
 

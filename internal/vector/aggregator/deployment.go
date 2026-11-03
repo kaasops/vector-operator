@@ -70,20 +70,21 @@ func (ctrl *Controller) aggregatorPodTemplateSpec() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: ctrl.objectMetaVectorAggregator(labels, annotations, ctrl.Namespace),
 		Spec: corev1.PodSpec{
-			ServiceAccountName:        ctrl.getNameVectorAggregator(),
-			Volumes:                   ctrl.generateVectorAggregatorVolume(),
-			SecurityContext:           ctrl.Spec.SecurityContext,
-			ImagePullSecrets:          ctrl.Spec.ImagePullSecrets,
-			Affinity:                  ctrl.Spec.Affinity,
-			TopologySpreadConstraints: ctrl.Spec.TopologySpreadConstraints,
-			RuntimeClassName:          ctrl.Spec.RuntimeClassName,
-			SchedulerName:             ctrl.Spec.SchedulerName,
-			Tolerations:               ctrl.Spec.Tolerations,
-			PriorityClassName:         ctrl.Spec.PriorityClassName,
-			HostNetwork:               ctrl.Spec.HostNetwork,
-			HostAliases:               ctrl.Spec.HostAliases,
-			InitContainers:            initContainers,
-			Containers:                containers,
+			ServiceAccountName:            ctrl.getNameVectorAggregator(),
+			Volumes:                       ctrl.generateVectorAggregatorVolume(),
+			SecurityContext:               ctrl.Spec.SecurityContext,
+			ImagePullSecrets:              ctrl.Spec.ImagePullSecrets,
+			Affinity:                      ctrl.Spec.Affinity,
+			TopologySpreadConstraints:     ctrl.Spec.TopologySpreadConstraints,
+			RuntimeClassName:              ctrl.Spec.RuntimeClassName,
+			SchedulerName:                 ctrl.Spec.SchedulerName,
+			Tolerations:                   ctrl.Spec.Tolerations,
+			PriorityClassName:             ctrl.Spec.PriorityClassName,
+			HostNetwork:                   ctrl.Spec.HostNetwork,
+			HostAliases:                   ctrl.Spec.HostAliases,
+			InitContainers:                initContainers,
+			Containers:                    containers,
+			TerminationGracePeriodSeconds: ctrl.Spec.TerminationGracePeriodSeconds,
 		},
 	}
 }
@@ -116,6 +117,7 @@ func (ctrl *Controller) VectorAggregatorContainer() *corev1.Container {
 		Resources:       ctrl.Spec.Resources,
 		SecurityContext: ctrl.Spec.ContainerSecurityContext,
 		ImagePullPolicy: ctrl.Spec.ImagePullPolicy,
+		Lifecycle:       ctrl.Spec.Lifecycle,
 	}
 
 	// Check if envFrom is provided and set it

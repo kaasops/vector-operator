@@ -434,6 +434,16 @@ func (in *VectorAggregatorCommon) DeepCopyInto(out *VectorAggregatorCommon) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
+	}
+	if in.Lifecycle != nil {
+		in, out := &in.Lifecycle, &out.Lifecycle
+		*out = new(v1.Lifecycle)
+		(*in).DeepCopyInto(*out)
+	}
 	in.Persistence.DeepCopyInto(&out.Persistence)
 	in.PodDisruptionBudget.DeepCopyInto(&out.PodDisruptionBudget)
 }

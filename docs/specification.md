@@ -147,6 +147,10 @@
 # VectorPipelineSpec (ClusterVectorPipelineSpec)
 <table>
     <tr>
+      <td>role</td>
+      <td>Pins the pipeline to a Vector role, <code>agent</code> or <code>aggregator</code>. Every source must be a type that runs in that role, so <code>aggregator</code> rejects sources that read the node. Unset by default, in which case the role is inferred from the source types</td>
+    </tr>
+    <tr>
       <td>sources</td>
       <td>List of Sources</td>
     </tr>

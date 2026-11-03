@@ -1,6 +1,7 @@
 package aggregator
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -13,9 +14,11 @@ import (
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 )
 
@@ -130,19 +133,10 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 		ann := make(map[string]string, len(annotations))
 		maps.Copy(ann, annotations)
 
-		ports := make([]corev1.ServicePort, 0, len(list))
-		for _, sp := range list {
-			ports = append(ports, corev1.ServicePort{
-				Name:       strcase.KebabCase(sp.SourceName),
-				Protocol:   sp.Protocol,
-				Port:       sp.Port,
-				TargetPort: intstr.FromInt32(sp.Port),
-			})
-		}
 		svc := &corev1.Service{
 			ObjectMeta: ctrl.objectMetaVectorAggregator(labels, ann, ctrl.Namespace),
 			Spec: corev1.ServiceSpec{
-				Ports:    ports,
+				Ports:    buildServicePorts(list),
 				Selector: matchLabels,
 			},
 		}
@@ -184,6 +178,51 @@ func (ctrl *Controller) createVectorAggregatorServices() ([]*corev1.Service, err
 	}
 
 	return svcList, nil
+}
+
+func buildServicePorts(list []*config.ServicePort) []corev1.ServicePort {
+	ports := make([]corev1.ServicePort, 0, len(list))
+	names := servicePortNames(list)
+	for _, sp := range list {
+		ports = append(ports, corev1.ServicePort{
+			Name:       names[sp],
+			Protocol:   sp.Protocol,
+			Port:       sp.Port,
+			TargetPort: intstr.FromInt32(sp.Port),
+		})
+	}
+	return ports
+}
+
+func servicePortNames(ports []*config.ServicePort) map[*config.ServicePort]string {
+	names := make(map[*config.ServicePort]string, len(ports))
+	used := make(map[string]bool, len(ports))
+	var otlp []*config.ServicePort
+	for _, port := range ports {
+		if port.Endpoint != "" {
+			otlp = append(otlp, port)
+			continue
+		}
+		// Existing names stay unchanged.
+		name := strcase.KebabCase(port.SourceName)
+		names[port] = name
+		used[name] = true
+	}
+	// Map order must not decide which OTLP port gets a shared source name.
+	slices.SortFunc(otlp, func(a, b *config.ServicePort) int { return cmp.Compare(a.Port, b.Port) })
+	for _, port := range otlp {
+		base := strcase.KebabCase(port.SourceName) + "-" + port.Endpoint
+		if len(validation.IsDNS1123Label(base)) != 0 || used[base] {
+			base = fmt.Sprintf("%s-%d", port.Endpoint, port.Port)
+		}
+		name := base
+		for n := 1; used[name]; n++ {
+			name = fmt.Sprintf("%s-%d", base, n)
+		}
+		names[port] = name
+		used[name] = true
+	}
+	return names
 }
 
 func (ctrl *Controller) getExistingServices(ctx context.Context) (map[string]*corev1.Service, error) {

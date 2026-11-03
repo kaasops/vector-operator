@@ -1,0 +1,59 @@
+[
+  {
+    "name": "mixed",
+    "pipelines": [
+      {
+        "metadata": {"name": "telemetry", "namespace": "logs"},
+        "spec": {
+          "sources": {
+            "otel": {"type": "opentelemetry", "grpc": {"address": "0.0.0.0:4317"}, "http": {"address": "[::]:4318"}},
+            "queue": {"type": "kafka", "bootstrap_servers": "kafka:9092", "group_id": "logs", "topics": ["logs"]}
+          },
+          "sinks": {"out": {"type": "blackhole", "inputs": ["otel.logs", "queue"]}}
+        }
+      },
+      {
+        "metadata": {"name": "listener", "namespace": "logs"},
+        "spec": {
+          "sources": {"existing_otlp_port": {"type": "socket", "address": "0.0.0.0:4317", "mode": "tcp"}},
+          "sinks": {"out": {"type": "blackhole", "inputs": ["existing_otlp_port"]}}
+        }
+      }
+    ]
+  },
+  {
+    "name": "listeners",
+    "pipelines": [
+      {
+        "metadata": {"name": "receivers", "namespace": "logs", "annotations": {"observability.kaasops.io/service-name": "custom-receivers"}},
+        "spec": {
+          "sources": {
+            "veryLongSourceNameForExistingUsers": {"type": "vector", "address": "[::]:6000"},
+            "tcp_input": {"type": "socket", "address": "localhost:6001", "mode": "tcp"},
+            "udpInput": {"type": "socket", "address": "0.0.0.0:6001", "mode": "UDP"},
+            "bad_address": {"type": "socket", "address": "no-port", "mode": "tcp"}
+          },
+          "transforms": {"pass": {"type": "remap", "inputs": ["tcp_input"], "source": ".tag = \"legacy\""}},
+          "sinks": {"out": {"type": "blackhole", "inputs": ["veryLongSourceNameForExistingUsers", "pass", "udpInput", "bad_address"]}}
+        }
+      }
+    ]
+  },
+  {
+    "name": "cluster",
+    "cluster": true,
+    "pipelines": [
+      {
+        "metadata": {"name": "cluster-logs"},
+        "spec": {
+          "sources": {
+            "longOpenTelemetrySourceName": {"type": "opentelemetry", "grpc": {"address": "[::1]:4317"}, "http": {"address": "localhost:4318"}},
+            "queue": {"type": "kafka", "bootstrap_servers": "kafka:9092", "group_id": "logs", "topics": ["logs"]},
+            "httpInput": {"type": "http_server", "address": "[::]:8080"}
+          },
+          "sinks": {"out": {"type": "blackhole", "inputs": ["longOpenTelemetrySourceName.logs", "queue", "httpInput"]}}
+        }
+      }
+    ]
+  }
+]

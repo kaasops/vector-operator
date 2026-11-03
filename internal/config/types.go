@@ -92,6 +92,8 @@ type ServicePort struct {
 	Port               int32
 	Protocol           corev1.Protocol
 	ServiceName        string
+	// Endpoint is set only for OTLP ports of a pipeline with spec.role: aggregator.
+	Endpoint string
 }
 
 type internalConfig struct {

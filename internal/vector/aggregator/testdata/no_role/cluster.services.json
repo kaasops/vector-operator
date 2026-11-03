@@ -1,0 +1,14 @@
+[
+  {
+    "name": "test-aggregator-cluster-logs",
+    "namespace": "logs",
+    "ports": [
+      {
+        "name": "http-input",
+        "protocol": "TCP",
+        "port": 8080,
+        "targetPort": 8080
+      }
+    ]
+  }
+]

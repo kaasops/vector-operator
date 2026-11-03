@@ -1,0 +1,26 @@
+[
+  {
+    "name": "custom-receivers",
+    "namespace": "logs",
+    "ports": [
+      {
+        "name": "very-long-source-name-for-existing-users",
+        "protocol": "TCP",
+        "port": 6000,
+        "targetPort": 6000
+      },
+      {
+        "name": "tcp-input",
+        "protocol": "TCP",
+        "port": 6001,
+        "targetPort": 6001
+      },
+      {
+        "name": "udp-input",
+        "protocol": "UDP",
+        "port": 6001,
+        "targetPort": 6001
+      }
+    ]
+  }
+]

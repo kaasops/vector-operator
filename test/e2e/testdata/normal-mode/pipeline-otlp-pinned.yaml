@@ -1,0 +1,21 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: otlp-pinned-pipeline
+  labels:
+    app: test
+    role: aggregator
+spec:
+  role: aggregator
+  sources:
+    opentelemetry:
+      type: opentelemetry
+      grpc:
+        address: "0.0.0.0:4317"
+      http:
+        address: "0.0.0.0:4318"
+  sinks:
+    blackhole:
+      type: blackhole
+      inputs:
+        - opentelemetry.*

@@ -11,6 +11,7 @@ import (
 	"github.com/stoewer/go-strcase"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/common"
 	"github.com/kaasops/vector-operator/internal/pipeline"
 )
@@ -68,23 +69,24 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 				}
 			default:
 				{
-					if val, ok := v.Options["address"]; ok {
-						address, _ := val.(string)
-						if _, port, err := net.SplitHostPort(address); err == nil {
-							portN, err := parsePort(port)
-							if err != nil {
-								return nil, fmt.Errorf("failed to parse port %s: %w", port, err)
-							}
-							protocol := extractProtocol(v.Options)
-							err = cfg.internal.addServicePort(&ServicePort{
-								Port:         portN,
-								Protocol:     protocol,
-								Namespace:    pipeline.GetNamespace(),
-								SourceName:   k,
-								PipelineName: pipeline.GetName(),
-								ServiceName:  getServiceName(pipeline.GetAnnotations()[common.AnnotationServiceName], params.AggregatorName, pipeline.GetName()),
-							})
-							if err != nil {
+					port := ServicePort{
+						Protocol:     extractProtocol(v.Options),
+						Namespace:    pipeline.GetNamespace(),
+						SourceName:   k,
+						PipelineName: pipeline.GetName(),
+						ServiceName:  getServiceName(pipeline.GetAnnotations()[common.AnnotationServiceName], params.AggregatorName, pipeline.GetName()),
+					}
+					if err := cfg.internal.addSourceServicePort(v.Options["address"], port); err != nil {
+						return nil, err
+					}
+					// Keep inferred aggregators unchanged, including OTLP mixed with Kafka.
+					role := pipeline.GetSpec().Role
+					if v.Type == OpenTelemetryType && role != nil && *role == v1alpha1.VectorPipelineRoleAggregator {
+						port.Protocol = corev1.ProtocolTCP
+						for _, endpoint := range []string{"grpc", "http"} {
+							options, _ := v.Options[endpoint].(map[string]any)
+							port.Endpoint = endpoint
+							if err := cfg.internal.addSourceServicePort(options["address"], port); err != nil {
 								return nil, err
 							}
 						}
@@ -142,6 +144,19 @@ func BuildAggregatorConfig(params VectorConfigParams, pipelines ...pipeline.Pipe
 	}
 
 	return cfg, nil
+}
+
+func (c *internalConfig) addSourceServicePort(value any, port ServicePort) error {
+	address, _ := value.(string)
+	_, number, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil
+	}
+	port.Port, err = parsePort(number)
+	if err != nil {
+		return fmt.Errorf("failed to parse port %s: %w", number, err)
+	}
+	return c.addServicePort(&port)
 }
 
 func parsePort(port string) (int32, error) {

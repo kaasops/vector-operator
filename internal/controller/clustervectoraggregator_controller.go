@@ -269,7 +269,7 @@ func (r *ClusterVectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx c
 
 	// See vector_controller.go's identical return for why a pending grace period must
 	// be requeued explicitly.
-	return ctrl.Result{RequeueAfter: requeueAfter}, nil
+	return ctrl.Result{RequeueAfter: withSkippedServiceRetry(requeueAfter, vaCtrl.HasSkippedServices())}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

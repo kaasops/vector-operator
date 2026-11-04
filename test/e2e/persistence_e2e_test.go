@@ -31,9 +31,10 @@ var _ = Describe("Aggregator persistence", Label(config.LabelSmoke, config.Label
 	f := framework.NewUniqueFramework("test-persistence")
 
 	const (
-		aggregator  = "persistent-aggregator-aggregator"
-		headlessSvc = "persistent-aggregator-aggregator-headless"
-		dataPVC     = "data-persistent-aggregator-aggregator-0"
+		vectorAggregator = "persistent-aggregator"
+		aggregator       = "persistent-aggregator-aggregator"
+		headlessSvc      = "persistent-aggregator-aggregator-headless"
+		dataPVC          = "data-persistent-aggregator-aggregator-0"
 	)
 
 	BeforeAll(func() {
@@ -73,6 +74,32 @@ var _ = Describe("Aggregator persistence", Label(config.LabelSmoke, config.Label
 			svcName, err := f.Kubectl().GetWithJsonPath("statefulset", aggregator, ".spec.serviceName")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcName).To(Equal(headlessSvc))
+		})
+	})
+
+	Context("Pipeline named headless", func() {
+		It("should keep the headless service and report the skipped pipeline service", func() {
+			By("creating a pipeline whose service would take the name of the headless service")
+			f.ApplyTestData("persistence/pipeline-headless.yaml")
+			f.WaitForPipelineValid("headless")
+
+			By("waiting for the aggregator status to name the skipped service")
+			Eventually(func() (string, error) {
+				return f.Kubectl().GetWithJsonPath("vectoraggregator", vectorAggregator, ".status.reason")
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(HavePrefix("Service " + headlessSvc + " is skipped: "))
+
+			By("verifying the config check result stays true")
+			result, err := f.Kubectl().GetWithJsonPath("vectoraggregator", vectorAggregator, ".status.configCheckResult")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal("true"))
+
+			By("verifying the headless service is still headless and has no pipeline ports")
+			clusterIP, err := f.Kubectl().GetWithJsonPath("service", headlessSvc, ".spec.clusterIP")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clusterIP).To(Equal("None"), "governing service should stay headless")
+			ports, err := f.Kubectl().GetWithJsonPath("service", headlessSvc, ".spec.ports")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ports).To(BeEmpty(), "the pipeline service should not be written over the headless service")
 		})
 	})
 })

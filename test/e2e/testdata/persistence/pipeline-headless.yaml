@@ -1,0 +1,19 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: headless
+  labels:
+    app: test
+    role: aggregator
+spec:
+  sources:
+    vector_source:
+      type: vector
+      address: "0.0.0.0:9000"
+  sinks:
+    console:
+      type: console
+      inputs:
+        - vector_source
+      encoding:
+        codec: json

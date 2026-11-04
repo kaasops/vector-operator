@@ -5,10 +5,19 @@ Two types of resources are available for deploying aggregators in the cluster:
 - VectorAggregator
 - ClusterVectorAggregator
 
+## Pipeline Services
+
+The operator creates a Service for each aggregator pipeline that has a `kubernetes_events` source or a source with an `address` in the form `host:port`, such as `0.0.0.0:9000`. The Service has a port for each such source. The default Service name is `<aggregator_name>-aggregator-<pipeline_name>` in kebab case. The operator owns this Service in the aggregator's namespace (`spec.resourceNamespace` for a ClusterVectorAggregator). It overwrites a user Service with the same name: it sets the type to ClusterIP, replaces the selector, labels and ports, and sets the aggregator as its owner.
+
+Do not give other Services in that namespace the full set of labels the operator uses to select its Services: `app.kubernetes.io/managed-by: vector-operator`, `app.kubernetes.io/name: vector`, `app.kubernetes.io/component: Aggregator`, and `app.kubernetes.io/instance: <aggregator_name>`. The operator deletes matching Services whose names it no longer needs.
+
+If the API server rejects a Service of the aggregator as invalid (a pipeline Service, the API Service or the headless Service of the StatefulSet), the operator skips that Service and keeps reconciling the rest of the aggregator. For example, the API server rejects a Service name longer than 63 characters. A Service with such a name cannot exist, so clients cannot reach the pipeline through it. Use a shorter pipeline or aggregator name to fix it. A ValidatingAdmissionPolicy denial is handled the same way, unless the policy sets `reason` to something other than `Invalid`. The aggregator's `.status.reason` names the skipped Service and the API server error. `.status.configCheckResult` stays `true`, because the problem is in the Service, not in the config. While a Service is skipped, the operator reconciles the aggregator every 5 minutes, so it also picks up a fix made outside the aggregator and its pipelines, for example a changed admission policy. The operator clears the reason on the next successful reconcile in which no Service is skipped.
+
+With persistence enabled, the headless Service of the StatefulSet is named `<aggregator_name>-aggregator-headless`. A pipeline Service with the same name, for example the Service of a pipeline named `headless`, is skipped and reported the same way, and the headless Service is kept. When persistence is turned on or off while such a pipeline exists, the operator deletes its own Service with that name and creates the headless Service or the pipeline Service instead, because a Service cannot switch between headless and a cluster IP in place. Use another pipeline name to fix it.
+
 ## VectorAggregator
 
-“The configuration for the aggregator is formed from valid vector pipelines in the same namespace.
-The Service name is generated as follows: <aggregator_name>-aggregator-<vp_name>.”
+The configuration for the aggregator is formed from valid vector pipelines in the same namespace.
 
 ```yaml
 apiVersion: observability.kaasops.io/v1alpha1

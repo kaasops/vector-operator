@@ -1,4 +1,5 @@
 ## Unreleased
+- [[319]](https://github.com/kaasops/vector-operator/pull/319) **Feature** Add leaderElection.enabled to the chart, with the Lease RBAC and a per release --leader-election-id. The chart turns leader election on when replicaCount is above 1
 - [[318]](https://github.com/kaasops/vector-operator/pull/318) **Fix** Render the aggregator Service ports and the event collector receivers in a stable order, so a reconcile no longer updates them and requeues the aggregator
 - [[250]](https://github.com/kaasops/vector-operator/issues/250) **Feature** Add opt in persistent storage for the aggregator data_dir, rendering it as a StatefulSet with a volume claim template per replica
 

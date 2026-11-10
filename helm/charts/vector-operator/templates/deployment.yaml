@@ -45,10 +45,15 @@ spec:
       {{- end }}
       containers:
       - image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        {{- if or .Values.args .Values.metrics.enabled }}
+        {{- $leaderElection := include "chart.leaderElection" . }}
+        {{- if or .Values.args .Values.metrics.enabled $leaderElection }}
         args:
           {{- with .Values.args }}
           {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- if $leaderElection }}
+          - --leader-elect
+          - --leader-election-id={{ include "chart.fullname" . }}
           {{- end }}
           {{- if .Values.metrics.enabled }}
           {{- if .Values.metrics.secure }}

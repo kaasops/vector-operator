@@ -1,0 +1,21 @@
+# Aggregator ClusterVectorPipeline that starts on "matching-aggregator" (team: platform); the test relabels it
+apiVersion: observability.kaasops.io/v1alpha1
+kind: ClusterVectorPipeline
+metadata:
+  name: relabeled-pipeline
+  labels:
+    team: platform
+spec:
+  role: aggregator
+  sources:
+    demo:
+      type: demo_logs
+      format: json
+      interval: 10
+  sinks:
+    console:
+      type: console
+      inputs:
+        - demo
+      encoding:
+        codec: json

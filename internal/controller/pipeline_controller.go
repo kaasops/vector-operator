@@ -592,8 +592,8 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		//
 		// Wired through WatchesRawSource rather than Watches because WithEventFilter above
 		// applies specAndAnnotationsPredicate to every watch on this builder (ANDed with
-		// any per-watch predicate), and that predicate fires only on a generation or
-		// annotations change. Secrets have no status subresource, so the API server never
+		// any per-watch predicate), and that predicate fires only on a generation, labels
+		// or annotations change. Secrets have no status subresource, so the API server never
 		// bumps metadata.generation on a data-only update - it would silently swallow every
 		// rotation. ResourceVersionChangedPredicate is the correct signal here.
 		WatchesRawSource(source.Kind[client.Object](
@@ -632,6 +632,12 @@ var specAndAnnotationsPredicate = predicate.Funcs{
 		}
 
 		if !reflect.DeepEqual(e.ObjectOld.GetAnnotations(), e.ObjectNew.GetAnnotations()) {
+			return true
+		}
+
+		// Labels pick the agents and aggregators a pipeline goes to, but a label-only
+		// edit does not bump the generation.
+		if !reflect.DeepEqual(e.ObjectOld.GetLabels(), e.ObjectNew.GetLabels()) {
 			return true
 		}
 

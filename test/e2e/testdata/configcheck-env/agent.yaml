@@ -1,0 +1,14 @@
+# The pipeline below reads LINE_PREFIX from the agent's env.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: ccenv
+spec:
+  selector:
+    matchLabels:
+      e2e: configcheck-env
+  agent:
+    image: timberio/vector:0.48.0-alpine
+    env:
+      - name: LINE_PREFIX
+        value: "e2e-"

@@ -1,0 +1,11 @@
+# The same agent without LINE_PREFIX: the pipeline config no longer resolves.
+apiVersion: observability.kaasops.io/v1alpha1
+kind: Vector
+metadata:
+  name: ccenv
+spec:
+  selector:
+    matchLabels:
+      e2e: configcheck-env
+  agent:
+    image: timberio/vector:0.48.0-alpine

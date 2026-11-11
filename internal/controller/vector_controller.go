@@ -28,7 +28,6 @@ import (
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
 	"github.com/kaasops/vector-operator/internal/pipeline"
-	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/kaasops/vector-operator/internal/vector/vectoragent"
 
@@ -289,7 +288,10 @@ func (r *VectorReconciler) createOrUpdateVector(ctx context.Context, client clie
 		log.Info("Sources optimization collapsed kubernetes_logs sources", "sources", collapsed, "optimizedSources", groups)
 	}
 
-	cfgHash := int64(hash.Get(byteConfig))
+	cfgHash, err := configcheck.Hash(byteConfig, &vaCtrl.Vector.Spec.Agent.VectorCommon)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// configUnchanged tells us whether the config about to be (re-)written is
 	// byte-identical to the one ALREADY ACTUALLY PUBLISHED on the cluster - a direct

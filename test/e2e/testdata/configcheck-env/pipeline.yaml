@@ -1,0 +1,19 @@
+apiVersion: observability.kaasops.io/v1alpha1
+kind: VectorPipeline
+metadata:
+  name: env-ref
+  labels:
+    e2e: configcheck-env
+spec:
+  sources:
+    logs:
+      type: kubernetes_logs
+  transforms:
+    prefix:
+      type: remap
+      inputs: ["logs"]
+      source: .prefix = "${LINE_PREFIX}"
+  sinks:
+    out:
+      type: blackhole
+      inputs: ["prefix"]

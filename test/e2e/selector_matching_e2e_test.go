@@ -17,6 +17,7 @@ limitations under the License.
 package e2e
 
 import (
+	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/kaasops/vector-operator/test/e2e/framework"
 	"github.com/kaasops/vector-operator/test/e2e/framework/config"
+	"github.com/kaasops/vector-operator/test/utils"
 )
 
 // Resource names used in selector matching tests
@@ -31,6 +33,7 @@ const (
 	selectorTestAgent            = "test-agent"
 	labeledPipelineName          = "labeled-pipeline"
 	unlabeledPipelineName        = "unlabeled-pipeline"
+	relabeledPipelineName        = "relabeled-pipeline"
 	matchingAggregatorName       = "matching-aggregator"
 	nonMatchingAggregatorName    = "non-matching-aggregator"
 	noSelectorAggregatorName     = "no-selector-aggregator"
@@ -64,6 +67,7 @@ var _ = Describe("Selector Matching", Label(config.LabelSmoke, config.LabelFast)
 		By("cleaning up ClusterVectorPipelines")
 		f.DeleteClusterResource("clustervectorpipeline", labeledPipelineName)
 		f.DeleteClusterResource("clustervectorpipeline", unlabeledPipelineName)
+		f.DeleteClusterResource("clustervectorpipeline", relabeledPipelineName)
 
 		By("cleaning up ClusterVectorAggregators")
 		f.DeleteClusterResource("clustervectoraggregator", matchingAggregatorName)
@@ -102,6 +106,32 @@ var _ = Describe("Selector Matching", Label(config.LabelSmoke, config.LabelFast)
 				return f.VerifyAgentHasClusterPipeline(selectorTestAgent, labeledPipelineName)
 			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed(),
 				"Pipeline should be in agent's config")
+		})
+	})
+
+	Context("CVP relabeled to another CVA selector", func() {
+		It("should move the pipeline to the newly matching CVA", func() {
+			By("creating aggregator ClusterVectorPipeline with label team: platform")
+			f.ApplyTestDataWithoutNamespaceReplacement("selector-matching/cvp-aggregator.yaml")
+			f.WaitForClusterPipelineValid(relabeledPipelineName)
+			Eventually(func() error {
+				return f.VerifyAggregatorHasClusterPipeline(matchingAggregatorName, relabeledPipelineName)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+
+			By("changing only the label to team: backend")
+			// kubectl label keeps metadata.generation and the annotations (kubectl apply
+			// would rewrite last-applied-configuration), so only the labels change.
+			cmd := exec.Command("kubectl", "label", "clustervectorpipeline", relabeledPipelineName, "team=backend", "--overwrite")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the pipeline moved to the backend aggregator")
+			Eventually(func() error {
+				return f.VerifyAggregatorHasClusterPipeline(nonMatchingAggregatorName, relabeledPipelineName)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
+			Eventually(func() error {
+				return f.VerifyAggregatorHasClusterPipeline(matchingAggregatorName, relabeledPipelineName)
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).ShouldNot(Succeed())
 		})
 	})
 

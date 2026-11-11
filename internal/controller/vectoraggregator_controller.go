@@ -38,7 +38,6 @@ import (
 	"github.com/kaasops/vector-operator/internal/config"
 	"github.com/kaasops/vector-operator/internal/config/configcheck"
 	"github.com/kaasops/vector-operator/internal/pipeline"
-	"github.com/kaasops/vector-operator/internal/utils/hash"
 	"github.com/kaasops/vector-operator/internal/utils/k8s"
 	"github.com/kaasops/vector-operator/internal/vector/aggregator"
 
@@ -264,7 +263,10 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cfgHash := int64(hash.Get(byteCfg))
+	cfgHash, err := configcheck.Hash(byteCfg, &vaCtrl.Spec.VectorCommon)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// configUnchanged tells us whether the config about to be (re-)written is
 	// byte-identical to the one ALREADY ACTUALLY PUBLISHED on the cluster - see the

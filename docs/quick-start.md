@@ -409,6 +409,12 @@ kubectl apply --server-side --force-conflicts -k "https://github.com/kaasops/vec
 
 Replace `<version-tag>` with the operator version you upgraded to (for example `v0.5.0`).
 
+A resource created or changed within about a second of the CRD update can reach the operator without the new fields, and the operator keeps that view until the resource changes again or the operator restarts. If you apply the CRDs and your resources together, restart the operator after the CRD update:
+
+```sh
+kubectl -n NAMESPACE rollout restart deployment/vector-operator
+```
+
 Skipping the CRD update can break the operator in subtle ways. For example, versions up to v0.4.1 shipped CRDs that declared the pipeline hash status field as `format: int32`; Kubernetes versions that enforce integer formats (observed on v1.36) reject status updates for pipelines whose hash exceeds the int32 range, and such pipelines are silently excluded from the generated vector config. v0.5.0 fixes the schema, but only if the updated CRDs are applied.
 
 # Cleanup

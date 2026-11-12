@@ -99,6 +99,27 @@ var _ = Describe("Normal Mode", Label(config.LabelSmoke, config.LabelFast), Orde
 				return f.VerifyAggregatorHasPipeline("normal-aggregator", "aggregator-pipeline")
 			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Succeed())
 		})
+
+		It("should expose both OTLP ports for a pipeline with an explicit aggregator role", func() {
+			By("deploying VectorAggregator")
+			f.ApplyTestData("normal-mode/aggregator.yaml")
+			f.WaitForDeploymentReady("normal-aggregator-aggregator")
+
+			By("creating an OTLP pipeline with an explicit aggregator role")
+			f.ApplyTestData("normal-mode/pipeline-otlp-pinned.yaml")
+			f.WaitForPipelineValid("otlp-pinned-pipeline")
+
+			serviceName := "normal-aggregator-aggregator-otlp-pinned-pipeline"
+			By("verifying both Service port names")
+			Eventually(func() (string, error) {
+				return f.Kubectl().GetWithJsonPath("service", serviceName, ".spec.ports[*].name")
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Equal("opentelemetry-grpc opentelemetry-http"))
+
+			By("verifying both Service port numbers")
+			Eventually(func() (string, error) {
+				return f.Kubectl().GetWithJsonPath("service", serviceName, ".spec.ports[*].port")
+			}, config.ServiceCreateTimeout, config.DefaultPollInterval).Should(Equal("4317 4318"))
+		})
 	})
 
 	Context("Multiple pipelines in normal mode", func() {

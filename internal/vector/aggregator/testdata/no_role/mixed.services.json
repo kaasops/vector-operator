@@ -1,0 +1,14 @@
+[
+  {
+    "name": "test-aggregator-listener",
+    "namespace": "logs",
+    "ports": [
+      {
+        "name": "existing-otlp-port",
+        "protocol": "TCP",
+        "port": 4317,
+        "targetPort": 4317
+      }
+    ]
+  }
+]

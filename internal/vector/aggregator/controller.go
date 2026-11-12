@@ -51,6 +51,9 @@ type Controller struct {
 	// materialize into the secret-assets Secret and mount into the workload. Empty
 	// when no pipeline references a secret (zero-churn: no Secret, no volume, no mount).
 	SecretAssets map[string][]byte
+
+	// skippedServices maps each Service the last Service step did not write to the reason, for the status.
+	skippedServices map[string]string
 }
 
 func NewController(
@@ -483,9 +486,7 @@ func (ctrl *Controller) setDefault() {
 	}
 }
 
-// statusPatchBase returns the patch base for a status write that clears the reason. A merge
-// patch only clears the keys it mentions, and the base can predate the reason it has to
-// clear, so the base carries a reason whatever it was read with.
+// statusPatchBase returns a patch base with a reason set, so that the merge patch always sends the reason, even a nil one.
 func (ctrl *Controller) statusPatchBase() client.Object {
 	base := ctrl.VectorAggregator.DeepCopyObject().(client.Object)
 	switch agg := base.(type) {
@@ -505,7 +506,8 @@ func (ctrl *Controller) SetSuccessStatus(ctx context.Context, hash, globCfgHash 
 	base := ctrl.statusPatchBase()
 	var status = true
 	ctrl.Status.ConfigCheckResult = &status
-	ctrl.Status.Reason = nil
+	// A skipped Service is reported here; the config is published, so ConfigCheckResult stays true.
+	ctrl.Status.Reason = ctrl.skippedServicesReason()
 	ctrl.Status.LastAppliedConfigHash = hash
 	ctrl.Status.LastAppliedGlobalConfigHash = globCfgHash
 	if configPublished || ctrl.Status.LastConfigPublishedAt == nil {

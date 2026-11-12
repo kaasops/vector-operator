@@ -51,6 +51,9 @@ import (
 
 const aggregatorFinalizerName = "vectoraggregator.observability.kaasops.io/finalizer"
 
+// skippedServiceRetryDelay is how soon an aggregator with a skipped Service is reconciled again, to pick up an outside fix.
+const skippedServiceRetryDelay = 5 * time.Minute
+
 // VectorAggregatorReconciler reconciles a VectorAggregator object
 type VectorAggregatorReconciler struct {
 	client.Client
@@ -346,7 +349,15 @@ func (r *VectorAggregatorReconciler) createOrUpdateVectorAggregator(ctx context.
 
 	// See vector_controller.go's identical return for why a pending grace period must
 	// be requeued explicitly.
-	return ctrl.Result{RequeueAfter: requeueAfter}, nil
+	return ctrl.Result{RequeueAfter: withSkippedServiceRetry(requeueAfter, vaCtrl.HasSkippedServices())}, nil
+}
+
+// withSkippedServiceRetry returns requeueAfter, brought forward to skippedServiceRetryDelay while a Service is skipped.
+func withSkippedServiceRetry(requeueAfter time.Duration, skipped bool) time.Duration {
+	if skipped && (requeueAfter == 0 || requeueAfter > skippedServiceRetryDelay) {
+		return skippedServiceRetryDelay
+	}
+	return requeueAfter
 }
 
 func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Context, c client.Client, clientset *kubernetes.Clientset, aggregators ...*v1alpha1.VectorAggregator) (ctrl.Result, error) {
@@ -354,15 +365,21 @@ func (r *VectorAggregatorReconciler) reconcileVectorAggregators(ctx context.Cont
 		return ctrl.Result{}, nil
 	}
 
+	var result ctrl.Result
 	for _, ag := range aggregators {
 		if ag.DeletionTimestamp != nil {
 			continue
 		}
-		if _, err := r.createOrUpdateVectorAggregator(ctx, c, clientset, ag); err != nil {
+		res, err := r.createOrUpdateVectorAggregator(ctx, c, clientset, ag)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
+		// Keep the earliest retry any of them asked for.
+		if res.RequeueAfter > 0 && (result.RequeueAfter == 0 || res.RequeueAfter < result.RequeueAfter) {
+			result.RequeueAfter = res.RequeueAfter
+		}
 	}
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *VectorAggregatorReconciler) deleteVectorAggregator(ctx context.Context, v *v1alpha1.VectorAggregator) error {

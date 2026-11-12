@@ -14,6 +14,10 @@ updates:
       otel:
         patterns:
           - "go.opentelemetry.io/*"
+    ignore:
+      # 0.75 needs Go 1.27 and newer Kubernetes libraries; bump it together with them.
+      - dependency-name: "github.com/VictoriaMetrics/operator/api"
+        versions: [">=0.75.0"]
 
   # GitHub Actions used by the workflows
   - package-ecosystem: github-actions

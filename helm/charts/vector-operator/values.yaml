@@ -4,6 +4,11 @@ namespaceOverride: ""
 
 replicaCount: 1
 
+# Always on above one replica, because otherwise every replica reconciles the same objects.
+# The Lease RBAC needs rbac.create. Without it, grant access to leases and events yourself.
+leaderElection:
+  enabled: false
+
 image:
   repository: kaasops/vector-operator
   tag: "" # rewrites Chart.AppVersion

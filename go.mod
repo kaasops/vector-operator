@@ -9,7 +9,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.2
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/spf13/viper v1.21.0
 	github.com/stoewer/go-strcase v1.3.1
@@ -21,7 +21,7 @@ require (
 	k8s.io/api v0.37.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
-	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
+	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab
 	sigs.k8s.io/controller-runtime v0.25.2
 	sigs.k8s.io/yaml v1.6.0
 )

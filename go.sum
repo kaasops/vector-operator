@@ -293,8 +293,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.2 h1:kvsMN/cGkjmSkBozyWX1ETsiptueYUBTLlGfH72ruYY=
-github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.2/go.mod h1:n4uH73YCwqQomLLIKEthHFwh4F9PneNaP6eaIIscpVg=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.1 h1:5p0yOKVIzF8RjnZZWXQHq8T3vguKhF4mAxYIvxyIt+0=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.1/go.mod h1:YugBhCP70UyV0rYTL5Rm56wjsMJFcyXzfMGRn3oFwA4=
 github.com/prometheus/alertmanager v0.33.1 h1:PJHGvTdb8Q0ZEpJnWff120WxB2kxIScLa707AaIudTo=
 github.com/prometheus/alertmanager v0.33.1/go.mod h1:V06Uc8EZ5X5wLOJRGhtXx+EE2LgrinFIADbKWMVm1RY=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
@@ -545,8 +545,8 @@ k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098 h1:z5+pcu1jTyKK5mNTe2/+x+
 k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098/go.mod h1:0/mqHCVhlumdJ3BhCfnjSZQE037nAhNodh1/hK0T8/I=
 k8s.io/streaming v0.37.2 h1:xmzp9nbqIbjvsRcqrBYa+K5XPQ6Jy/Dm3zZ8mN916AI=
 k8s.io/streaming v0.37.2/go.mod h1:APlJR26ZWRcVy5bIEj0QRrKUXROtBHPcxl2NT7EAzPU=
-k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 h1:jVkFFVfXdXP74B/zbO3hM3hpSFD0xvhQ5U686DPurkE=
-k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3/go.mod h1:M2s5JB1lIYP3jzZdorPLHXIPJzt9vv2muW5a6L9DtNM=
+k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab h1:pjQrNLaF//ytZtWwCAHtW+pqwSKjtWDqzA8+TCX37RI=
+k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab/go.mod h1:DdQ0BJxlQtuMlKDqdg7X5IMMQCXIk2b3d1/4M9OhUYo=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0 h1:/YpDJ4vReG7ZmzSpBGxduXgywWkJU9zHubgJG03MT+Y=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0/go.mod h1:tJo1aepTXyR+8Xs3sUsGBDk4Ub2AM5dPAPKJx0mpm5c=
 sigs.k8s.io/controller-runtime v0.25.2 h1:bEkK3PVOIVK9X8QWLGVhJgmFc++47vfT6wakSzAOLsQ=

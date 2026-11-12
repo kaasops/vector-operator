@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -170,9 +171,16 @@ type SPGroup struct {
 	ServiceName  string
 }
 
+// Sorted because map order changes, and a reordered Service or ConfigMap requeues the aggregator.
+func (c *VectorConfig) sortedServicePorts() []*ServicePort {
+	return slices.SortedFunc(maps.Values(c.internal.servicePort), func(a, b *ServicePort) int {
+		return cmp.Or(cmp.Compare(a.Port, b.Port), cmp.Compare(a.Protocol, b.Protocol))
+	})
+}
+
 func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
 	m := make(map[SPGroup][]*ServicePort)
-	for _, s := range c.internal.servicePort {
+	for _, s := range c.sortedServicePorts() {
 		spg := SPGroup{
 			PipelineName: s.PipelineName,
 			Namespace:    s.Namespace,
@@ -185,7 +193,7 @@ func (c *VectorConfig) GetSourcesServicePorts() map[SPGroup][]*ServicePort {
 
 func (c *VectorConfig) GetEventCollectorConfig(namespace string) *evcollector.Config {
 	items := make([]*evcollector.ReceiverParams, 0)
-	for _, s := range c.internal.servicePort {
+	for _, s := range c.sortedServicePorts() {
 		if s.IsKubernetesEvents {
 			items = append(items, &evcollector.ReceiverParams{
 				ServiceNamespace: namespace,

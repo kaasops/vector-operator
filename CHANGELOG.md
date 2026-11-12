@@ -1,4 +1,5 @@
 ## Unreleased
+- [[318]](https://github.com/kaasops/vector-operator/pull/318) **Fix** Render the aggregator Service ports and the event collector receivers in a stable order, so a reconcile no longer updates them and requeues the aggregator
 - [[250]](https://github.com/kaasops/vector-operator/issues/250) **Feature** Add opt in persistent storage for the aggregator data_dir, rendering it as a StatefulSet with a volume claim template per replica
 
 ## v0.0.40

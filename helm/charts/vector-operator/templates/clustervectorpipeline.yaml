@@ -4,6 +4,9 @@ kind: ClusterVectorPipeline
 metadata:
   name: {{ $pipeline.name }}
 spec:
+  {{- with $pipeline.role }}
+  role: {{ . }}
+  {{- end }}
   sources:
 {{-  toYaml $pipeline.sources | nindent 4 }}
   transforms:

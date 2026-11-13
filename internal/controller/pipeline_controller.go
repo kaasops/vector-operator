@@ -363,6 +363,10 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 				vaCtrl.Config = cfg
 				vaCtrl.ByteConfig = byteConfig
 
+				if vaCtrl.Vector.Spec.Agent.ConfigCheck.Disabled {
+					return nil
+				}
+
 				configCheck := configcheck.New(
 					vaCtrl.ByteConfig,
 					vaCtrl.Client,
@@ -426,6 +430,10 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 					vaCtrl.ConfigBytes = byteConfig
 					vaCtrl.Config = cfg
 
+					if vaCtrl.Spec.ConfigCheck.Disabled {
+						return nil
+					}
+
 					configCheck := configcheck.New(
 						vaCtrl.ConfigBytes,
 						vaCtrl.Client,
@@ -483,6 +491,10 @@ func (r *PipelineReconciler) reconcile(ctx context.Context, req ctrl.Request) (c
 
 					vaCtrl.ConfigBytes = byteConfig
 					vaCtrl.Config = cfg
+
+					if vaCtrl.Spec.ConfigCheck.Disabled {
+						return nil
+					}
 
 					configCheck := configcheck.New(
 						vaCtrl.ConfigBytes,

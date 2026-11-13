@@ -13,7 +13,7 @@ If release name contains chart name it will be used as a full name.
 */}}
 {{/* "true" when leaderElection.enabled is set or replicaCount is above 1. */}}
 {{- define "chart.leaderElection" -}}
-{{- if or .Values.leaderElection.enabled (gt (int .Values.replicaCount) 1) -}}
+{{- if or (.Values.leaderElection | default dict).enabled (gt (int .Values.replicaCount) 1) -}}
 true
 {{- end -}}
 {{- end }}

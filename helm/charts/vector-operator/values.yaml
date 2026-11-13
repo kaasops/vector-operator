@@ -98,6 +98,7 @@ secrets: {}
 
 clustervectorpipeline: {}
 #  - name: ""
+#    role: ""  # agent or aggregator; empty derives it from the sources
 #    sources: {}
 #    transforms: {}
 #    sinks: {}

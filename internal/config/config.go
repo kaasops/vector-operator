@@ -98,7 +98,27 @@ func UnmarshalJson(spec vectorv1alpha1.VectorPipelineSpec, p *PipelineConfig) er
 	if err := mapstructure.Decode(pipeline_.Sinks, &p.Sinks); err != nil {
 		return err
 	}
+	// A component given as null decodes to a nil pointer.
+	for _, c := range []struct {
+		kind  string
+		names []string
+	}{{"source", nilKeys(p.Sources)}, {"transform", nilKeys(p.Transforms)}, {"sink", nilKeys(p.Sinks)}} {
+		if len(c.names) > 0 {
+			return fmt.Errorf("%s %s is empty", c.kind, c.names[0])
+		}
+	}
 	return nil
+}
+
+// nilKeys returns the sorted keys whose value is nil.
+func nilKeys[T any](m map[string]*T) []string {
+	var keys []string
+	for _, k := range slices.Sorted(maps.Keys(m)) {
+		if m[k] == nil {
+			keys = append(keys, k)
+		}
+	}
+	return keys
 }
 
 func isExporterSinkExists(sinks map[string]*Sink) bool {

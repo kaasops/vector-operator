@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -595,6 +596,12 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha1.VectorPipeline{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 20}).
 		Watches(&v1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
+		// A pipeline reconciled while no workload exists returns before it gets a status, and
+		// workloads select only checked pipelines, so the first workload of each kind picks
+		// up the pipelines that were never checked.
+		Watches(&v1alpha1.Vector{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
+		Watches(&v1alpha1.VectorAggregator{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
+		Watches(&v1alpha1.ClusterVectorAggregator{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
 		WithEventFilter(specAndAnnotationsPredicate).
 		// Watch on Secrets, reusing the manager's cache: the workload reconcilers already
 		// run Owns(&corev1.Secret{}), a full structural informer, so this adds no second
@@ -620,6 +627,41 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // mapSecretToPipelines resolves a changed Secret to the pipelines that declared it via
 // spec.secret, so a Secret rotation gets requeued as a normal pipeline reconcile.
 // Returns nil for secrets no pipeline references, which is the overwhelming common case.
+// workloadCreated passes only a workload created while the operator runs: on start the
+// pipelines get their own first reconcile, so the initial list needs no mapping.
+var workloadCreated = predicate.Funcs{
+	CreateFunc:  func(e event.CreateEvent) bool { return !e.IsInInitialList },
+	UpdateFunc:  func(event.UpdateEvent) bool { return false },
+	DeleteFunc:  func(event.DeleteEvent) bool { return false },
+	GenericFunc: func(event.GenericEvent) bool { return false },
+}
+
+// mapWorkloadToUncheckedPipelines returns the pipelines that have no config check result yet.
+func (r *PipelineReconciler) mapWorkloadToUncheckedPipelines(ctx context.Context, _ client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	vps, err := pipeline.GetVectorPipelines(ctx, r.Client)
+	if err != nil {
+		log.FromContext(ctx).Error(err, "Failed to list vector pipelines")
+		return nil
+	}
+	for _, vp := range vps {
+		if vp.Status.ConfigCheckResult == nil && !vp.IsDeleted() {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&vp)})
+		}
+	}
+	cvps, err := pipeline.GetClusterVectorPipelines(ctx, r.Client)
+	if err != nil {
+		log.FromContext(ctx).Error(err, "Failed to list cluster vector pipelines")
+		return nil
+	}
+	for _, cvp := range cvps {
+		if cvp.Status.ConfigCheckResult == nil && !cvp.IsDeleted() {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&cvp)})
+		}
+	}
+	return requests
+}
+
 func (r *PipelineReconciler) mapSecretToPipelines(_ context.Context, obj client.Object) []reconcile.Request {
 	if r.SecretIndex == nil {
 		return nil

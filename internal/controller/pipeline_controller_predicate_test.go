@@ -44,3 +44,14 @@ func TestSpecAndAnnotationsPredicate_LabelOnlyEditPasses(t *testing.T) {
 	unchanged := relabeled.DeepCopy()
 	g.Expect(specAndAnnotationsPredicate.Update(event.UpdateEvent{ObjectOld: relabeled, ObjectNew: unchanged})).To(BeFalse())
 }
+
+// A workload from the initial list must not map: the pipelines get their own first
+// reconcile on start, and mapping every workload would list all pipelines again and again.
+func TestWorkloadCreatedSkipsInitialList(t *testing.T) {
+	g := NewWithT(t)
+	vector := &v1alpha1.Vector{ObjectMeta: metav1.ObjectMeta{Name: "v", Namespace: "default"}}
+
+	g.Expect(workloadCreated.Create(event.CreateEvent{Object: vector, IsInInitialList: true})).To(BeFalse())
+	g.Expect(workloadCreated.Create(event.CreateEvent{Object: vector})).To(BeTrue())
+	g.Expect(workloadCreated.Update(event.UpdateEvent{ObjectOld: vector, ObjectNew: vector})).To(BeFalse())
+}

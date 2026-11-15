@@ -39,13 +39,13 @@ Change the values according to the need of the environment in values.yaml file.
 
 Test the installation with command:
 ```bash
-helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE --debug --dry-run
+helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE --create-namespace --debug --dry-run
 ```
 
 Install chart with command:
 
 ```bash
-helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE
+helm install vector-operator vector-operator/vector-operator -f values.yaml -n NAMESPACE --create-namespace
 ```
 
 Get the pods lists by running these commands:
@@ -414,6 +414,10 @@ A resource created or changed within about a second of the CRD update can reach 
 ```sh
 kubectl -n NAMESPACE rollout restart deployment/vector-operator
 ```
+
+`spec.role` of `VectorPipeline` and `ClusterVectorPipeline` is available from v0.7.0. Update the CRDs before you set it. With older CRDs, `kubectl apply` rejects the field with `unknown field "spec.role"`. A pipeline stored without the field gets its role from the source types, so apply it again after the CRD update.
+
+Before you roll the operator back to a version before v0.7.0, remove `spec.role` from your pipelines and check that they are still valid. An older operator ignores the field and infers the role from the source types. Without the field, a pipeline can move to the other role, become invalid or lose its OTLP Service ports, and you can see this before the rollback.
 
 Skipping the CRD update can break the operator in subtle ways. For example, versions up to v0.4.1 shipped CRDs that declared the pipeline hash status field as `format: int32`; Kubernetes versions that enforce integer formats (observed on v1.36) reject status updates for pipelines whose hash exceeds the int32 range, and such pipelines are silently excluded from the generated vector config. v0.5.0 fixes the schema, but only if the updated CRDs are applied.
 

@@ -597,8 +597,8 @@ func (r *PipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{MaxConcurrentReconciles: 20}).
 		Watches(&v1alpha1.ClusterVectorPipeline{}, &handler.EnqueueRequestForObject{}).
 		// A pipeline reconciled while no workload exists returns before it gets a status, and
-		// workloads select only checked pipelines, so the first workload of each kind picks
-		// up the pipelines that were never checked.
+		// workloads select only checked pipelines and skip unchecked role changes, so the
+		// first workload of each kind picks up the pipelines whose spec was never checked.
 		Watches(&v1alpha1.Vector{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
 		Watches(&v1alpha1.VectorAggregator{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
 		Watches(&v1alpha1.ClusterVectorAggregator{}, handler.EnqueueRequestsFromMapFunc(r.mapWorkloadToUncheckedPipelines), builder.WithPredicates(workloadCreated)).
@@ -636,28 +636,37 @@ var workloadCreated = predicate.Funcs{
 	GenericFunc: func(event.GenericEvent) bool { return false },
 }
 
-// mapWorkloadToUncheckedPipelines returns the pipelines that have no config check result yet.
+// mapWorkloadToUncheckedPipelines returns the pipelines that have no config check result
+// yet or whose spec changed since the last check.
 func (r *PipelineReconciler) mapWorkloadToUncheckedPipelines(ctx context.Context, _ client.Object) []reconcile.Request {
 	var requests []reconcile.Request
+	add := func(p pipeline.Pipeline) {
+		if p.IsDeleted() {
+			return
+		}
+		if p.GetConfigCheckResult() != nil {
+			unchanged, err := pipeline.IsPipelineChanged(p)
+			if err != nil || unchanged {
+				return
+			}
+		}
+		requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(p)})
+	}
 	vps, err := pipeline.GetVectorPipelines(ctx, r.Client)
 	if err != nil {
 		log.FromContext(ctx).Error(err, "Failed to list vector pipelines")
 		return nil
 	}
-	for _, vp := range vps {
-		if vp.Status.ConfigCheckResult == nil && !vp.IsDeleted() {
-			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&vp)})
-		}
+	for i := range vps {
+		add(&vps[i])
 	}
 	cvps, err := pipeline.GetClusterVectorPipelines(ctx, r.Client)
 	if err != nil {
 		log.FromContext(ctx).Error(err, "Failed to list cluster vector pipelines")
 		return nil
 	}
-	for _, cvp := range cvps {
-		if cvp.Status.ConfigCheckResult == nil && !cvp.IsDeleted() {
-			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&cvp)})
-		}
+	for i := range cvps {
+		add(&cvps[i])
 	}
 	return requests
 }

@@ -34,7 +34,7 @@ import (
 )
 
 // A pipeline reconciled before any workload exists returns without a status. The first
-// workload must bring it back, and only pipelines that were never checked.
+// workload must bring it back, and only pipelines whose spec was never checked.
 var _ = Describe("Pipelines created before the first workload", func() {
 	It("are reconciled again when a workload is created", func() {
 		ns := "unchecked-pipelines"
@@ -88,6 +88,33 @@ var _ = Describe("Pipelines created before the first workload", func() {
 		checked := newPipeline("checked")
 		Expect(reconcileVP(checked).Status.ConfigCheckResult).To(HaveValue(BeTrue()))
 
+		// An edit made while no workload existed was never checked either.
+		edited := newPipeline("edited")
+		edited = reconcileVP(edited)
+		Expect(edited.Status.ConfigCheckResult).To(HaveValue(BeTrue()))
+		edited.Spec.Sources = &runtime.RawExtension{Raw: []byte(`{"in": {"type": "http_server", "address": "0.0.0.0:8080"}}`)}
+		Expect(k8sClient.Update(ctx, edited)).To(Succeed())
+
+		// A failed check is a result too, until the spec changes.
+		failed := newPipeline("failed")
+		failed.Spec.Sources = &runtime.RawExtension{Raw: []byte(`{"in": {"type": "no_such_source"}}`)}
+		Expect(k8sClient.Update(ctx, failed)).To(Succeed())
+		Expect(reconcileVP(failed).Status.ConfigCheckResult).To(HaveValue(BeFalse()))
+
+		editedCluster := &v1alpha1.ClusterVectorPipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "unchecked-pipelines-edited"},
+			Spec:       edited.Spec,
+		}
+		editedCluster.Spec.Sources = &runtime.RawExtension{Raw: []byte(`{"in": {"type": "kubernetes_logs"}}`)}
+		Expect(k8sClient.Create(ctx, editedCluster)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, editedCluster) })
+		_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: client.ObjectKeyFromObject(editedCluster)})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(editedCluster), editedCluster)).To(Succeed())
+		Expect(editedCluster.Status.ConfigCheckResult).To(HaveValue(BeTrue()))
+		editedCluster.Spec.Sources = &runtime.RawExtension{Raw: []byte(`{"in": {"type": "http_server", "address": "0.0.0.0:8080"}}`)}
+		Expect(k8sClient.Update(ctx, editedCluster)).To(Succeed())
+
 		// A pipeline being deleted is left alone, as the workloads skip it too.
 		deleting := newPipeline("deleting")
 		deleting.Finalizers = []string{"test.kaasops.io/hold"}
@@ -103,7 +130,9 @@ var _ = Describe("Pipelines created before the first workload", func() {
 
 		Expect(reconciler.mapWorkloadToUncheckedPipelines(ctx, agent)).To(ConsistOf(
 			reconcile.Request{NamespacedName: client.ObjectKeyFromObject(early)},
-		), "only the pipeline that was never checked")
+			reconcile.Request{NamespacedName: client.ObjectKeyFromObject(edited)},
+			reconcile.Request{NamespacedName: client.ObjectKeyFromObject(editedCluster)},
+		), "only the pipelines whose spec was never checked")
 
 		Expect(reconcileVP(early).Status.ConfigCheckResult).To(HaveValue(BeTrue()))
 	})

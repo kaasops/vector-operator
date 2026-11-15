@@ -185,6 +185,25 @@ func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (
 	return nil, fmt.Errorf("unknown vector role")
 }
 
+// PipelineRole derives the role of a pipeline spec as UnmarshalJson and VectorRole do, but
+// decodes only the sources, which is all the role depends on.
+func PipelineRole(spec vectorv1alpha1.VectorPipelineSpec) (*vectorv1alpha1.VectorPipelineRole, error) {
+	var sources map[string]interface{}
+	if spec.Sources != nil && len(spec.Sources.Raw) > 0 {
+		if err := json.Unmarshal(spec.Sources.Raw, &sources); err != nil {
+			return nil, err
+		}
+	}
+	p := &PipelineConfig{}
+	if err := mapstructure.Decode(sources, &p.Sources); err != nil {
+		return nil, err
+	}
+	if names := nilKeys(p.Sources); len(names) > 0 {
+		return nil, fmt.Errorf("source %s is empty", names[0])
+	}
+	return p.VectorRole(spec.Role)
+}
+
 type SPGroup struct {
 	PipelineName string
 	Namespace    string

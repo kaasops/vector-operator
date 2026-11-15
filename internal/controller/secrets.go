@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kaasops/vector-operator/api/v1alpha1"
 	"github.com/kaasops/vector-operator/internal/config"
@@ -641,12 +642,25 @@ func resolveWorkloadPipelines(
 	pool := make([]pipeline.Pipeline, 0, len(all))
 	retryCandidates := make(map[types.NamespacedName]struct{})
 	for _, p := range all {
-		if p.IsValid() {
-			pool = append(pool, p)
+		retry := false
+		if !p.IsValid() {
+			reason := p.GetReason()
+			if reason == nil || !isSecretAttributionReason(*reason) {
+				continue
+			}
+			retry = true
+		}
+		// The status role comes from the last validated spec. Until the pipeline's own
+		// reconcile validates an edit that changes the role, the edited spec belongs to
+		// no workload: neither to the old role's nor to the new one's.
+		if role, ok := specRole(p); !ok || role != filter.Role {
+			log.FromContext(ctx).Info("Skipping pipeline until its edited spec is validated",
+				"pipeline", client.ObjectKeyFromObject(p), "generation", p.GetGeneration(),
+				"statusRole", p.GetRole(), "specRole", role)
 			continue
 		}
-		if reason := p.GetReason(); reason != nil && isSecretAttributionReason(*reason) {
-			pool = append(pool, p)
+		pool = append(pool, p)
+		if retry {
 			retryCandidates[client.ObjectKeyFromObject(p)] = struct{}{}
 		}
 	}
@@ -753,6 +767,16 @@ func resolveWorkloadPipelines(
 		result = append(result, p)
 	}
 	return result, reinstate, nil
+}
+
+// specRole derives the role of the pipeline's current spec the way its own reconcile does.
+// ok is false when the sources do not parse or yield no role.
+func specRole(p pipeline.Pipeline) (role v1alpha1.VectorPipelineRole, ok bool) {
+	r, err := config.PipelineRole(p.GetSpec())
+	if err != nil {
+		return v1alpha1.VectorPipelineRoleUnknown, false
+	}
+	return *r, true
 }
 
 // reinstatePipelines finalizes the status of every retry candidate resolveWorkloadPipelines

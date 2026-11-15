@@ -43,10 +43,13 @@ The pipeline role is determined automatically based on source types, or pinned w
 - No namespace restrictions on data sources
 
 ## Restrictions
-- All sources in a pipeline must belong to the same role. Mixing agent and aggregator source types is not allowed.
+- Without `spec.role`, a pipeline gets the agent role only if every source can run on the agent. If any source runs only on the aggregator, the whole pipeline gets the aggregator role and goes into the aggregator config, agent sources such as `kubernetes_logs` included. Keep agent and aggregator sources in separate pipelines.
+- Some sources run in both roles, such as `opentelemetry`, `prometheus_remote_write` and `http_client`. Without `spec.role`, a pipeline with only such sources gets the agent role. When a `Vector` selects it, the pipeline is invalid, because the agent accepts only `kubernetes_logs` from a `VectorPipeline`. Set `spec.role: aggregator` to run it on the aggregator.
 - With `spec.role`, every source must still be a known type that runs in the pinned role. A pinned
   aggregator cannot use a source that reads the node (`kubernetes_logs`, `file`, `journald`,
   `docker_logs`, `host_metrics`).
+- When a source type does not run in the pinned role, `VALID` in `kubectl get vectorpipeline` is `false` and `.status.reason` explains why. `ROLE` keeps its previous value, or stays empty if the pipeline never had a role.
+- Every aggregator replica runs the same config. A source that pulls data, such as `http_client` or `prometheus_scrape`, polls on each replica independently; the operator does not split the targets between replicas.
 
 ## Specification
 Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page
@@ -66,10 +69,13 @@ The pipeline role is determined automatically based on source types, or pinned w
 - Supports aggregator source types: `kafka`, `http_server`, `amqp`, `socket`, `redis`, `nats`, etc.
 
 ## Restrictions
-- All sources in a pipeline must belong to the same role. Mixing agent and aggregator source types is not allowed.
+- Without `spec.role`, a pipeline gets the agent role only if every source can run on the agent. If any source runs only on the aggregator, the whole pipeline gets the aggregator role and goes into the aggregator config, agent sources such as `kubernetes_logs` included. Keep agent and aggregator sources in separate pipelines.
+- Some sources run in both roles, such as `opentelemetry`, `prometheus_remote_write` and `http_client`. Without `spec.role`, a pipeline with only such sources gets the agent role and runs in every pod of each `Vector` that selects it. For a listener such as `opentelemetry`, each of those pods listens on its ports, and no Service is created for them. Set `spec.role: aggregator` to run it on the ClusterVectorAggregator.
 - With `spec.role`, every source must still be a known type that runs in the pinned role. A pinned
   aggregator cannot use a source that reads the node (`kubernetes_logs`, `file`, `journald`,
   `docker_logs`, `host_metrics`).
+- When a source type does not run in the pinned role, `VALID` in `kubectl get clustervectorpipeline` is `false` and `.status.reason` explains why. `ROLE` keeps its previous value, or stays empty if the pipeline never had a role.
+- Every aggregator replica runs the same config. A source that pulls data, such as `http_client` or `prometheus_scrape`, polls on each replica independently; the operator does not split the targets between replicas.
 
 ## Specification
 Specification access to [this](https://github.com/kaasops/vector-operator/blob/main/docs/specification.md#vectorpipelinespec-clustervectorpipelinespec) page

@@ -56,7 +56,7 @@ spec:
               role:
                 description: |-
                   Role pins the pipeline to a Vector role. Every source must still be a type that runs
-                  in that role, so an aggregator rejects sources that read the node. When empty, the
+                  in that role, so an aggregator rejects sources that read the node. When unset, the
                   operator infers the role from the source types.
                 enum:
                 - agent

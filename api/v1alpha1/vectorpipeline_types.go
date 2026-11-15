@@ -41,7 +41,7 @@ type PipelineSecretBackend struct {
 // VectorPipelineSpec defines the desired state of VectorPipeline
 type VectorPipelineSpec struct {
 	// Role pins the pipeline to a Vector role. Every source must still be a type that runs
-	// in that role, so an aggregator rejects sources that read the node. When empty, the
+	// in that role, so an aggregator rejects sources that read the node. When unset, the
 	// operator infers the role from the source types.
 	// +kubebuilder:validation:Enum=agent;aggregator
 	Role *VectorPipelineRole `json:"role,omitempty"`

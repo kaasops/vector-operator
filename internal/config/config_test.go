@@ -49,7 +49,7 @@ func TestVectorRole(t *testing.T) {
 		{
 			name:    "rejects unclassified type",
 			sources: sources("brand_new_source"),
-			wantErr: "unsupported source type: brand_new_source",
+			wantErr: "source a has unsupported type brand_new_source",
 		},
 		{
 			name:    "pin wins over inference",
@@ -61,7 +61,7 @@ func TestVectorRole(t *testing.T) {
 			name:    "pin rejects an unclassified type",
 			sources: sources("exec"),
 			pinned:  role(vectorv1alpha1.VectorPipelineRoleAggregator),
-			wantErr: "unsupported source type: exec",
+			wantErr: "source a has unsupported type exec",
 		},
 		{
 			name:    "pin to agent rejects an aggregator only type",
@@ -141,4 +141,15 @@ func TestAgentOnlyTypesAreHostSources(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{DockerLogsType, FileType, HostMetricsType, JournaldType, KubernetesLogsType}, agentOnly)
+}
+
+// The status reason must not change between reconciles, so the first bad source by name is
+// reported whatever the map order.
+func TestVectorRoleReportsTheFirstBadSourceByName(t *testing.T) {
+	for _, pinned := range []*vectorv1alpha1.VectorPipelineRole{nil, role(vectorv1alpha1.VectorPipelineRoleAggregator)} {
+		for range 100 {
+			_, err := (&PipelineConfig{Sources: sources(KafkaType, "brand_new_source", "exec", "other")}).VectorRole(pinned)
+			require.EqualError(t, err, "source b has unsupported type brand_new_source")
+		}
+	}
 }

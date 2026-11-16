@@ -148,12 +148,13 @@ func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (
 	if len(c.Sources) == 0 {
 		return nil, fmt.Errorf("sources list is empty")
 	}
+	// Sorted, so a pipeline with several bad sources reports the same one on every reconcile.
+	names := slices.Sorted(maps.Keys(c.Sources))
 	if pinned != nil {
-		// Sorted, so a pipeline with several bad sources reports the same one on every reconcile.
-		for _, name := range slices.Sorted(maps.Keys(c.Sources)) {
+		for _, name := range names {
 			s := c.Sources[name]
 			if !isAgent(s.Type) && !isAggregator(s.Type) {
-				return nil, fmt.Errorf("unsupported source type: %s", s.Type)
+				return nil, fmt.Errorf("source %s has unsupported type %s", name, s.Type)
 			}
 			if !runsInRole(s.Type, *pinned) {
 				return nil, fmt.Errorf("source %s has type %s, which does not run in the %s role", name, s.Type, *pinned)
@@ -163,7 +164,8 @@ func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (
 	}
 	agentCount := 0
 	aggregatorCount := 0
-	for _, s := range c.Sources {
+	for _, name := range names {
+		s := c.Sources[name]
 		switch {
 		case isAgent(s.Type):
 			agentCount++
@@ -171,7 +173,7 @@ func (c *PipelineConfig) VectorRole(pinned *vectorv1alpha1.VectorPipelineRole) (
 		case isAggregator(s.Type):
 			aggregatorCount++
 		default:
-			return nil, fmt.Errorf("unsupported source type: %s", s.Type)
+			return nil, fmt.Errorf("source %s has unsupported type %s", name, s.Type)
 		}
 	}
 	switch {
